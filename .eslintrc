@@ -1,0 +1,28 @@
+{
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "airbnb/base",
+  ],
+  "parser": "babel-eslint",
+  "parserOptions": {
+    "ecmaFeatures": {},
+    "ecmaVersion": 6
+  },
+  "plugins": [],
+  "rules": {
+    "class-methods-use-this": 0,
+    "no-bitwise": 0,
+    "no-plusplus": 0,
+    "no-restriced-syntax": 0,
+    "no-mixed-operators": ["error", { "allowSamePrecedence": true }],
+    "no-multi-spaces": ["error", { "ignoreEOLComments": true }],
+    "no-param-reassign": ["error", { "props": false }],
+    "no-underscore-dangle": 0,
+    "no-restricted-syntax": 0,
+    "function-paren-newline": ["error", "consistent"]
+  }
+}

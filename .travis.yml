@@ -1,0 +1,30 @@
+language: node_js
+node_js:
+- '8'
+branches:
+  only:
+  - master
+  - develop
+  - "/^v.*$/"
+before_script:
+- npm install
+before_deploy:
+- npm run prerelease
+deploy:
+  - provider: npm
+    skip_cleanup: true
+    email: pkerpedjiev@gmail.com
+    api_key:
+      secure: i5OKIy2gHKvG5hQwYiDdKhEj7O9l1wWqOoltOUAZyt+6I/jghNeTlFDbcd31hOd7TD9WQfmBae83wngowEK2YBoH7DI6JLmT2kKJQgTl9tK1MxXpJ5NDHCOR2xKTzj6yKiARgQ9SR8I3G5+DVdYkUprvyNLDc5WxAxi9X9Xb1XujDiIjpCqLZPZ6MvUJoPurnu3CidrwFvs+C+UBTZ5yJUwjc+Nh3GKj/8SXqRvo5Volg3TfFyoUGwt2pqYeewWTzhnZ505J+nMkm+/aZkp72DDaHYt9C0oSOY0Zixx5UwLwSZSlzjL+Ls0ibjAn/TEthhmFpIdamEpvSD48ODPozLOuEHgX5L8qv1SgnxVLbfaCZFefsQDLcxhTk+QRMDOrBeyW1ganrzN3+ojnnvQVZVuj7sT4GnchKhngyrkRu0X97cV/1aw+v3G2n05w3yQ5At5ycw2trEtFv11MmL64PdVMuuSD/QmcW31cq5p+WlEcU5N+cG6fi1E0fg37m56CeVaear6Ljx1PfzvSsN+nwmVtnqzMQfpkiIvOqW2VOdlIGEqQBNCLlUe6nk7CtMxsxPG5tYPDJk7W2yr2L3iTXMlF/lYnW4Bk6A160te/I+lyjqhZJ9utph8iXc2kMM1beMASp/mMSWxChc7BwAC3MkPlx68VP7A768KELvP3XlQ=
+    on:
+      tags: true
+      repo: higlass/higlass-pileup-track
+      branch: master
+  - provider: releases
+    skip_cleanup: true
+    email: pkerpedjiev@gmail.com
+    api_key:
+      secure: U+T6Gq8IJIf55L8o90wQkDNytKttzW/VpDZ87VEF3ybfNBdoVbWnFLR0aJk2b+OrT4xJLIVJzqbhMAFr+s+azIMwc4LGcf1G8Eg2X6xsYCdNyAJxKT436EPUhcNteLaoGFMk8YfG2c2lUd6l1TOFgHacMlcNZ1+Hxk7uc4TBTT0wV4Pr5+HXPn7x0q9G8T07y5iIqvDjWnRTjLCgwLS1VKkdGZooq8fKHeLbfRyCbrWlR8psj5Q8yzCGxJcM0Kbpaq02VSyI+Y3y9dNQTCm9FNEN0ztr+m/PNlyHCgNCKPQbF1aVJhtRfoF3R5asTDg2Wzw1SXH/pVdcuzvxlMtpjE59YBSkvJDz9BUMjA/QBvPto0Xt0jv2zQhpaC8mc8sR0lEsp27uRoq3hU5zbss/T0mjvSJv+Pg6c1BylKo2LoCWDST53ZUmQMcz01BbuFz6C/y7gXdKzGjzat3H+OsHkLL+UT0TR34oDbcisq9h470gkuLeAXylvw9/TS/zqbIfIcoBgE0OJNIe5igdaW+mjFN7u4ARzumDgnF6GkR96dyi2Uq8OFZ1A2Mtz1iMq591fjm/QWTHbMx4zQoAvmsE5Txtx6xaGBH6uotgrt8Bv9ZiqeAkEO60hIYebtA38DMJqcoPi03vTycmRh08j4gf1g4k9PzGmiu9evSVsNbDwVI=
+    file: dist.zip
+    on:
+      repo: pkerpedjiev/higlass-pileup-track
