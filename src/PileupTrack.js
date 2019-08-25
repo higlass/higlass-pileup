@@ -1,10 +1,4 @@
-import { spawn, Thread, Worker } from 'threads';
 import BAMDataFetcher from './bam-fetcher';
-
-function currTime() {
-  const d = new Date();
-  return d.getTime();
-}
 
 const shader = PIXI.Shader.from(`
 
@@ -56,8 +50,6 @@ const PileupTrack = (HGC, ...args) => {
       );
       super(context, options);
 
-      console.log('context:', context);
-
       this.worker = this.dataFetcher.worker;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
 
@@ -74,33 +66,21 @@ const PileupTrack = (HGC, ...args) => {
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
     }
 
-    rerender(newOptions) {
+    rerender() {
       this.updateExistingGraphics();
     }
 
     updateExistingGraphics() {
-      const allSegments = {};
-
-      // for (const tile of Object.values(this.fetchedTiles)) {
-      //   // console.log('ueg tile:', tile);
-      //   for (const segment of tile.tileData) {
-      //     allSegments[segment.id] = segment;
-      //   }
-      // }
-
       this.worker.then((tileFunctions) => {
-        const renderedSegments = tileFunctions.renderSegments(
+        tileFunctions.renderSegments(
           this.dataFetcher.uid,
           Object.keys(this.fetchedTiles),
           this._xScale.domain(),
           this._xScale.range(),
           this.position,
           this.dimensions,
-          this.prevRows
+          this.prevRows,
         ).then((toRender) => {
-          // console.log('toRender', toRender);
-          const t1 = currTime();
-
           const positions = new Float32Array(toRender.positionsBuffer);
           const colors = new Float32Array(toRender.colorsBuffer);
 
@@ -142,9 +122,14 @@ const PileupTrack = (HGC, ...args) => {
             this.drawnAtScale,
           );
 
+
+          // if somebody zoomed vertically, we want to readjust so that
+          // they're still zoomed in vertically
+          this.segmentGraphics.scale.y = this.valueScaleTransform.k;
+          this.segmentGraphics.position.y = this.valueScaleTransform.y;
+
           this.draw();
           this.animate();
-          const t2 = currTime();
         });
       });
     }
@@ -204,11 +189,11 @@ const PileupTrack = (HGC, ...args) => {
 
       // clamp at the bottom and top
       if (
-        vst.y + dY / vst.k > -(vst.k - 1) * height
-        && vst.y + dY / vst.k < 0
+        vst.y + (dY / vst.k) > -(vst.k - 1) * height
+        && vst.y + (dY / vst.k) < 0
       ) {
         this.valueScaleTransform = vst.translate(
-          0, dY / vst.k
+          0, dY / vst.k,
         );
       }
 
@@ -218,17 +203,19 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     zoomedY(yPos, kMultiplier) {
-      const newTransform = HGC.utils.trackUtils.zoomedY(yPos, kMultiplier,
+      const newTransform = HGC.utils.trackUtils.zoomedY(
+        yPos, kMultiplier,
         this.valueScaleTransform,
-        this.dimensions[1]);
+        this.dimensions[1],
+      );
 
       this.valueScaleTransform = newTransform;
-      console.log('this.pMain.position', this.pMain.position);
+      // console.log('this.pMain.position', this.pMain.position);
       this.segmentGraphics.scale.y = newTransform.k;
       this.segmentGraphics.position.y = newTransform.y;
 
-      console.log('yPos:', yPos, 'y:',
-        newTransform.y, newTransform.k);
+      // console.log('yPos:', yPos, 'y:',
+      //   newTransform.y, newTransform.k);
 
       // console.log('zoomedY', yPos, kMultiplier);
       this.animate();
