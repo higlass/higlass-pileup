@@ -150,29 +150,49 @@ const init = (uid, bamUrl, chromSizesUrl) => {
     bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
   }
 
-  chromSizes[chromSizesUrl] = chromSizes[chromSizesUrl]
-    || new Promise((resolve, reject) => {
-      ChromosomeInfo(chromSizesUrl, resolve);
-    });
+  if (chromSizesUrl) {
+    // if no chromsizes are passed in, we'll retrieve them
+    // from the BAM file
+    chromSizes[chromSizesUrl] = chromSizes[chromSizesUrl]
+      || new Promise((resolve) => {
+        ChromosomeInfo(chromSizesUrl, resolve);
+      });
+  }
 
   dataConfs[uid] = {
-    bamUrl, chromSizesUrl
+    bamUrl, chromSizesUrl,
   };
-  console.log('1 dataConfs:', dataConfs);
+  // console.log('1 dataConfs:', dataConfs);
 };
 
 const tilesetInfo = (uid) => {
-  console.log('dataConfs:', dataConfs);
+  // console.log('dataConfs:', dataConfs);
   const { chromSizesUrl, bamUrl } = dataConfs[uid];
-  console.log('uid:', uid);
+  // console.log('uid:', uid);
+  const promises = chromSizesUrl ?
+    [bamHeaders[bamUrl], chromSizes[chromSizesUrl]] :
+    [bamHeaders[bamUrl]];
 
   return Promise.all(
-    [chromSizes[chromSizesUrl], bamHeaders[bamUrl]]
+    promises,
   ).then((values) => {
-    // console.log('values:', values);
-
     const TILE_SIZE = 1024;
-    const chromInfo = values[0];
+    let chromInfo = null;
+
+    if (values.length > 1) {
+      // we've passed in a chromInfo file
+      // eslint-disable-next-line prefer-destructuring
+      chromInfo = values[1];
+    } else {
+      // no chromInfo provided so we have to take it
+      // from the bam file index
+      const chroms = [];
+      for (const { refName, length } of bamFiles[bamUrl].indexToChr) {
+        chroms.push([refName, length]);
+      }
+
+      chromInfo = parseChromsizesRows(chroms);
+    }
 
     chromInfos[chromSizesUrl] = chromInfo;
 
@@ -180,7 +200,7 @@ const tilesetInfo = (uid) => {
       tile_size: TILE_SIZE,
       bins_per_dimension: TILE_SIZE,
       max_zoom: Math.ceil(
-        Math.log(chromInfo.totalLength / TILE_SIZE) / Math.log(2)
+        Math.log(chromInfo.totalLength / TILE_SIZE) / Math.log(2),
       ),
       max_width: chromInfo.totalLength,
       min_pos: [0],
@@ -197,25 +217,22 @@ const tile = async (uid, z, x) => {
   const bamFile = bamFiles[bamUrl];
 
   return tilesetInfo(uid).then((tsInfo) => {
-    const tileWidth = +tsInfo.max_width / 2 ** (+z);
+    const tileWidth = +tsInfo.max_width / (2 ** (+z));
     const recordPromises = [];
-
-    console.log('bamFile', bamFile);
-    console.log(`z: ${z}, tileWidth: ${tileWidth}`);
+    // console.log(`z: ${z}, tileWidth: ${tileWidth}`);
 
     if (tileWidth > MAX_TILE_WIDTH) {
       // this.errorTextText('Zoomed out too far for this track. Zoomin further to see reads');
-      return new Promise((resolve, reject) => resolve([]));
+      return new Promise(resolve => resolve([]));
     }
 
     // get the bounds of the tile
-    let minX = tsInfo.min_pos[0] + x * tileWidth;
-    const maxX = tsInfo.min_pos[0] + (x + 1) * tileWidth;
+    let minX = tsInfo.min_pos[0] + (x * tileWidth);
+    const maxX = tsInfo.min_pos[0] + ((x + 1) * tileWidth);
 
     const chromInfo = chromInfos[chromSizesUrl];
 
-    const chromLengths = chromInfo.chromLengths;
-    const cumPositions = chromInfo.cumPositions;
+    const { chromLengths, cumPositions } = chromInfo;
 
     for (let i = 0; i < cumPositions.length; i++) {
       const chromName = cumPositions[i].chr;
@@ -237,8 +254,8 @@ const tile = async (uid, z, x) => {
           // fetch from the start until the end of the chromosome
           recordPromises.push(
             bamFile.getRecordsForRange(
-              chromName, minX - chromStart, chromEnd - chromStart
-            ).then(records => records.map(rec => bamRecordToJson(rec)))
+              chromName, minX - chromStart, chromEnd - chromStart,
+            ).then(records => records.map(rec => bamRecordToJson(rec))),
           );
 
           // continue onto the next chromosome
@@ -252,16 +269,14 @@ const tile = async (uid, z, x) => {
               chromName, startPos, endPos, {
                 // viewAsPairs: true,
                 // maxInsertSize: 2000,
-              }
+              },
             ).then((records) => {
               // console.log('records:', records);
-              const t1 = currTime();
               const mappedRecords = records.map(rec => bamRecordToJson(rec));
-              const t2 = currTime();
               tileValues[`${uid}.${z}.${x}`] = mappedRecords;
 
               return [];
-            })
+            }),
           );
 
           // end the loop because we've retrieved the last chromosome
@@ -496,7 +511,7 @@ function segmentsToRows(segments, optionsIn) {
   }
 
   const t2 = currTime();
-  console.log('segmentsToRows time', t2 - t1, '# of segments:', initialLength, "counter:", counter);
+  // console.log('segmentsToRows time', t2 - t1, '# of segments:', initialLength, "counter:", counter);
   return outputRows;
 }
 

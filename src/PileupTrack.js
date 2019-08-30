@@ -45,7 +45,7 @@ const PileupTrack = (HGC, ...args) => {
   class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
       context.dataFetcher = new BAMDataFetcher(
-        context.dataFetcher.dataConfig,
+        context.dataConfig,
         HGC,
       );
       super(context, options);

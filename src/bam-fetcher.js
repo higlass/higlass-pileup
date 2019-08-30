@@ -11,7 +11,7 @@ class BAMDataFetcher {
     );
 
     this.initPromise = this.worker.then((tileFunctions) => {
-      console.log('tileFunctions:', tileFunctions);
+      // console.log('tileFunctions:', tileFunctions);
 
       return tileFunctions.init(
         this.uid, dataConfig.url, dataConfig.chromSizesUrl,
@@ -22,7 +22,7 @@ class BAMDataFetcher {
   }
 
   tilesetInfo(callback) {
-    console.log('tsi');
+    // console.log('tsi');
     this.worker.then((tileFunctions) => {
       tileFunctions.tilesetInfo(this.uid).then(
         callback
@@ -31,7 +31,7 @@ class BAMDataFetcher {
   }
 
   fetchTilesDebounced(receivedTiles, tileIds) {
-    console.log('ftd', tileIds);
+    // console.log('ftd', tileIds);
     this.worker.then((tileFunctions) => {
       tileFunctions.fetchTilesDebounced(
         this.uid, tileIds
