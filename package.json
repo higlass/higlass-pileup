@@ -1,5 +1,5 @@
 {
-  "name": "higlass-pileup-track",
+  "name": "higlass-pileup",
   "version": "0.1.0",
   "description": "HiGlass Pileup Track",
   "keywords": [
@@ -16,10 +16,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/higlass/higlass-pileup-track.git"
+    "url": "git://github.com/higlass/higlass-pileup.git"
   },
   "main": "src/index.js",
-  "unpkg": "dist/higlass-pileup-track.min.js",
+  "unpkg": "dist/higlass-pileup.min.js",
   "files": [
     "dist"
   ],

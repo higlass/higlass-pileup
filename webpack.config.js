@@ -9,8 +9,8 @@ const ThreadsPlugin = require('threads-plugin');
 
 module.exports = {
   output: {
-    filename: 'higlass-pileup-track.min.js',
-    library: 'higlass-pileup-track',
+    filename: 'higlass-pileup.min.js',
+    library: 'higlass-pileup',
     libraryTarget: 'umd',
     path: path.resolve(__dirname, 'dist'),
   },
