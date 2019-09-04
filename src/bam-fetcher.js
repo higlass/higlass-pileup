@@ -1,4 +1,4 @@
-import { spawn, Thread, Worker } from 'threads';
+import { spawn, Worker } from 'threads';
 
 
 class BAMDataFetcher {
@@ -7,7 +7,7 @@ class BAMDataFetcher {
     this.uid = HGC.libraries.slugid.nice();
 
     this.worker = spawn(
-      new Worker('./bam-fetcher-worker.js')
+      new Worker('./bam-fetcher-worker.js'),
     );
 
     this.initPromise = this.worker.then((tileFunctions) => {
@@ -17,15 +17,13 @@ class BAMDataFetcher {
         this.uid, dataConfig.url, dataConfig.chromSizesUrl,
       ).then(() => this.worker);
     });
-
-    console.log('constructor');
   }
 
   tilesetInfo(callback) {
     // console.log('tsi');
     this.worker.then((tileFunctions) => {
       tileFunctions.tilesetInfo(this.uid).then(
-        callback
+        callback,
       );
     });
   }
@@ -34,7 +32,7 @@ class BAMDataFetcher {
     // console.log('ftd', tileIds);
     this.worker.then((tileFunctions) => {
       tileFunctions.fetchTilesDebounced(
-        this.uid, tileIds
+        this.uid, tileIds,
       ).then(receivedTiles);
     });
   }

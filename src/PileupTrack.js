@@ -9,7 +9,7 @@ const shader = PIXI.Shader.from(`
     uniform mat3 translationMatrix;
 
     varying vec4 vColor;
-    
+
     void main(void)
     {
         vColor = aColor;
@@ -17,7 +17,7 @@ const shader = PIXI.Shader.from(`
     }
 
 `,
-`  
+`
 varying vec4 vColor;
 
     void main(void) {
@@ -148,7 +148,8 @@ const PileupTrack = (HGC, ...args) => {
             const readTrackTo = this._xScale(read.to);
 
             if (readTrackFrom <= trackX && trackX <= readTrackTo) {
-              return (`Read length: ${read.to - read.from}<br>`
+              return (`Position: ${read.chrName}:${read.from - read.chrOffset}<br>`
+                + `Read length: ${read.to - read.from}<br>`
                 + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
             }
           }

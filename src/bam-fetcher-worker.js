@@ -121,11 +121,13 @@ function ChromosomeInfo(filepath, success) {
 /// End Chrominfo
 /////////////////////////////////////////////////////
 
-const bamRecordToJson = bamRecord => ({
+const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
   id: bamRecord._id,
-  from: +bamRecord.data.start,
-  to: +bamRecord.data.end,
+  from: +bamRecord.data.start + chrOffset,
+  to: +bamRecord.data.end + chrOffset,
   md: bamRecord.get('MD'),
+  chrName,
+  chrOffset,
   cigar: bamRecord.get('cigar'),
 });
 
@@ -178,6 +180,7 @@ const tilesetInfo = (uid) => {
   ).then((values) => {
     const TILE_SIZE = 1024;
     let chromInfo = null;
+    // console.log('this.bamFile', bamFiles[bamUrl]);
 
     if (values.length > 1) {
       // we've passed in a chromInfo file
@@ -238,9 +241,8 @@ const tile = async (uid, z, x) => {
       const chromName = cumPositions[i].chr;
       const chromStart = cumPositions[i].pos;
 
-      // console.log('cumPoss:', cumPositions[i]);
-      // console.log('chromName:', chromName, 'chromLenghts:', chromLengths);
       const chromEnd = cumPositions[i].pos + chromLengths[chromName];
+      tileValues[`${uid}.${z}.${x}`] = [];
 
       // console.log('minX:', minX, 'maxX', maxX);
       // console.log('chromStart', chromStart, 'chromEnd:', chromEnd);
@@ -255,7 +257,12 @@ const tile = async (uid, z, x) => {
           recordPromises.push(
             bamFile.getRecordsForRange(
               chromName, minX - chromStart, chromEnd - chromStart,
-            ).then(records => records.map(rec => bamRecordToJson(rec))),
+            ).then((records) => {
+              const mappedRecords = records.map(rec => bamRecordToJson(
+                rec, chromName, cumPositions[i].pos,
+              ));
+              tileValues[`${uid}.${z}.${x}`].push(...mappedRecords);
+            }),
           );
 
           // continue onto the next chromosome
@@ -272,8 +279,10 @@ const tile = async (uid, z, x) => {
               },
             ).then((records) => {
               // console.log('records:', records);
-              const mappedRecords = records.map(rec => bamRecordToJson(rec));
-              tileValues[`${uid}.${z}.${x}`] = mappedRecords;
+              const mappedRecords = records.map(rec => bamRecordToJson(
+                rec, chromName, cumPositions[i].pos,
+              ));
+              tileValues[`${uid}.${z}.${x}`].push(...mappedRecords);
 
               return [];
             }),
@@ -398,7 +407,7 @@ function segmentsToRows(segments, optionsIn) {
   );
 
   const t12 = currTime();
-  console.log('segment times', t12 - t11);
+  // console.log('segment times', t12 - t11);
 
   let currRow = 0;
 
@@ -591,8 +600,6 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
   // currGraphics.clear();
   // currGraphics.lineStyle(1, 0x000000);
 
-  let mds = 0;
-
   let xLeft; let xRight; let yTop; let
     yBottom;
 
@@ -652,8 +659,6 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
         // console.log('cigarSubs', segment.cigar, cigarSubs);
 
         for (const substitution of substitutions) {
-          mds += 1;
-
           xLeft = xScale(segment.from + substitution.pos - 1);
           xRight = xLeft + Math.max(1, xScale(substitution.length) - xScale(0));
           yTop = yScale(i);
