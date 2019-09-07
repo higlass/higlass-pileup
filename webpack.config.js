@@ -6,7 +6,6 @@ const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const UnminifiedWebpackPlugin = require('unminified-webpack-plugin');
 const ThreadsPlugin = require('threads-plugin');
-const ReplacePlugin = require('webpack-plugin-replace');
 
 module.exports = {
   output: {
@@ -125,11 +124,5 @@ module.exports = {
     }),
     new UnminifiedWebpackPlugin(),
     new ThreadsPlugin(),
-    new ReplacePlugin({
-        values: {
-          "__webpack__worker__1": "`" + "${getThisScriptLocation()}/0.higlass-pileup.min.worker.js" + "`",
-        }
-      }
-    ),
   ],
 };

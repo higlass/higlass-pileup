@@ -28,9 +28,10 @@ class BAMDataFetcher {
 
     console.log('document.currentScript', document.currentScript.src);
     this.worker = spawn(
-      new Worker(
-        './bam-fetcher-worker.js',
-      ),
+      process.env.NODE_ENV === 'production' ?
+        new Worker(
+          `${getThisScriptLocation()}/0.higlass-pileup.worker.min.js`,
+        ) : new Worker('./bam-fetcher-worker.js'),
     );
 
     this.initPromise = this.worker.then((tileFunctions) => {
