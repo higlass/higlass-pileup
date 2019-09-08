@@ -8,11 +8,21 @@ const UnminifiedWebpackPlugin = require('unminified-webpack-plugin');
 const ThreadsPlugin = require('threads-plugin');
 
 module.exports = {
+  entry: {
+    'higlass-pileup': './src/index.js',
+    'higlass-pileup-worker': './src/bam-fetcher-worker.js',
+  },
   output: {
-    filename: 'higlass-pileup.min.js',
-    library: 'higlass-pileup',
-    libraryTarget: 'umd',
     path: path.resolve(__dirname, 'dist'),
+    publicPath: '/',
+    // UnminifiedWebpackPlugin requires the `.min` extension but
+    // in development mode the unminified version is ignored anyway. This means
+    // the default build is unminified *but* would have the `.min` extension,
+    // which would cause webpack-dev-server to fail because `hglib.js` is
+    // missing. Hence we need to change the template based on the mode.
+    filename: process.env.NODE_ENV === 'production' ? '[name].min.js' : '[name].js',
+    libraryTarget: 'umd',
+    library: '[name]',
   },
   devServer: {
     contentBase: [

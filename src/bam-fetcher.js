@@ -19,6 +19,8 @@ function getThisScriptLocation() {
       }
     }
   }
+
+  return '';
 }
 
 class BAMDataFetcher {
@@ -27,12 +29,7 @@ class BAMDataFetcher {
     this.uid = HGC.libraries.slugid.nice();
 
     console.log('document.currentScript', document.currentScript.src);
-    this.worker = spawn(
-      process.env.NODE_ENV === 'production' ?
-        new Worker(
-          `${getThisScriptLocation()}/0.higlass-pileup.worker.min.js`,
-        ) : new Worker('./bam-fetcher-worker.js'),
-    );
+    this.worker = spawn(new Worker(`${getThisScriptLocation()}/higlass-pileup-worker.js`));
 
     this.initPromise = this.worker.then((tileFunctions) => {
       // console.log('tileFunctions:', tileFunctions);
