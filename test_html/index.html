@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="author" content="Peter Kerpedjiev">
+  <meta name="description" content="A plugin track to display labelled points in HiGlass">
+  <meta name="keywords" content="HiGlass, Plugin Tracks">
+
+  <!-- Schema.org markup for Google+ -->
+  <meta itemprop="name" content="HiGlass Labelled Points Track">
+  <meta itemprop="description" content="A plugin track to display labelled points in HiGlass">
+  <meta itemprop="image" content="https://raw.githubusercontent.com/flekschas/higlass-geojson/master/teaser.jpg">
+
+  <!-- Twitter Card data -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@flekschas">
+  <meta name="twitter:title" content="HiGlass Labelled Points Track">
+  <meta name="twitter:description" content="A plugin track to display labelled points in HiGlass">
+  <meta name="twitter:creator" content="@flekschas">
+  <!-- Twitter summary card with large image must be at least 280x150px -->
+  <meta name="twitter:image:src" content="https://raw.githubusercontent.com/flekschas/higlass-geojson/master/teaser.jpg">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="HiGlass Labelled Points Track" />
+  <meta property="og:description" content="A plugin track to display labelled points HiGlass" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://github.com/pkerpedjiev/higlass-labelled-points-track" />
+  <meta property="og:image" content="https://raw.githubusercontent.com/flekschas/higlass-geojson/master/teaser.jpg" />
+
+  <title>HiGlass Pileup Track</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/latest/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/higlass@1.6.9/dist/hglib.css">
+
+  <style type="text/css">
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    #demo {
+      position: absolute;
+      left: 1rem;
+      top: 1rem;
+      bottom: 1rem;
+      right: 1rem;
+    }
+  </style>
+
+<script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+<script crossorigin src="https://unpkg.com/pixi.js-legacy@5/dist/pixi-legacy.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-bootstrap/0.32.1/react-bootstrap.min.js"></script>
+</head>
+<body>
+  <div id="demo"></div>
+</body>
+  <script src="/dist/higlass-pileup.js"></script>
+  <script src="https://unpkg.com/higlass@1.6.9/dist/hglib.min.js"></script>
+<script>
+const testViewConfig =
+{
+  "editable": true,
+  "views": [
+    {
+      "uid": "NEceyGD-T8yUazEkVBa7dg",
+      "tracks": {
+        "top": [
+          {
+            "type": "top-axis",
+            "options": {},
+            "server": "http://localhost:8111/api/v1",
+            "height": 20,
+            "uid": "P2SAGA2XR-uwEhwto227sQ",
+            "width": 470
+          },
+          {
+            "type": "pileup",
+            "options": {
+              "axisPositionHorizontal": "right",
+              "axisLabelFormatting": "normal"
+            },
+            "height": 180,
+            "uid": "FylkvVBTSumoJ959HT4-5A",
+            "data": {
+              "type": "bam",
+              "url": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam",
+            }
+,
+            "width": 470
+          }
+        ],
+        "center": [],
+        "left": [],
+        "right": [],
+        "bottom": [],
+        "whole": [
+          {
+            "type": "vertical-rule",
+            "x": 504023.22434281674,
+            "options": {},
+            "uid": "e50TAB7DRjGJ0dMGPcPSBg",
+            "width": 20,
+            "height": 20
+          }
+        ],
+        "gallery": []
+      },
+      "layout": {
+        "w": 12,
+        "h": 6,
+        "x": 0,
+        "y": 0
+      },
+      "initialXDomain": [
+        104641.417258161153,
+        120636.50066282197,
+      ],
+      "initialYDomain": [
+        438888.6768369496,
+        438888.6768369496
+      ]
+    }
+  ],
+  "trackSourceServers": [
+    "http://higlass.io/api/v1"
+  ],
+  "locationLocks": {
+    "locksByViewUid": {},
+    "locksDict": {}
+  },
+  "zoomLocks": {
+    "locksByViewUid": {},
+    "locksDict": {}
+  },
+  "exportViewUrl": "http://higlass.io/api/v1/viewconfs",
+  "valueScaleLocks": {
+    "locksByViewUid": {},
+    "locksDict": {}
+  }
+};
+
+window.hglib.viewer(
+  document.getElementById('demo'),
+  testViewConfig,
+  { bounded: true },
+);
+</script>
+</html>
