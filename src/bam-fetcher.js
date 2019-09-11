@@ -26,17 +26,12 @@ class BAMDataFetcher {
     this.dataConfig = dataConfig;
     this.uid = HGC.libraries.slugid.nice();
 
-    console.log('document.currentScript', document.currentScript.src);
     this.worker = spawn(
-      process.env.NODE_ENV === 'production' ?
-        new Worker(
-          `${getThisScriptLocation()}/0.higlass-pileup.worker.min.js`,
-        ) : new Worker('./bam-fetcher-worker.js'),
+      new Worker('./bam-fetcher-worker.js',
+        { _baseURL: `${getThisScriptLocation()}/` }),
     );
 
     this.initPromise = this.worker.then((tileFunctions) => {
-      // console.log('tileFunctions:', tileFunctions);
-
       return tileFunctions.init(
         this.uid, dataConfig.url, dataConfig.chromSizesUrl,
       ).then(() => this.worker);
