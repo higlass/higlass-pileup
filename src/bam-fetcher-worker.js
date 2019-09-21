@@ -135,6 +135,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
 const bamFiles = {};
 const bamHeaders = {};
 
+const serverInfos = {};
+
 // promises indexed by url
 const chromSizes = {};
 const chromInfos = {};
@@ -142,6 +144,14 @@ const tileValues = {};
 
 // indexed by uuid
 const dataConfs = {};
+
+const serverInit = (uid, server, tilesetUid) => {
+  serverInfos[uid] = {
+    server,
+    tilesetUid,
+  };
+};
+
 const init = (uid, bamUrl, chromSizesUrl) => {
   if (!bamFiles[bamUrl]) {
     bamFiles[bamUrl] = new BamFile({
@@ -165,6 +175,12 @@ const init = (uid, bamUrl, chromSizesUrl) => {
     bamUrl, chromSizesUrl,
   };
   // console.log('1 dataConfs:', dataConfs);
+};
+
+const serverTilesetInfo = (uid) => {
+  const url = `${serverInfos[uid].server}/tileset_info/?d=${serverInfos[uid].tilesetUid}`
+
+  return fetch(url).then(d => d.json()).then(j => j[serverInfos[uid].tilesetUid]);
 };
 
 const tilesetInfo = (uid) => {
@@ -300,6 +316,31 @@ const tile = async (uid, z, x) => {
     return Promise.all(recordPromises)
       .then(values => values.flat());
   });
+};
+
+const serverFetchTilesDebounced = async (uid, tileIds) => {
+  const serverInfo = serverInfos[uid];
+  const serverTileIds = tileIds.map(x => `d=${serverInfo.tilesetUid}.${x}`);
+  const url = `${serverInfos[uid].server}/tiles/?${serverTileIds.join('&')}`;
+
+  return fetch(url).then(d => d.json())
+    .then((rt) => {
+      const newTiles = {};
+
+      for (const tileId of tileIds) {
+        const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
+        const hereTileId = `${uid}.${tileId}`;
+
+        if (rt[fullTileId]) {
+          rt[fullTileId].tilePositionId = tileId;
+
+          newTiles[tileId] = rt[fullTileId];
+          tileValues[hereTileId] = rt[fullTileId];
+        }
+      }
+
+      return newTiles;
+    });
 };
 
 const fetchTilesDebounced = async (uid, tileIds) => {
@@ -535,7 +576,6 @@ let allColors = new Float32Array(allColorsLength);
 
 const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, prevRows) => {
   const allSegments = {};
-
   for (let tileId of tileIds) {
     for (const segment of tileValues[`${uid}.${tileId}`]) {
       allSegments[segment.id] = segment;
@@ -588,7 +628,7 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
     prevRows,
   });
   const d = range(0, rows.length);
-  const r = [0, dimensions[1]];
+  const r = [0,  [1]];
   const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
 
   // console.log('rows:', rows);
@@ -725,7 +765,10 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
 
 const tileFunctions = {
   init,
+  serverInit,
   tilesetInfo,
+  serverTilesetInfo,
+  serverFetchTilesDebounced,
   fetchTilesDebounced,
   tile,
   renderSegments,

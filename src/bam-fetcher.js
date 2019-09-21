@@ -1,37 +1,16 @@
-import { spawn, Worker } from 'threads';
-
-/**
- * Get the location of this script so that we can use it to fetch
- * the worker script.
- *
- * @return {String}         The url of this script
- */
-function getThisScriptLocation() {
-  const scripts = [...document.getElementsByTagName('script')];
-  for (const script of scripts) {
-    const parts = script.src.split('/');
-
-    if (parts.length > 0) {
-      const lastPart = parts[parts.length - 1];
-
-      if (lastPart.indexOf('higlass-pileup') >= 0) {
-        return parts.slice(0, parts.length - 1).join('/');
-      }
-    }
-  }
-}
-
 class BAMDataFetcher {
-  constructor(dataConfig, HGC) {
+  constructor(dataConfig, worker, HGC) {
     this.dataConfig = dataConfig;
     this.uid = HGC.libraries.slugid.nice();
-
-    this.worker = spawn(
-      new Worker('./bam-fetcher-worker.js',
-        { _baseURL: `${getThisScriptLocation()}/` }),
-    );
+    this.worker = worker;
+    this.isServerFetcher = !(dataConfig.type && dataConfig.type === 'bam');
 
     this.initPromise = this.worker.then((tileFunctions) => {
+      if (this.isServerFetcher) {
+        return tileFunctions.serverInit(
+          this.uid, dataConfig.server, dataConfig.tilesetUid,
+        ).then(() => this.worker);
+      }
       return tileFunctions.init(
         this.uid, dataConfig.url, dataConfig.chromSizesUrl,
       ).then(() => this.worker);
@@ -39,20 +18,30 @@ class BAMDataFetcher {
   }
 
   tilesetInfo(callback) {
-    // console.log('tsi');
     this.worker.then((tileFunctions) => {
-      tileFunctions.tilesetInfo(this.uid).then(
-        callback,
-      );
+      if (this.isServerFetcher) {
+        tileFunctions.serverTilesetInfo(this.uid).then(
+          callback,
+        );
+      } else {
+        tileFunctions.tilesetInfo(this.uid).then(
+          callback,
+        );
+      }
     });
   }
 
   fetchTilesDebounced(receivedTiles, tileIds) {
-    // console.log('ftd', tileIds);
     this.worker.then((tileFunctions) => {
-      tileFunctions.fetchTilesDebounced(
-        this.uid, tileIds,
-      ).then(receivedTiles);
+      if (this.isServerFetcher) {
+        tileFunctions.serverFetchTilesDebounced(
+          this.uid, tileIds,
+        ).then(receivedTiles);
+      } else {
+        tileFunctions.fetchTilesDebounced(
+          this.uid, tileIds,
+        ).then(receivedTiles);
+      }
     });
   }
 }

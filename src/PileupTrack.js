@@ -1,4 +1,5 @@
 import BAMDataFetcher from './bam-fetcher';
+import { spawn, Worker } from 'threads';
 
 const shader = PIXI.Shader.from(`
 
@@ -25,6 +26,27 @@ varying vec4 vColor;
     }
 `);
 
+/**
+ * Get the location of this script so that we can use it to fetch
+ * the worker script.
+ *
+ * @return {String}         The url of this script
+ */
+function getThisScriptLocation() {
+  const scripts = [...document.getElementsByTagName('script')];
+  for (const script of scripts) {
+    const parts = script.src.split('/');
+
+    if (parts.length > 0) {
+      const lastPart = parts[parts.length - 1];
+
+      if (lastPart.indexOf('higlass-pileup') >= 0) {
+        return parts.slice(0, parts.length - 1).join('/');
+      }
+    }
+  }
+}
+
 const scaleScalableGraphics = (graphics, xScale, drawnAtScale) => {
   const tileK = (drawnAtScale.domain()[1] - drawnAtScale.domain()[0])
     / (xScale.domain()[1] - xScale.domain()[0]);
@@ -33,6 +55,15 @@ const scaleScalableGraphics = (graphics, xScale, drawnAtScale) => {
   const posOffset = newRange[0];
   graphics.scale.x = tileK;
   graphics.position.x = -posOffset * tileK;
+};
+
+const toVoid = () => {};
+
+const fakePubSub = {
+  __fake__: true,
+  publish: toVoid,
+  subscribe: toVoid,
+  unsubscribe: toVoid,
 };
 
 const PileupTrack = (HGC, ...args) => {
@@ -44,13 +75,20 @@ const PileupTrack = (HGC, ...args) => {
 
   class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
+      const worker = spawn(
+        new Worker('./bam-fetcher-worker.js',
+          { _baseURL: `${getThisScriptLocation()}/` }),
+      );
+
       context.dataFetcher = new BAMDataFetcher(
         context.dataConfig,
+        worker,
         HGC,
       );
+
       super(context, options);
 
-      this.worker = this.dataFetcher.worker;
+      this.worker = worker;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
 
 
@@ -71,6 +109,7 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     updateExistingGraphics() {
+      console.log('updateExistingGraphics', this.fetchedTiles);
       this.worker.then((tileFunctions) => {
         tileFunctions.renderSegments(
           this.dataFetcher.uid,
