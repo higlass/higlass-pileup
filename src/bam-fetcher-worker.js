@@ -174,7 +174,6 @@ const init = (uid, bamUrl, chromSizesUrl) => {
   dataConfs[uid] = {
     bamUrl, chromSizesUrl,
   };
-  // console.log('1 dataConfs:', dataConfs);
 };
 
 const serverTilesetInfo = (uid) => {
@@ -184,9 +183,7 @@ const serverTilesetInfo = (uid) => {
 };
 
 const tilesetInfo = (uid) => {
-  // console.log('dataConfs:', dataConfs);
   const { chromSizesUrl, bamUrl } = dataConfs[uid];
-  // console.log('uid:', uid);
   const promises = chromSizesUrl ?
     [bamHeaders[bamUrl], chromSizes[chromSizesUrl]] :
     [bamHeaders[bamUrl]];
@@ -196,7 +193,6 @@ const tilesetInfo = (uid) => {
   ).then((values) => {
     const TILE_SIZE = 1024;
     let chromInfo = null;
-    // console.log('this.bamFile', bamFiles[bamUrl]);
 
     if (values.length > 1) {
       // we've passed in a chromInfo file
@@ -238,7 +234,6 @@ const tile = async (uid, z, x) => {
   return tilesetInfo(uid).then((tsInfo) => {
     const tileWidth = +tsInfo.max_width / (2 ** (+z));
     const recordPromises = [];
-    // console.log(`z: ${z}, tileWidth: ${tileWidth}`);
 
     if (tileWidth > MAX_TILE_WIDTH) {
       // this.errorTextText('Zoomed out too far for this track. Zoomin further to see reads');
@@ -260,8 +255,6 @@ const tile = async (uid, z, x) => {
       const chromEnd = cumPositions[i].pos + chromLengths[chromName];
       tileValues[`${uid}.${z}.${x}`] = [];
 
-      // console.log('minX:', minX, 'maxX', maxX);
-      // console.log('chromStart', chromStart, 'chromEnd:', chromEnd);
       if (chromStart <= minX
         && minX < chromEnd) {
         // start of the visible region is within this chromosome
@@ -294,7 +287,6 @@ const tile = async (uid, z, x) => {
                 // maxInsertSize: 2000,
               },
             ).then((records) => {
-              // console.log('records:', records);
               const mappedRecords = records.map(rec => bamRecordToJson(
                 rec, chromName, cumPositions[i].pos,
               ));
@@ -310,7 +302,6 @@ const tile = async (uid, z, x) => {
       }
     }
 
-    // console.log('recordPromises:', recordPromises);
     // flatten the array of promises so that it looks like we're
     // getting one long list of value
     return Promise.all(recordPromises)
@@ -329,7 +320,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
 
       for (const tileId of tileIds) {
         const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
-        const hereTileId = `${uid}.${tileId}`;
+        const hereTileId = `${uid}.${tileId}`
 
         if (rt[fullTileId]) {
           rt[fullTileId].tilePositionId = tileId;
@@ -384,8 +375,6 @@ const parseMD = (mdString, useCounts) => {
   const substitutions = [];
 
   for (let i = 0; i < mdString.length; i++) {
-    // console.log(mdString[i], mdString[i].match(/[0-9]/));
-
     if (mdString[i].match(/[0-9]/g)) {
       // a number, keep on going
       lettersBefore.push(mdString[i]);
@@ -428,15 +417,11 @@ function segmentsToRows(segments, optionsIn) {
   const t11 = currTime();
   const rowIds = new Set(prevRows.flatMap(x => x).map(x => x.id));
 
-  // console.log('flatMap:', prevRows.flatMap(x => x).map(x => x.id));
-  // console.log('rowIds:', rowIds);
   // we only want to go through the segments that
   // don't already have a row
   const filteredSegments = segments.filter(
     x => !rowIds.has(x.id)
   );
-
-  // console.log('filteredSegments.length:', filteredSegments.length);
 
   // we also want to remove all row entries that are
   // not in our list of segments
@@ -448,7 +433,6 @@ function segmentsToRows(segments, optionsIn) {
   );
 
   const t12 = currTime();
-  // console.log('segment times', t12 - t11);
 
   let currRow = 0;
 
@@ -492,9 +476,7 @@ function segmentsToRows(segments, optionsIn) {
         if (row.length === 0) {
           // row is empty, add the segment
           row.push(seg);
-          // console.log('adding:', seg, row.slice(0));
           filteredSegments.splice(ix, 1);
-          // console.log('ix2:', ix);
           ix += direction;
           continue;
         }
@@ -519,16 +501,13 @@ function segmentsToRows(segments, optionsIn) {
         }
 
         if (intersects) {
-          // console.log('ix1:', ix, 'currRow:', currRow, 'currRowPosition:', currRowPosition);
           if (direction === 1) {
             const newIx = segmentFromBisector(filteredSegments, row[currRowPosition].to + padding);
 
             ix = newIx;
-            // console.log('ix1:', ix, 'currRowPosition', currRowPosition);
             counter += 1;
             continue;
           }
-          // console.log('next', nextIx);
           ix += direction;
           continue;
         }
@@ -537,7 +516,6 @@ function segmentsToRows(segments, optionsIn) {
           // we're past the last element in the row so we can
           // add this segment
           row.push(seg);
-          // console.log('adding:', seg, row.slice(0));
           filteredSegments.splice(ix, 1);
         } else if (seg.to + padding < row[currRowPosition].from) {
           // we have space to insert an element before
@@ -546,7 +524,6 @@ function segmentsToRows(segments, optionsIn) {
           filteredSegments.splice(ix, 1);
         }
 
-        // console.log('ix:', ix);
         ix += direction;
       }
 
@@ -561,7 +538,6 @@ function segmentsToRows(segments, optionsIn) {
   }
 
   const t2 = currTime();
-  // console.log('segmentsToRows time', t2 - t1, '# of segments:', initialLength, "counter:", counter);
   return outputRows;
 }
 
@@ -576,7 +552,7 @@ let allColors = new Float32Array(allColorsLength);
 
 const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, prevRows) => {
   const allSegments = {};
-  for (let tileId of tileIds) {
+  for (const tileId of tileIds) {
     for (const segment of tileValues[`${uid}.${tileId}`]) {
       allSegments[segment.id] = segment;
     }
@@ -619,26 +595,12 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
     }
   };
 
-  // segmentList.slice(0, 30)
-  // .forEach(x => {
-  //   console.log(x.cigar, x);
-  // })
-
   const rows = segmentsToRows(segmentList, {
     prevRows,
   });
   const d = range(0, rows.length);
-  const r = [0,  [1]];
+  const r = [0, dimensions[1]];
   const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
-
-  // console.log('rows:', rows);
-  // console.log('idsToRows', idsToRows);
-
-  // const currGraphics = new PIXI.Graphics();
-  // graphics.addChild(currGraphics);
-
-  // currGraphics.clear();
-  // currGraphics.lineStyle(1, 0x000000);
 
   let xLeft; let xRight; let yTop; let
     yBottom;
@@ -647,19 +609,11 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
     row.map((segment, j) => {
       const from = xScale(segment.from);
       const to = xScale(segment.to);
-      // console.log('from:', from, 'to:', to);
-      // console.log('yScale(i)', yScale(i), yScale.bandwidth());
 
       xLeft = from;
       xRight = to;
       yTop = yScale(i);
       yBottom = yTop + yScale.bandwidth();
-      // currGraphics.beginFill(0xffffff);
-      // currGraphics.drawRect(
-      //   from,
-      //   yScale(i), to - from, yScale.bandwidth()
-      // );
-      // positions.push(xLeft, yTop, xRight, yTop, xLeft, yBottom);
 
       addPosition(xLeft, yTop);
       addPosition(xRight, yTop);
@@ -677,7 +631,6 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
 
         const firstSub = cigarSubs[0];
         const lastSub = cigarSubs[cigarSubs.length - 1];
-        // console.log('firstSub:', firstSub), cigarSubs;
 
         // positions are from the beginning of the read
         if (firstSub.type === 'S') {
@@ -695,8 +648,6 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
             type: 'S',
           });
         }
-
-        // console.log('cigarSubs', segment.cigar, cigarSubs);
 
         for (const substitution of substitutions) {
           xLeft = xScale(segment.from + substitution.pos - 1);
@@ -730,26 +681,8 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
     });
   });
 
-
-  // const geometry = new PIXI.Geometry()
-  //   .addAttribute('position', allPositions.slice(0, currPosition), 2);// x,y
-  // geometry.addAttribute('aColor', allColors.slice(0, currColor), 4);
-
-  // const state = new PIXI.State();
-  // const mesh = new PIXI.Mesh(geometry, shader, state);
-
-  // graphics.addChild(mesh);
-  // const t2 = currTime();
-  // console.log('mds:', mds);
-  // console.log('perSegment', 100 * (t2 - t1) / numSegments, 'drawSegments', t2 - t1, '# of segments:', numSegments);
-
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
-
-  // console.log('rects:', positions.length / 6);
-  // console.log('rows:', rows.length);
-  // console.log('positions:', positions);
-  // console.log('colors:', colors);
 
   const objData = {
     rows,

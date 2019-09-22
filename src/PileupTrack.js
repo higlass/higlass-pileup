@@ -109,7 +109,6 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     updateExistingGraphics() {
-      console.log('updateExistingGraphics', this.fetchedTiles);
       this.worker.then((tileFunctions) => {
         tileFunctions.renderSegments(
           this.dataFetcher.uid,
@@ -122,9 +121,6 @@ const PileupTrack = (HGC, ...args) => {
         ).then((toRender) => {
           const positions = new Float32Array(toRender.positionsBuffer);
           const colors = new Float32Array(toRender.colorsBuffer);
-
-          // console.log('positions', positions);
-          // console.log('colors:', colors);
 
           const newGraphics = new HGC.libraries.PIXI.Graphics();
 
@@ -250,14 +246,9 @@ const PileupTrack = (HGC, ...args) => {
       );
 
       this.valueScaleTransform = newTransform;
-      // console.log('this.pMain.position', this.pMain.position);
       this.segmentGraphics.scale.y = newTransform.k;
       this.segmentGraphics.position.y = newTransform.y;
 
-      // console.log('yPos:', yPos, 'y:',
-      //   newTransform.y, newTransform.k);
-
-      // console.log('zoomedY', yPos, kMultiplier);
       this.animate();
     }
 
