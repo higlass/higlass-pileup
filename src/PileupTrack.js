@@ -59,13 +59,6 @@ const scaleScalableGraphics = (graphics, xScale, drawnAtScale) => {
 
 const toVoid = () => {};
 
-const fakePubSub = {
-  __fake__: true,
-  publish: toVoid,
-  subscribe: toVoid,
-  unsubscribe: toVoid,
-};
-
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
     throw new Error(
