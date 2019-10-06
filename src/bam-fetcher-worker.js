@@ -131,6 +131,24 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
   cigar: bamRecord.get('cigar'),
 });
 
+const tabularJsonToRowJson = (tabularJson) => {
+  const rowJson = [];
+
+  const headers = Object.keys(tabularJson);
+
+  for (let i = 0; i < tabularJson[headers[0]].length; i++) {
+    const newRow = {};
+
+    for (let j = 0; j < headers.length; j++) {
+      newRow[headers[j]] = tabularJson[headers[j]][i];
+    }
+
+    rowJson.push(newRow);
+  }
+
+  return rowJson;
+};
+
 // promises indexed by urls
 const bamFiles = {};
 const bamHeaders = {};
@@ -316,17 +334,20 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
 
   return fetch(url).then(d => d.json())
     .then((rt) => {
+
       const newTiles = {};
 
       for (const tileId of tileIds) {
         const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
-        const hereTileId = `${uid}.${tileId}`
+        const hereTileId = `${uid}.${tileId}`;
 
         if (rt[fullTileId]) {
           rt[fullTileId].tilePositionId = tileId;
 
-          newTiles[tileId] = rt[fullTileId];
-          tileValues[hereTileId] = rt[fullTileId];
+          const rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+
+          newTiles[tileId] = rowJsonTile;
+          tileValues[hereTileId] = rowJsonTile;
         }
       }
 
