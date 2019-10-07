@@ -57,6 +57,61 @@ const scaleScalableGraphics = (graphics, xScale, drawnAtScale) => {
   graphics.position.x = -posOffset * tileK;
 };
 
+const getTilePosAndDimensions = (zoomLevel, tilePos, binsPerTileIn, tilesetInfo) => {
+  /**
+   * Get the tile's position in its coordinate system.
+   *
+   * TODO: Replace this function with one imported from
+   * HGC.utils.trackUtils
+   */
+  const xTilePos = tilePos[0];
+  const yTilePos = tilePos[1];
+
+
+  if (tilesetInfo.resolutions) {
+    // the default bins per tile which should
+    // not be used because the right value should be in the tileset info
+
+    const binsPerTile = binsPerTileIn;
+
+    const sortedResolutions = tilesetInfo.resolutions
+      .map(x => +x)
+      .sort((a, b) => b - a);
+
+    const chosenResolution = sortedResolutions[zoomLevel];
+
+    const tileWidth = chosenResolution * binsPerTile;
+    const tileHeight = tileWidth;
+
+    const tileX = chosenResolution * binsPerTile * tilePos[0];
+    const tileY = chosenResolution * binsPerTile * tilePos[1];
+
+    return {
+      tileX, tileY, tileWidth, tileHeight
+    };
+  }
+
+  // max_width should be substitutable with 2 ** tilesetInfo.max_zoom
+  const totalWidth = tilesetInfo.max_width;
+  const totalHeight = tilesetInfo.max_width;
+
+  const minX = tilesetInfo.min_pos[0];
+  const minY = tilesetInfo.min_pos[1];
+
+  const tileWidth = totalWidth / 2 ** zoomLevel;
+  const tileHeight = totalHeight / 2 ** zoomLevel;
+
+  const tileX = minX + xTilePos * tileWidth;
+  const tileY = minY + yTilePos * tileHeight;
+
+  return {
+    tileX,
+    tileY,
+    tileWidth,
+    tileHeight,
+  };
+};
+
 const toVoid = () => {};
 
 const PileupTrack = (HGC, ...args) => {
@@ -73,6 +128,7 @@ const PileupTrack = (HGC, ...args) => {
           { _baseURL: `${getThisScriptLocation()}/` }),
       );
 
+      // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(
         context.dataConfig,
         worker,
@@ -112,6 +168,11 @@ const PileupTrack = (HGC, ...args) => {
           this.dimensions,
           this.prevRows,
         ).then((toRender) => {
+          this.errorTextText = null;
+          this.pBorder.clear();
+          this.drawError();
+          this.animate();
+
           const positions = new Float32Array(toRender.positionsBuffer);
           const colors = new Float32Array(toRender.colorsBuffer);
 
@@ -158,6 +219,18 @@ const PileupTrack = (HGC, ...args) => {
 
           this.draw();
           this.animate();
+        }).catch((err) => {
+          // console.log('err:', err);
+          // console.log('err:', err.message);
+          this.errorTextText = err.message;
+
+          // console.log('errorTextText:', this.errorTextText);
+          // this.draw();
+          // this.animate();
+          this.drawError();
+          this.animate();
+
+          // console.log('this.pBorder:', this.pBorder);
         });
       });
     }
@@ -202,6 +275,27 @@ const PileupTrack = (HGC, ...args) => {
         this._xScale,
       );
 
+      for (const tile of tiles) {
+        const { tileX, tileWidth } = getTilePosAndDimensions(
+          tile[0], [tile[1]], this.tilesetInfo.tile_size, this.tilesetInfo,
+        );
+
+        if (tileWidth > this.tilesetInfo.max_tile_width) {
+          this.errorTextText = 'Zoom in to see details';
+          this.drawError();
+          this.animate();
+          return;
+        }
+
+        this.errorTextText = null;
+        this.pBorder.clear();
+        this.drawError();
+        this.animate();
+      }
+      // const { tileX, tileWidth } = getTilePosAndDimensions(
+      //   this.calculateZoomLevel(),
+      // )
+
       this.setVisibleTiles(tiles);
     }
 
@@ -226,7 +320,11 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      this.segmentGraphics.position.y = this.valueScaleTransform.y;
+      // this.segmentGraphics may not have been initialized if the user
+      // was zoomed out too far
+      if (this.segmentGraphics) {
+        this.segmentGraphics.position.y = this.valueScaleTransform.y;
+      }
 
       this.animate();
     }

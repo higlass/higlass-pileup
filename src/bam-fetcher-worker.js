@@ -334,7 +334,6 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
 
   return fetch(url).then(d => d.json())
     .then((rt) => {
-
       const newTiles = {};
 
       for (const tileId of tileIds) {
@@ -344,7 +343,11 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
         if (rt[fullTileId]) {
           rt[fullTileId].tilePositionId = tileId;
 
-          const rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+          let rowJsonTile = rt[fullTileId];
+
+          if (!rt[fullTileId].error) {
+            rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+          }
 
           newTiles[tileId] = rowJsonTile;
           tileValues[hereTileId] = rowJsonTile;
@@ -428,39 +431,31 @@ const parseMD = (mdString, useCounts) => {
 function segmentsToRows(segments, optionsIn) {
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
-    optionsIn || {}
+    optionsIn || {},
   );
 
-  const t1 = currTime();
   segments.sort((a, b) => a.from - b.from);
-  const rows = [];
 
-  const t11 = currTime();
   const rowIds = new Set(prevRows.flatMap(x => x).map(x => x.id));
 
   // we only want to go through the segments that
   // don't already have a row
   const filteredSegments = segments.filter(
-    x => !rowIds.has(x.id)
+    x => !rowIds.has(x.id),
   );
 
   // we also want to remove all row entries that are
   // not in our list of segments
   const segmentIds = new Set(
-    segments.map(x => x.id)
+    segments.map(x => x.id),
   );
   const newRows = prevRows.map(
-    row => row.filter(segment => segmentIds.has(segment.id))
+    row => row.filter(segment => segmentIds.has(segment.id)),
   );
-
-  const t12 = currTime();
 
   let currRow = 0;
 
   const outputRows = newRows;
-  let counter = 0;
-
-  const initialLength = filteredSegments.length;
 
   while (filteredSegments.length) {
     const row = newRows[currRow] || [];
@@ -526,7 +521,6 @@ function segmentsToRows(segments, optionsIn) {
             const newIx = segmentFromBisector(filteredSegments, row[currRowPosition].to + padding);
 
             ix = newIx;
-            counter += 1;
             continue;
           }
           ix += direction;
@@ -558,7 +552,6 @@ function segmentsToRows(segments, optionsIn) {
     currRow += 1;
   }
 
-  const t2 = currTime();
   return outputRows;
 }
 
@@ -573,15 +566,21 @@ let allColors = new Float32Array(allColorsLength);
 
 const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, prevRows) => {
   const allSegments = {};
+
   for (const tileId of tileIds) {
-    for (const segment of tileValues[`${uid}.${tileId}`]) {
+    const tileValue = tileValues[`${uid}.${tileId}`];
+
+    if (tileValue.error) {
+      throw new Error(tileValue.error);
+    }
+
+    for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
   }
 
   const segmentList = Object.values(allSegments);
   const xScale = scaleLinear().domain(domain).range(scaleRange);
-  const t1 = currTime();
 
   let currPosition = 0;
 
@@ -600,7 +599,7 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
   };
 
   const addColor = (r, g, b, a, n) => {
-    if (currColor >= allColorsLength - n * 4) {
+    if (currColor >= allColorsLength - (n * 4)) {
       allColorsLength *= 2;
       const prevAllColors = allColors;
 
