@@ -1,3 +1,12 @@
+v0.2.1
+
+- Column higlass server format
+- Warning when zoomed out beyond `max_tile_width`
+
+v0.2.0
+
+- Support for higlass server-served tiles
+
 v0.1.1
 
 - Upgraded threads.js and added getThisScriptLocation so that the worker is pulled from the same location as the main script
