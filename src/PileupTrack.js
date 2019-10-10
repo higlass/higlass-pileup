@@ -173,16 +173,16 @@ const PileupTrack = (HGC, ...args) => {
           this.drawError();
           this.animate();
 
-          const positions = new Float32Array(toRender.positionsBuffer);
-          const colors = new Float32Array(toRender.colorsBuffer);
+          this.positions = new Float32Array(toRender.positionsBuffer);
+          this.colors = new Float32Array(toRender.colorsBuffer);
 
           const newGraphics = new HGC.libraries.PIXI.Graphics();
 
           this.prevRows = toRender.rows;
 
           const geometry = new HGC.libraries.PIXI.Geometry()
-            .addAttribute('position', positions, 2);// x,y
-          geometry.addAttribute('aColor', colors, 4);
+            .addAttribute('position', this.positions, 2);// x,y
+          geometry.addAttribute('aColor', this.colors, 4);
 
           const state = new HGC.libraries.PIXI.State();
           const mesh = new HGC.libraries.PIXI.Mesh(geometry, shader, state);
@@ -349,6 +349,70 @@ const PileupTrack = (HGC, ...args) => {
       if (this.segmentGraphics) {
         scaleScalableGraphics(this.segmentGraphics, newXScale, this.drawnAtScale);
       }
+    }
+
+    exportSVG() {
+      let track = null;
+      let base = null;
+
+      if (super.exportSVG) {
+        [base, track] = super.exportSVG();
+      } else {
+        base = document.createElement('g');
+        track = base;
+      }
+
+      const output = document.createElement('g');
+      track.appendChild(output);
+
+      output.setAttribute(
+        'transform',
+        `translate(${this.pMain.position.x},${this.pMain.position.y}) scale(${this.pMain.scale.x},${this.pMain.scale.y})`,
+      );
+
+      const gSegment = document.createElement('g');
+
+      gSegment.setAttribute(
+        'transform',
+        `translate(${this.segmentGraphics.position.x},${this.segmentGraphics.position.y})` +
+        `scale(${this.segmentGraphics.scale.x},${this.segmentGraphics.scale.y})`,
+      );
+
+      output.appendChild(gSegment);
+
+      if (this.positions) {
+        // short for colorIndex
+        let ci = 0;
+
+        for (let i = 0; i < this.positions.length; i += 12) {
+          const rect = document.createElement('rect');
+
+          rect.setAttribute('x', this.positions[i]);
+          rect.setAttribute('y', this.positions[i + 1]);
+
+          rect.setAttribute(
+            'width',
+            this.positions[i + 10] - this.positions[i],
+          );
+
+          rect.setAttribute(
+            'height',
+            this.positions[i + 11] - this.positions[i + 1],
+          );
+
+          const red = Math.ceil(255 * this.colors[ci]);
+          const green = Math.ceil(255 * this.colors[ci + 1]);
+          const blue = Math.ceil(255 * this.colors[ci + 2]);
+          const alpha = this.colors[ci + 3];
+
+          rect.setAttribute('fill',
+            `rgba(${red},${green},${blue},${alpha})`);
+          gSegment.appendChild(rect);
+          ci += 24;
+        }
+      }
+
+      return [base, base];
     }
   }
 

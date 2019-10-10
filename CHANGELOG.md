@@ -1,3 +1,7 @@
+v0.2.2
+
+- Implemented exportAsSvg
+
 v0.2.1
 
 - Column higlass server format
