@@ -187,6 +187,8 @@ const PileupTrack = (HGC, ...args) => {
           const state = new HGC.libraries.PIXI.State();
           const mesh = new HGC.libraries.PIXI.Mesh(geometry, shader, state);
 
+          console.log('this.prevRows:', this.prevRows);
+
           newGraphics.addChild(mesh);
           this.pMain.x = this.position[0];
 
@@ -235,6 +237,13 @@ const PileupTrack = (HGC, ...args) => {
       });
     }
 
+    draw() {
+      const valueScale = HGC.libraries.d3Scale.scaleLinear()
+        .domain([0, this.prevRows.length])
+        .range([0, this.dimensions[1]]);
+      HGC.utils.trackUtils.drawAxis(this, valueScale);
+    }
+
     getMouseOverHtml(trackX, trackY) {
       if (this.yScaleBand) {
         const eachBand = this.yScaleBand.step();
@@ -250,8 +259,8 @@ const PileupTrack = (HGC, ...args) => {
 
             if (readTrackFrom <= trackX && trackX <= readTrackTo) {
               return (`Position: ${read.chrName}:${read.from - read.chrOffset}<br>`
-                + `Read length: ${read.to - read.from}<br>`
-                + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
+                + `Read length: ${read.to - read.from}<br>`);
+                // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
             }
           }
         }

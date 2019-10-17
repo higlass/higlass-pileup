@@ -449,9 +449,11 @@ function segmentsToRows(segments, optionsIn) {
   const segmentIds = new Set(
     segments.map(x => x.id),
   );
+
+  // also, remove all rows that don't have any entries remaining
   const newRows = prevRows.map(
     row => row.filter(segment => segmentIds.has(segment.id)),
-  );
+  ).filter(row => row.length);
 
   let currRow = 0;
 
@@ -645,9 +647,56 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
 
       addColor(0.8, 0.8, 0.8, 1, 6);
 
+      let substitutions = [];
+
       if (segment.md) {
-        const substitutions = parseMD(segment.md);
+        substitutions = parseMD(segment.md);
+      }
+
+      if (segment.cigar) {
         const cigarSubs = parseMD(segment.cigar, true);
+
+        // console.log('cigarSubs', cigarSubs);
+
+        let currPos = 0;
+
+        for (const sub of cigarSubs) {
+          if (sub.type === 'X') {
+            // sequence mismatch, no need to do anything
+            substitutions.push({
+              pos: currPos,
+              length: sub.length,
+              type: 'X',
+            });
+
+            currPos += sub.length;
+          } else if (sub.type === 'I') {
+            substitutions.push({
+              pos: currPos,
+              length: 0.1,
+              type: 'I',
+            });
+          } else if (sub.type === 'D') {
+            substitutions.push({
+              pos: currPos,
+              length: sub.length,
+              type: 'D',
+            });
+            currPos += sub.length;
+          } else if (sub.type === 'N' || sub.type === '=' || sub.type === 'M') {
+            currPos += sub.length;
+          } else {
+            // console.log('skipping:', sub.type);
+          }
+          // if (referenceConsuming.has(sub.base)) {
+          //   if (queryConsuming.has(sub.base)) {
+          //     substitutions.push(
+          //     {
+          //       pos:
+          //     })
+          //   }
+          // }
+        }
 
         const firstSub = cigarSubs[0];
         const lastSub = cigarSubs[cigarSubs.length - 1];
@@ -668,34 +717,40 @@ const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, 
             type: 'S',
           });
         }
+      }
 
-        for (const substitution of substitutions) {
-          xLeft = xScale(segment.from + substitution.pos - 1);
-          xRight = xLeft + Math.max(1, xScale(substitution.length) - xScale(0));
-          yTop = yScale(i);
-          yBottom = yTop + yScale.bandwidth();
+      for (const substitution of substitutions) {
+        xLeft = xScale(segment.from + substitution.pos - 1);
+        xRight = xLeft + Math.max(1, xScale(substitution.length) - xScale(0));
+        yTop = yScale(i);
+        yBottom = yTop + yScale.bandwidth();
 
-          addPosition(xLeft, yTop);
-          addPosition(xRight, yTop);
-          addPosition(xLeft, yBottom);
+        addPosition(xLeft, yTop);
+        addPosition(xRight, yTop);
+        addPosition(xLeft, yBottom);
 
-          addPosition(xLeft, yBottom);
-          addPosition(xRight, yTop);
-          addPosition(xRight, yBottom);
+        addPosition(xLeft, yBottom);
+        addPosition(xRight, yTop);
+        addPosition(xRight, yBottom);
 
-          if (substitution.base === 'A') {
-            addColor(0, 0, 1, 1, 6);
-          } else if (substitution.base === 'C') {
-            addColor(1, 0, 0, 1, 6);
-          } else if (substitution.base === 'G') {
-            addColor(0, 1, 0, 1, 6);
-          } else if (substitution.base === 'T') {
-            addColor(1, 1, 0, 1, 6);
-          } else if (substitution.type === 'S') {
-            addColor(0, 1, 1, 0.5, 6);
-          } else {
-            addColor(0, 0, 0, 1, 6);
-          }
+        if (substitution.base === 'A') {
+          addColor(0, 0, 1, 1, 6);
+        } else if (substitution.base === 'C') {
+          addColor(1, 0, 0, 1, 6);
+        } else if (substitution.base === 'G') {
+          addColor(0, 1, 0, 1, 6);
+        } else if (substitution.base === 'T') {
+          addColor(1, 1, 0, 1, 6);
+        } else if (substitution.type === 'S') {
+          addColor(0, 1, 1, 0.5, 6);
+        } else if (substitution.type === 'X') {
+          addColor(0, 0, 0, 0.7, 6);
+        } else if (substitution.type === 'I') {
+          addColor(1, 0, 1, 0.5, 6);
+        } else if (substitution.type === 'D') {
+          addColor(1, 0.5, 0.5, 0.5, 6);
+        } else {
+          addColor(0, 0, 0, 1, 6);
         }
       }
     });
