@@ -187,7 +187,7 @@ const PileupTrack = (HGC, ...args) => {
           const state = new HGC.libraries.PIXI.State();
           const mesh = new HGC.libraries.PIXI.Mesh(geometry, shader, state);
 
-          console.log('this.prevRows:', this.prevRows);
+          // console.log('this.prevRows:', this.prevRows);
 
           newGraphics.addChild(mesh);
           this.pMain.x = this.position[0];

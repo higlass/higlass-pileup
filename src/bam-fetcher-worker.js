@@ -339,16 +339,14 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
       for (const tileId of tileIds) {
         const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
         const hereTileId = `${uid}.${tileId}`;
-
         if (rt[fullTileId]) {
-          rt[fullTileId].tilePositionId = tileId;
-
           let rowJsonTile = rt[fullTileId];
 
           if (!rt[fullTileId].error) {
             rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
           }
 
+          rowJsonTile.tilePositionId = tileId;
           newTiles[tileId] = rowJsonTile;
           tileValues[hereTileId] = rowJsonTile;
         }
