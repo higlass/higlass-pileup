@@ -161,7 +161,7 @@ const PileupTrack = (HGC, ...args) => {
       this.worker.then((tileFunctions) => {
         tileFunctions.renderSegments(
           this.dataFetcher.uid,
-          Object.keys(this.fetchedTiles),
+          Object.values(this.fetchedTiles).map(x => x.remoteId),
           this._xScale.domain(),
           this._xScale.range(),
           this.position,

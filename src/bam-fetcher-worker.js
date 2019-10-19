@@ -249,6 +249,8 @@ const tile = async (uid, z, x) => {
   const { bamUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
 
+  console.trace('tile', uid);
+
   return tilesetInfo(uid).then((tsInfo) => {
     const tileWidth = +tsInfo.max_width / (2 ** (+z));
     const recordPromises = [];
@@ -566,7 +568,6 @@ let allColors = new Float32Array(allColorsLength);
 
 const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, prevRows) => {
   const allSegments = {};
-  console.log('tileValues:', tileValues);
 
   for (const tileId of tileIds) {
     const tileValue = tileValues[`${uid}.${tileId}`];
