@@ -566,6 +566,7 @@ let allColors = new Float32Array(allColorsLength);
 
 const renderSegments = (uid, tileIds, domain, scaleRange, position, dimensions, prevRows) => {
   const allSegments = {};
+  console.log('tileValues:', tileValues);
 
   for (const tileId of tileIds) {
     const tileValue = tileValues[`${uid}.${tileId}`];
