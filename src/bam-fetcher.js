@@ -8,7 +8,7 @@ class BAMDataFetcher {
     this.initPromise = this.worker.then((tileFunctions) => {
       if (this.isServerFetcher) {
         return tileFunctions.serverInit(
-          this.uid, dataConfig.server, dataConfig.tilesetUid,
+          this.uid, dataConfig.server, dataConfig.tilesetUid, HGC.services.authHeader,
         ).then(() => this.worker);
       }
       return tileFunctions.init(

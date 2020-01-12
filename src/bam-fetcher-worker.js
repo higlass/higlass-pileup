@@ -163,10 +163,24 @@ const tileValues = {};
 // indexed by uuid
 const dataConfs = {};
 
-const serverInit = (uid, server, tilesetUid) => {
+function authFetch(url, uid) {
+  const { authHeader } = serverInfos[uid];
+  const params = {
+    headers: {},
+  };
+
+  if (authHeader) {
+    params.headers.Authorization = authHeader;
+  }
+
+  return fetch(url, params);
+}
+
+const serverInit = (uid, server, tilesetUid, authHeader) => {
   serverInfos[uid] = {
     server,
     tilesetUid,
+    authHeader,
   };
 };
 
@@ -195,9 +209,9 @@ const init = (uid, bamUrl, chromSizesUrl) => {
 };
 
 const serverTilesetInfo = (uid) => {
-  const url = `${serverInfos[uid].server}/tileset_info/?d=${serverInfos[uid].tilesetUid}`
+  const url = `${serverInfos[uid].server}/tileset_info/?d=${serverInfos[uid].tilesetUid}`;
 
-  return fetch(url).then(d => d.json()).then(j => j[serverInfos[uid].tilesetUid]);
+  return authFetch(url, uid).then(d => d.json()).then(j => j[serverInfos[uid].tilesetUid]);
 };
 
 const tilesetInfo = (uid) => {
@@ -248,8 +262,6 @@ const tile = async (uid, z, x) => {
   const MAX_TILE_WIDTH = 200000;
   const { bamUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
-
-  console.trace('tile', uid);
 
   return tilesetInfo(uid).then((tsInfo) => {
     const tileWidth = +tsInfo.max_width / (2 ** (+z));
@@ -334,7 +346,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   const serverTileIds = tileIds.map(x => `d=${serverInfo.tilesetUid}.${x}`);
   const url = `${serverInfos[uid].server}/tiles/?${serverTileIds.join('&')}`;
 
-  return fetch(url).then(d => d.json())
+  return authFetch(url, uid).then(d => d.json())
     .then((rt) => {
       const newTiles = {};
 

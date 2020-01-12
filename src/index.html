@@ -67,32 +67,32 @@ const testViewConfig =
   "views": [
     {
       "initialXDomain": [
-        357051.51805502106,
-        365796.30143914453
+        624010095.7805756,
+        624042714.530866
       ],
       "initialYDomain": [
-        1529229082.1901436,
-        1529232782.9605412
+        -2457884701.2410274,
+        -2457884701.2410274
       ],
       "tracks": {
         "top": [
           {
             "type": "pileup",
-            "uid": "YvKLFN8xRImL_HuOJCp9wg",
-            "tilesetUid": "W6ASzptJQjOsTHBVqvPqmg",
-            "server": "http://localhost:8999/api/v1",
+            "uid": "VMeS7md-QSOM1gy5ALs6Uw",
+            "tilesetUid": "TO2--V9fRoK4yVZxyaBtDQ",
+            "server": "https://resgen.io/api/v1",
             "options": {
               "axisPositionHorizontal": "right",
               "axisLabelFormatting": "normal"
             },
-            "width": 262,
-            "height": 236
+            "width": 866,
+            "height": 417
           },
           {
             "type": "horizontal-chromosome-labels",
-            "uid": "GyLdYbCBRZ2Ok9o2OtyqNQ",
-            "tilesetUid": "KAXb17riTH-1JpIOSLdQoQ",
-            "server": "http://localhost:8999/api/v1",
+            "uid": "cp0z3-MJRBa48mLTOGDAFA",
+            "tilesetUid": "ZpZ8c5JJRUS1J7ZkofcUrg",
+            "server": "https://resgen.io/api/v1",
             "options": {
               "color": "#808080",
               "stroke": "#ffffff",
@@ -101,7 +101,7 @@ const testViewConfig =
               "showMousePosition": false,
               "mousePositionColor": "#000000"
             },
-            "width": 262,
+            "width": 503,
             "height": 30
           }
         ],
@@ -116,11 +116,9 @@ const testViewConfig =
         "w": 12,
         "h": 6,
         "x": 0,
-        "y": 0,
-        "moved": false,
-        "static": false
+        "y": 0
       },
-      "uid": "QB3Xi5ObRL2hgPupcYV-wg"
+      "uid": "Ri7VDlYbQeeRmitYG5Qfhw"
     }
   ],
   "zoomLocks": {
@@ -140,7 +138,9 @@ const testViewConfig =
 window.hglib.viewer(
   document.getElementById('demo'),
   testViewConfig,
-  { bounded: true },
+  {
+    bounded: true,
+  },
 );
 </script>
 </html>
