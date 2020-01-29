@@ -656,6 +656,12 @@ const renderSegments = (
   }
 
   const segmentList = Object.values(allSegments);
+
+  // console.log(
+  //   'allSegements',
+  //   Object.values(allSegments).filter(x => x.to - x.from > 1000)
+  // );
+
   const xScale = scaleLinear()
     .domain(domain)
     .range(scaleRange);
@@ -691,6 +697,23 @@ const renderSegments = (
       allColors[currColor++] = b;
       allColors[currColor++] = a;
     }
+  };
+
+  const addRect = (x, y, width, height, r, g, b, a) => {
+    const xLeft = x;
+    const xRight = xLeft + width;
+    const yTop = y;
+    const yBottom = y + height;
+
+    addPosition(xLeft, yTop);
+    addPosition(xRight, yTop);
+    addPosition(xLeft, yBottom);
+
+    addPosition(xLeft, yBottom);
+    addPosition(xRight, yTop);
+    addPosition(xRight, yBottom);
+
+    addColor(r, g, b, a, 6);
   };
 
   const rows = segmentsToRows(segmentList, {
@@ -764,7 +787,14 @@ const renderSegments = (
               type: 'D'
             });
             currPos += sub.length;
-          } else if (sub.type === 'N' || sub.type === '=' || sub.type === 'M') {
+          } else if (sub.type === 'N') {
+            substitutions.push({
+              pos: currPos,
+              length: sub.length,
+              type: 'N'
+            });
+            currPos += sub.length;
+          } else if (sub.type === '=' || sub.type === 'M') {
             currPos += sub.length;
           } else {
             // console.log('skipping:', sub.type);
@@ -802,34 +832,40 @@ const renderSegments = (
 
       for (const substitution of substitutions) {
         xLeft = xScale(segment.from + substitution.pos - 1);
-        xRight = xLeft + Math.max(1, xScale(substitution.length) - xScale(0));
+        const width = Math.max(1, xScale(substitution.length) - xScale(0));
+        xRight = xLeft + width;
         yTop = yScale(i);
-        yBottom = yTop + yScale.bandwidth();
-
-        addPosition(xLeft, yTop);
-        addPosition(xRight, yTop);
-        addPosition(xLeft, yBottom);
-
-        addPosition(xLeft, yBottom);
-        addPosition(xRight, yTop);
-        addPosition(xRight, yBottom);
+        const height = yScale.bandwidth();
+        yBottom = yTop + height;
 
         if (substitution.base === 'A') {
-          addColor(0, 0, 1, 1, 6);
+          addRect(xLeft, yTop, width, height, 0, 0, 1, 1);
         } else if (substitution.base === 'C') {
-          addColor(1, 0, 0, 1, 6);
+          addRect(xLeft, yTop, width, height, 1, 0, 0, 1);
         } else if (substitution.base === 'G') {
-          addColor(0, 1, 0, 1, 6);
+          addRect(xLeft, yTop, width, height, 0, 1, 0, 1);
         } else if (substitution.base === 'T') {
-          addColor(1, 1, 0, 1, 6);
+          addRect(xLeft, yTop, width, height, 1, 1, 0, 1);
         } else if (substitution.type === 'S') {
-          addColor(0, 1, 1, 0.5, 6);
+          addRect(xLeft, yTop, width, height, 0, 1, 1, 0.5);
         } else if (substitution.type === 'X') {
-          addColor(0, 0, 0, 0.7, 6);
+          addRect(xLeft, yTop, width, height, 0, 0, 0, 0.7);
         } else if (substitution.type === 'I') {
-          addColor(1, 0, 1, 0.5, 6);
+          addRect(xLeft, yTop, width, height, 1, 0, 1, 0.5);
         } else if (substitution.type === 'D') {
-          addColor(1, 0.5, 0.5, 0.5, 6);
+          addRect(xLeft, yTop, width, height, 1, 0.5, 0.5, 0.5);
+        } else if (substitution.type === 'N') {
+          // deletions so we're going to draw a thinner line
+          // across
+          const xMiddle = (yTop + yBottom) / 2;
+          const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
+
+          const yMidTop = xMiddle - delWidth / 2;
+          const yMidBottom = xMiddle + delWidth / 2;
+
+          addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, 1, 1, 1, 1);
+          addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, 1, 1, 1, 1);
+          // allready handled above
         } else {
           addColor(0, 0, 0, 1, 6);
         }
