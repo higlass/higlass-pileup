@@ -865,6 +865,19 @@ const renderSegments = (
 
           addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, 1, 1, 1, 1);
           addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, 1, 1, 1, 1);
+
+          let currPos = xLeft;
+          let DASH_LENGTH = 6;
+          let DASH_SPACE = 4;
+
+          // draw dashes
+          while (currPos <= xRight) {
+            // make sure the last dash doesn't overrun
+            const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
+
+            addRect(currPos, yMidTop, dashLength, delWidth, 1, 1, 1, 1);
+            currPos += DASH_LENGTH + DASH_SPACE;
+          }
           // allready handled above
         } else {
           addColor(0, 0, 0, 1, 6);
