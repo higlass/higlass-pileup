@@ -289,6 +289,8 @@ const tilesetInfo = uid => {
         chroms.push([refName, length]);
       }
 
+      chroms.sort(natcmp);
+
       chromInfo = parseChromsizesRows(chroms);
     }
 
@@ -867,8 +869,8 @@ const renderSegments = (
           addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, 1, 1, 1, 1);
 
           let currPos = xLeft;
-          let DASH_LENGTH = 6;
-          let DASH_SPACE = 4;
+          const DASH_LENGTH = 6;
+          const DASH_SPACE = 4;
 
           // draw dashes
           while (currPos <= xRight) {

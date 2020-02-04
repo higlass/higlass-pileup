@@ -327,7 +327,7 @@ const PileupTrack = (HGC, ...args) => {
           this.tilesetInfo
         );
 
-        const DEFAULT_MAX_TILE_WIDTH = 1e5;
+        const DEFAULT_MAX_TILE_WIDTH = 2e5;
 
         if (
           tileWidth >
