@@ -1,15 +1,15 @@
 language: node_js
 node_js:
-- '8'
+  - '8'
 branches:
   only:
-  - master
-  - develop
-  - "/^v.*$/"
+    - master
+    - develop
+    - '/^v.*$/'
 before_script:
-- npm install
+  - npm install
 before_deploy:
-- npm run prerelease
+  - npm run prerelease
 deploy:
   - provider: npm
     skip_cleanup: true
@@ -24,7 +24,7 @@ deploy:
     skip_cleanup: true
     email: pkerpedjiev@gmail.com
     api_key:
-      secure: py7B8Gfn3GevdtRGRQQE0kN1DC4Ug8smNGrctiVHV/zK2znASJMXsi00kdrnUX+VSAdyEqmZ6Q7NMCIrVe6wazbePDZrzD0yVMoCaWQUz37F42ia110Cgb8rGdFiY48lfr12AZwJduq9r019yKajtKhD/FAxfmgTMzvCU2XbQf+jp4YOnA52yWSFUWjH9+3urPNKmGLapXO2ypaR7Fk9pCgvpl1dIPrLBCWb4Cb5u4P54VRQQgd0HWT1xs5TOAyAZFuhAg53dz8FPP7roPASjZ2nCc3eGyNeIbldJEf6KEjqlIo2gLXaEZ+VDZFqm+Z903DVCU82qJ/fZGnFjejni5ryS4yDkSHfZX44hYf7S1fm2NpX+si0StzlDYOggVC2HjUczKV0DrjNDu9EgVijKINikJa+fhx/EmFCgQveyeTqjLNRu27k98OXPwRIW9dqrMZiH3ANwKVWzngoirz8dYMQDXKkKDbnsoCsrpXQd8BbnO6hfLtjKOKUZ7j4ZWTChHCYc7QiZJQoBya33lD4KbJI6OuMmLaQY4r3W1X81DdKeoThcNqUt7WfWZIEWBKjLG5INImTBO8ozWXElwIHVYjzlCj+uKlOKOL6po33ijnTKXz5Rhn5D8mZgVNMffh44uS0/XDdoyaPyFFruP5Ce7vp1uHzSZjlUBfapNmMj0A=
+      secure: BVbTrhDPh3t7FAhYN97v3sH6aP5qj8oG2+0cxWxXZhTf2/Ih508YPEBLGcvx4/LhjkUZCy/X3Ewqg0G0AZAJSZYgSruuUtLIFeTSs0VkV/Kcxvrn4ejlPQQ+cLaxi1xcmZPwRUvJNyH2ZdliwJ7ZVrB9kkbr86Qfmvkj2BbjobyCtu6peq2GgzqSHVEkqnBZx3Ycb23tqvRwuz2satj0UkAfOcugq0rnGhGCurOa9DJ1718Gt8AzFNiNj2D4r3dTFlqX93LRf8/B0H3S3sABwZFqil1bW1/R0gv4r7wppX6+mDAgHQwwQm4Xvp2BPinhE9OTePIA6t+2VxsyGPqOb+zrs/eQpLZwdvbFYylFjEBsrnN5o8vZ2m4rrf6hQMnQJ6+vO77n8Zpe4z0zMh+FVWo7p7Ozg9jin8FOMkUyIL1Ga+TUldqkzKNJMiDINp+EmsIJrIjC0BQwnDpy4KPRsIEgZCf8SMrLmy8yHbOoHQwh5RerfVFD1SOGIM5ORcDVNBz4UtwiDHp0zjmefHap8Aq5A7O7T2nFnE9Vd2sMbYBC7ciMtCYwt1bfkfwzUk7HbhAytWAIftX6zdspn6JES23Z2opjaNJi7Ol8wMud9WiELQ1/Agsu4JDLdQrFAowG1TZ53rXytH0HJ9Uknpa/8tLXNWOul/Pv77bgeDXelZk=
     file: dist.zip
     on:
       repo: higlass/higlass-pileup
