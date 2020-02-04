@@ -13,6 +13,7 @@ before_deploy:
 deploy:
   - provider: npm
     skip_cleanup: true
+    edge: true
     email: pkerpedjiev@gmail.com
     api_key:
       secure: C7fYJsE00wulwb3KEJfk3XeBVR+9rbToJOqbctZgnK5ns6pAu9e7sJnqKUQG1bY4iTKcHNPI3MMmse5+xjr1pBXQ6KPqcacXcJTLbGppib1/SiJftJ/lHZwVxtGREoVon+9K54uPScTNfPkXEuf+gLXluoQgwyB4WwQHwkk+ImMYVwUlvz6/Lo9ExQvQ6ULPpsI6N4Wx03WdUi+gTFpgfJiMb2fQi4for5KbxCAove7vgHqSC4ENKDWwzT3R1M9vU0eaf0z8lYa0aC80abUhWXVbcf0p6s9bLpQ+u78l+sWTUPpUqfXOQtL0tYBA5p7owY9PZID8vXTgEr0EQ8gtFsg4QSMgqnGnaq9r0CGRsN6OBpDKPG/4KKz2XAvG42/qCcvVy9QV41lfN6IPhDdKDnMi2bpfcnHGuug639FuMqOI9UROFNjrrIrvaEtrX1YVPyU5EqawA/O16skyNocYx0Ho/9x47b+JIhseBdq2W5Y1lASDJiPXcBc6MAqWcwGz/veSTFcSxN3a70nC7qnIC12gr0nj0UOnvGyvPm2RjYYa4KOlvU8QNmeJ+88k01JngQQpPYAilr1zJH+rM9A0Ix4I1dAePJ4r3P/IEs0xuJVV1xfElqf3/WakLddvinPA9pQFgKXVYaKOJshm6AoUDznQfxJmHkjD3YILMW8q0E8=
