@@ -231,12 +231,15 @@ const PileupTrack = (HGC, ...args) => {
             ); // x,y
             geometry.addAttribute('aColor', this.colors, 4);
 
-            const state = new HGC.libraries.PIXI.State();
-            const mesh = new HGC.libraries.PIXI.Mesh(geometry, shader, state);
+            if (this.positions.length) {
+              const state = new HGC.libraries.PIXI.State();
+              const mesh = new HGC.libraries.PIXI.Mesh(geometry, shader, state);
 
-            // console.log('this.prevRows:', this.prevRows);
+              // console.log('this.prevRows:', this.prevRows);
 
-            newGraphics.addChild(mesh);
+              newGraphics.addChild(mesh);
+            }
+
             this.pMain.x = this.position[0];
 
             if (this.segmentGraphics) {
@@ -289,6 +292,11 @@ const PileupTrack = (HGC, ...args) => {
     updateLoadingText() {
       this.loadingText.visible = true;
       this.loadingText.text = '';
+
+      if (!this.tilesetInfo) {
+        this.loadingText.text = "Fetching tileset info...";
+        return;
+      }
 
       if (this.fetching.size) {
         this.loadingText.text = `Fetching... ${
@@ -475,36 +483,68 @@ const PileupTrack = (HGC, ...args) => {
 
       output.appendChild(gSegment);
 
-      if (this.positions) {
-        // short for colorIndex
-        let ci = 0;
+      if (this.segmentGraphics) {
+        const b64string = HGC.services.pixiRenderer.plugins.extract.base64(
+          // this.segmentGraphics, 'image/png', 1,
+          this.pMain.parent.parent
+        );
 
-        for (let i = 0; i < this.positions.length; i += 12) {
-          const rect = document.createElement('rect');
+        // const xPositions = this.positions.filter((x,i) => i%2 == 0);
+        // let minX = Number.MAX_SAFE_INTEGER;
 
-          rect.setAttribute('x', this.positions[i]);
-          rect.setAttribute('y', this.positions[i + 1]);
+        // for (let i = 0; i < xPositions.length; i++) {
+        //   if (xPositions[i] < minX) {
+        //     minX = xPositions[i];
+        //   }
+        // }
+        const gImage = document.createElement('g');
 
-          rect.setAttribute(
-            'width',
-            this.positions[i + 10] - this.positions[i]
-          );
+        gImage.setAttribute(
+          'transform',
+          `translate(0,0)`
+        );
 
-          rect.setAttribute(
-            'height',
-            this.positions[i + 11] - this.positions[i + 1]
-          );
+        const image = document.createElement('image');
+        image.setAttributeNS(
+          'http://www.w3.org/1999/xlink',
+          'xlink:href',
+          b64string
+        );
+        gImage.appendChild(image);
+        gSegment.appendChild(gImage);
 
-          const red = Math.ceil(255 * this.colors[ci]);
-          const green = Math.ceil(255 * this.colors[ci + 1]);
-          const blue = Math.ceil(255 * this.colors[ci + 2]);
-          const alpha = this.colors[ci + 3];
-
-          rect.setAttribute('fill', `rgba(${red},${green},${blue},${alpha})`);
-          gSegment.appendChild(rect);
-          ci += 24;
-        }
+        // gSegment.appendChild(image);
       }
+      // if (this.positions) {
+      //   // short for colorIndex
+      //   let ci = 0;
+
+      //   for (let i = 0; i < this.positions.length; i += 12) {
+      //     const rect = document.createElement('rect');
+
+      //     rect.setAttribute('x', this.positions[i]);
+      //     rect.setAttribute('y', this.positions[i + 1]);
+
+      //     rect.setAttribute(
+      //       'width',
+      //       this.positions[i + 10] - this.positions[i]
+      //     );
+
+      //     rect.setAttribute(
+      //       'height',
+      //       this.positions[i + 11] - this.positions[i + 1]
+      //     );
+
+      //     const red = Math.ceil(255 * this.colors[ci]);
+      //     const green = Math.ceil(255 * this.colors[ci + 1]);
+      //     const blue = Math.ceil(255 * this.colors[ci + 2]);
+      //     const alpha = this.colors[ci + 3];
+
+      //     rect.setAttribute('fill', `rgba(${red},${green},${blue},${alpha})`);
+      //     gSegment.appendChild(rect);
+      //     ci += 24;
+      //   }
+      // }
 
       return [base, base];
     }
