@@ -170,6 +170,9 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.anchor.x = 0;
       this.loadingText.anchor.y = 0;
 
+      this.fetching = new Set();
+      this.rendering = new Set();
+
       this.pLabel.addChild(this.loadingText);
     }
 
@@ -179,8 +182,17 @@ const PileupTrack = (HGC, ...args) => {
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
+      // console.log('rendering', Object.keys(this.fetchedTiles));
+      const fetchedTileKeys = Object.keys(this.fetchedTiles);
+      fetchedTileKeys.forEach(
+        (x) => {
+          this.fetching.delete(x);
+          this.rendering.add(x);
+        },
+      );
+      this.updateLoadingText();
 
-      this.worker.then(tileFunctions => {
+      this.worker.then((tileFunctions) => {
         tileFunctions
           .renderSegments(
             this.dataFetcher.uid,
@@ -189,10 +201,16 @@ const PileupTrack = (HGC, ...args) => {
             this._xScale.range(),
             this.position,
             this.dimensions,
-            this.prevRows
+            this.prevRows,
           )
           .then(toRender => {
             this.loadingText.visible = false;
+            fetchedTileKeys.forEach(
+              (x) => {
+                this.rendering.delete(x);
+              },
+            );
+            this.updateLoadingText();
 
             this.errorTextText = null;
             this.pBorder.clear();
@@ -266,6 +284,25 @@ const PileupTrack = (HGC, ...args) => {
             // console.log('this.pBorder:', this.pBorder);
           });
       });
+    }
+
+    updateLoadingText() {
+      this.loadingText.visible = true;
+      this.loadingText.text = '';
+
+      if (this.fetching.size) {
+        this.loadingText.text = `Fetching... ${
+          [...this.fetching].map(x => x.split('|')[0]).join(" ")
+        }`;
+      }
+
+      if (this.rendering.size) {
+        this.loadingText.text = `Rendering... ${[...this.rendering].join(" ")}`;
+      }
+
+      if (!this.fetching.size && !this.rendering.size) {
+        this.loadingText.visible = false;
+      }
     }
 
     draw() {

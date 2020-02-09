@@ -33,8 +33,7 @@ class BAMDataFetcher {
   }
 
   fetchTilesDebounced(receivedTiles, tileIds) {
-    this.track.loadingText.text = 'Loading...';
-    this.track.loadingText.visible = true;
+    this.track.updateLoadingText();
 
     this.worker.then(tileFunctions => {
       if (this.isServerFetcher) {

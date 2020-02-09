@@ -882,7 +882,7 @@ const renderSegments = (
           }
           // allready handled above
         } else {
-          addColor(0, 0, 0, 1, 6);
+          addRect(xLeft, yTop, width, height, 0, 0, 0, 1);
         }
       }
     });
