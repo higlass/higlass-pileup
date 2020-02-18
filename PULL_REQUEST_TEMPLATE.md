@@ -1,1 +1,1 @@
-- [ ] Update the version number in README.md if building a new release
+- [ ] Update the version number in unpkg link in README.md if building a new release
