@@ -1,0 +1,1 @@
+- [ ] Update the version number in README.md if building a new release
