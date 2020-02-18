@@ -22,12 +22,7 @@ npm install higlass-pileup-track
 
 ## Usage
 
-### Server
-
-First, make sure that you have a server capable of serving tiled labels.
-[This notebook](https://github.com/higlass/higlass-python/blob/pkerpedjiev/merge-branches/notebooks/Label%20server%20example.ipynb) provides a functioning demo
-server that can be run locally. In the last cell, a viewconf is provided which
-can be used to instantiate HiGlass (see step 2 below).
+A live script can be found at https://unpkg.com/higlass-pileup@v0.2.9/dist/higlass-pileup.min.js. Note that `higlass-pileup` currently requires a worker thread. It'll automatically try to retrieve it from the same path as the main script but it needs to be hosted on the same server. The current recommended solution is to pull the already built js files from a release and have your web server serve them from the same path.
 
 ### Client
 
