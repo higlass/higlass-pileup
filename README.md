@@ -22,7 +22,12 @@ npm install higlass-pileup-track
 
 ## Usage
 
-A live script can be found at https://unpkg.com/higlass-pileup@v0.2.9/dist/higlass-pileup.min.js. Note that `higlass-pileup` currently requires a worker thread. It'll automatically try to retrieve it from the same path as the main script but it needs to be hosted on the same server. The current recommended solution is to pull the already built js files from a release and have your web server serve them from the same path.
+The live scripts can be found at:
+
+- https://unpkg.com/higlass-pileup@v0.2.9/dist/higlass-pileup.min.js
+- https://unpkg.com/higlass-pileup@v0.2.9/dist/0.higlass-pileup.min.worker.js
+
+Note that `higlass-pileup` currently requires a worker thread. It'll automatically try to retrieve it from the same path as the main script but it needs to be hosted on the same server. The current recommended solution is to pull the already built js files from a release and have your web server serve them from the same path.
 
 ### Client
 
