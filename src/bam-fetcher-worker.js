@@ -345,7 +345,6 @@ const tile = async (uid, z, x) => {
 
         if (maxX > chromEnd) {
           // the visible region extends beyond the end of this chromosome
-
           // fetch from the start until the end of the chromosome
           recordPromises.push(
             bamFile
@@ -358,7 +357,7 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
-                tileValues[`${uid}.${z}.${x}`].push(...mappedRecords);
+                tileValues[`${uid}.${z}.${x}`] = tileValues[`${uid}.${z}.${x}`].concat(mappedRecords);
               })
           );
 
@@ -378,7 +377,7 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
-                tileValues[`${uid}.${z}.${x}`].push(...mappedRecords);
+                tileValues[`${uid}.${z}.${x}`] = tileValues[`${uid}.${z}.${x}`].concat(mappedRecords);
 
                 return [];
               })
