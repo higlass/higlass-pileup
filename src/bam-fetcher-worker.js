@@ -307,6 +307,8 @@ const tilesetInfo = uid => {
       max_pos: [chromInfo.totalLength]
     };
 
+    console.log('chromInfos:', chromInfos);
+    console.log('retVal:', retVal);
     return retVal;
   });
 };
@@ -366,6 +368,8 @@ const tile = async (uid, z, x) => {
         } else {
           const endPos = Math.ceil(maxX - chromStart);
           const startPos = Math.floor(minX - chromStart);
+
+          console.log('chromName', chromName, startPos, endPos);
           // the end of the region is within this chromosome
           recordPromises.push(
             bamFile
@@ -374,6 +378,7 @@ const tile = async (uid, z, x) => {
                 // maxInsertSize: 2000,
               })
               .then(records => {
+                console.log('records:', records);
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
@@ -418,6 +423,9 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
           rowJsonTile.tilePositionId = tileId;
           newTiles[tileId] = rowJsonTile;
           tileValues[hereTileId] = rowJsonTile;
+          console.log('*********************')
+          console.log('rowJsonTile:', rowJsonTile[0]);
+          console.log('rowJsonTile:', rowJsonTile[rowJsonTile.length-1]);
         }
       }
 
@@ -505,9 +513,45 @@ function segmentsToRows(segments, optionsIn) {
 
   const rowIds = new Set(prevRows.flatMap(x => x).map(x => x.id));
 
+  const prevSegments = prevRows.flatMap(x => x);
+
+  let count = 0;
+  for (let i = 0; i < prevSegments.length; i++) {
+    if (prevSegments[i].from < 41100 && prevSegments[i].to > 41100) {
+      count += 1;
+    }
+  }
+
+  console.log('pre-count', count);
   // we only want to go through the segments that
   // don't already have a row
+  console.log('len', rowIds.size);
+  console.log('rowIds:', rowIds);
   const filteredSegments = segments.filter(x => !rowIds.has(x.id));
+  const notThere = segments.filter(x => rowIds.has(x.id));
+
+  console.log('seg length:', segments.length);
+  console.log('fs len', filteredSegments.length);
+  console.log('nt:', notThere.length);
+  // const filteredSegments = segments.filter(x => !rowIds.has(x.id));
+
+  count = 0;
+  for (let i = 0; i < filteredSegments.length; i++) {
+    if (filteredSegments[i].from < 41100 && filteredSegments[i].to > 41100) {
+      count += 1;
+    }
+  }
+
+  console.log('count1:', count);
+
+  count = 0;
+  for (let i = 0; i < segments.length; i++) {
+    if (segments[i].from < 41100 && segments[i].to > 41100) {
+      count += 1;
+      console.log(rowIds.has(segments[i].id));
+    }
+  }
+  console.log('count2:', count);
 
   // we also want to remove all row entries that are
   // not in our list of segments
@@ -521,6 +565,15 @@ function segmentsToRows(segments, optionsIn) {
   let currRow = 0;
 
   const outputRows = newRows;
+
+  console.log('-----------')
+  // console.log('start:', filteredSegments[0]);
+  // console.log('end:', filteredSegments[filteredSegments.length-1])
+  // console.log('filteredSegments', filteredSegments);
+  // console.log('segmentsToRows', prevRows);
+
+
+
 
   while (filteredSegments.length) {
     const row = newRows[currRow] || [];
@@ -621,6 +674,11 @@ function segmentsToRows(segments, optionsIn) {
     currRow += 1;
   }
 
+  const outputRowIds = new Set(outputRows.flatMap(x => x).map(x => x.id));
+  console.log('or len', outputRowIds.size);
+
+  // console.log('filteredSegments:', filteredSegments)
+  // console.log('outputRows:', outputRows);
   return outputRows;
 }
 
@@ -650,14 +708,19 @@ const renderSegments = (
     if (tileValue.error) {
       throw new Error(tileValue.error);
     }
+    console.log('sl length:', tileValue.length);
 
     for (const segment of tileValue) {
+      if (allSegments[segment.id]) {
+        console.log('id:', segment.id, allSegments[segment.id].from, segment.from);
+      }
       allSegments[segment.id] = segment;
+
     }
   }
 
   const segmentList = Object.values(allSegments);
-
+  console.log('asl:', segmentList.length);
   // console.log(
   //   'allSegements',
   //   Object.values(allSegments).filter(x => x.to - x.from > 1000)
@@ -829,6 +892,11 @@ const renderSegments = (
             type: 'S'
           });
         }
+      }
+
+      if (segment.from > 854362700 && segment.from < 854362750) {
+        console.log('substitutions', segment, substitutions);
+
       }
 
       for (const substitution of substitutions) {

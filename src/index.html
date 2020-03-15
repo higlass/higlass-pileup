@@ -67,31 +67,48 @@ const testViewConfig =
   "views": [
     {
       "initialXDomain": [
-        623191458.6391368,
-        623198007.0307084
+        33563.963792119175,
+        40884.39224382366
       ],
       "initialYDomain": [
-        -2457894113.7141213,
-        -2457892738.6480494
+        2008.822388232882,
+        5992.3770934006925
       ],
       "tracks": {
         "top": [
           {
-            "type": "pileup",
-            "uid": "VMeS7md-QSOM1gy5ALs6Uw",
-            "tilesetUid": "TO2--V9fRoK4yVZxyaBtDQ",
+            "type": "horizontal-gene-annotations",
+            "uid": "RsSmhLD5Rq-fWhqq-w0hfw",
+            "tilesetUid": "NCifnbrKQu6j-ohVWJLoJw",
             "server": "https://resgen.io/api/v1",
             "options": {
-              "axisPositionHorizontal": "right",
-              "axisLabelFormatting": "normal"
+              "fontSize": 10,
+              "labelColor": "black",
+              "labelBackgroundColor": "#ffffff",
+              "labelPosition": "hidden",
+              "labelLeftMargin": 0,
+              "labelRightMargin": 0,
+              "labelTopMargin": 0,
+              "labelBottomMargin": 0,
+              "minHeight": 24,
+              "plusStrandColor": "blue",
+              "minusStrandColor": "red",
+              "trackBorderWidth": 0,
+              "trackBorderColor": "black",
+              "showMousePosition": false,
+              "mousePositionColor": "#000000",
+              "geneAnnotationHeight": 12,
+              "geneLabelPosition": "outside",
+              "geneStrandSpacing": 4,
+              "name": "Gene Annotations (hg19)"
             },
-            "width": 866,
-            "height": 417
+            "width": 700,
+            "height": 33
           },
           {
             "type": "horizontal-chromosome-labels",
-            "uid": "cp0z3-MJRBa48mLTOGDAFA",
-            "tilesetUid": "ZpZ8c5JJRUS1J7ZkofcUrg",
+            "uid": "N2InVzMFSJitd-LAJAv6Mg",
+            "tilesetUid": "ADfY_RtsQR6oKOMyrq6qhw",
             "server": "https://resgen.io/api/v1",
             "options": {
               "color": "#808080",
@@ -101,8 +118,34 @@ const testViewConfig =
               "showMousePosition": false,
               "mousePositionColor": "#000000"
             },
-            "width": 503,
-            "height": 30
+            "width": 700,
+            "height": 35
+          },
+          {
+            "type": "top-axis",
+            "local": true,
+            "orientation": "1d-horizontal",
+            "thumbnail": {},
+            "defaultOptions": {},
+            "server": "",
+            "tilesetUid": "fuKY8d7kSOCBZ9KL0AFfjQ",
+            "uid": "dzOSOcfMQpWOL3n7pKs5Ow",
+            "options": {},
+            "width": 700,
+            "height": 20
+          },
+          {
+            "type": "pileup",
+            "uid": "ajhNdSNfRySArVXv2hiFkg",
+            "tilesetUid": "a4QG0wbbQdOAxSQUXP99Gg",
+            "server": "http://localhost:8000/api/v1",
+            "options": {
+              "axisPositionHorizontal": "right",
+              "axisLabelFormatting": "normal",
+              "showMousePosition": true
+            },
+            "width": 1122,
+            "height": 302
           }
         ],
         "left": [],
@@ -118,7 +161,14 @@ const testViewConfig =
         "x": 0,
         "y": 0
       },
-      "uid": "Ri7VDlYbQeeRmitYG5Qfhw"
+      "uid": "Xhd6zHHHTPGwSMqdWw8CsA",
+      "genomePositionSearchBoxVisible": true,
+      "genomePositionSearchBox": {
+        "autocompleteServer": "http://higlass.io/api/v1",
+        "chromInfoServer": "http://higlass.io/api/v1",
+        "visible": true,
+        "chromInfoId": "hg19"
+      }
     }
   ],
   "zoomLocks": {
@@ -133,7 +183,7 @@ const testViewConfig =
     "locksByViewUid": {},
     "locksDict": {}
   }
-};
+}
 
 window.hglib.viewer(
   document.getElementById('demo'),
