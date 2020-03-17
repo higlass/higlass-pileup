@@ -93,6 +93,10 @@ Note that `higlass-pileup` currently requires a worker thread. It'll automatical
   - Navigate to higlass.io/app and drag the JSON file onto the viewer.
   - Browse away!
 
+## Support
+
+For questions, please either open an issue or ask on the HiGlass Slack channel at http://bit.ly/higlass-slack
+
 ## Development
 
 ### Installation
