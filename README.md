@@ -9,7 +9,6 @@
 
 **Note**: This is the source code for the pileup only! You might want to check out the following repositories as well:
 
-- HiGlass pileup track (this repository): https://github.com/higlass/higlass-pileup-track
 - HiGlass viewer: https://github.com/higlass/higlass
 - HiGlass server: https://github.com/higlass/higlass-server
 - HiGlass docker: https://github.com/higlass/higlass-docker
@@ -17,7 +16,7 @@
 ## Installation
 
 ```
-npm install higlass-pileup-track
+npm install higlass-pileup
 ```
 
 ## Usage
