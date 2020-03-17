@@ -1,4 +1,4 @@
-# Pileup Track
+# HiGlass Pileup Track
 
 > Viewer for sequence alignments.
 
