@@ -176,6 +176,10 @@ const PileupTrack = (HGC, ...args) => {
       this.pLabel.addChild(this.loadingText);
     }
 
+    initTile() {
+
+    }
+
     rerender() {
       this.updateExistingGraphics();
     }
