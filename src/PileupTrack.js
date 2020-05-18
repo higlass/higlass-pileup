@@ -197,6 +197,8 @@ const PileupTrack = (HGC, ...args) => {
       this.updateLoadingText();
 
       this.worker.then((tileFunctions) => {
+        console.log('this.options:', this.options);
+
         tileFunctions
           .renderSegments(
             this.dataFetcher.uid,
@@ -206,6 +208,7 @@ const PileupTrack = (HGC, ...args) => {
             this.position,
             this.dimensions,
             this.prevRows,
+            this.options && this.options.groupBy,
           )
           .then(toRender => {
             this.loadingText.visible = false;
@@ -277,19 +280,19 @@ const PileupTrack = (HGC, ...args) => {
             this.draw();
             this.animate();
           })
-          .catch(err => {
-            // console.log('err:', err);
-            // console.log('err:', err.message);
-            this.errorTextText = err.message;
+          // .catch(err => {
+          //   // console.log('err:', err);
+          //   // console.log('err:', err.message);
+          //   this.errorTextText = err.message;
 
-            // console.log('errorTextText:', this.errorTextText);
-            // this.draw();
-            // this.animate();
-            this.drawError();
-            this.animate();
+          //   // console.log('errorTextText:', this.errorTextText);
+          //   // this.draw();
+          //   // this.animate();
+          //   this.drawError();
+          //   this.animate();
 
-            // console.log('this.pBorder:', this.pBorder);
-          });
+          //   // console.log('this.pBorder:', this.pBorder);
+          // });
       });
     }
 
@@ -342,7 +345,8 @@ const PileupTrack = (HGC, ...args) => {
             if (readTrackFrom <= trackX && trackX <= readTrackTo) {
               return (
                 `Position: ${read.chrName}:${read.from - read.chrOffset}<br>` +
-                `Read length: ${read.to - read.from}<br>`
+                `Read length: ${read.to - read.from}<br>` +
+                `MAPQ: ${read.mapq}<br>`
               );
               // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
             }
@@ -568,13 +572,29 @@ PileupTrack.config = {
   thumbnail: new DOMParser().parseFromString(icon, 'text/xml').documentElement,
   availableOptions: [
     'axisPositionHorizontal',
-    'axisLabelFormatting'
+    'axisLabelFormatting',
+    'groupBy'
     // 'minZoom'
   ],
   defaultOptions: {
     // minZoom: null,
     axisPositionHorizontal: 'right',
-    axisLabelFormatting: 'normal'
+    axisLabelFormatting: 'normal',
+  },
+  optionsInfo: {
+    groupBy: {
+      name: "Group by",
+      inlineOptions: {
+        hpTag: {
+          value: "tags.HP",
+          name: "HP tag"
+        },
+        nothing: {
+          value: null,
+          name: "Nothing"
+        }
+      }
+    }
   }
 };
 

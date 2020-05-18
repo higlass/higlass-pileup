@@ -17,6 +17,13 @@ function currTime() {
 const chromInfoBisector = bisector(d => d.pos).left;
 const segmentFromBisector = bisector(d => d.from).right;
 
+const groupBy = function(xs, key) {
+  return xs.reduce(function(rv, x) {
+    (rv[x[key]] = rv[x[key]] || []).push(x);
+    return rv;
+  }, {});
+};
+
 const chrToAbs = (chrom, chromPos, chromInfo) =>
   chromInfo.chrPositions[chrom].pos + chromPos;
 
@@ -55,7 +62,7 @@ const absToChr = (absPosition, chromInfo) => {
     chromInfo.cumPositions[insertPoint].chr,
     chrPosition,
     offset,
-    insertPoint
+    insertPoint,
   ];
 };
 
@@ -126,7 +133,7 @@ function parseChromsizesRows(data) {
     const newValue = {
       id: i,
       chr: data[i][0],
-      pos: totalLength - length
+      pos: totalLength - length,
     };
 
     cumValues.push(newValue);
@@ -138,7 +145,7 @@ function parseChromsizesRows(data) {
     cumPositions: cumValues,
     chrPositions,
     totalLength,
-    chromLengths
+    chromLengths,
   };
 }
 
@@ -177,7 +184,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
   md: bamRecord.get('MD'),
   chrName,
   chrOffset,
-  cigar: bamRecord.get('cigar')
+  cigar: bamRecord.get('cigar'),
 });
 
 const tabularJsonToRowJson = tabularJson => {
@@ -215,7 +222,7 @@ const dataConfs = {};
 function authFetch(url, uid) {
   const { authHeader } = serverInfos[uid];
   const params = {
-    headers: {}
+    headers: {},
   };
 
   if (authHeader) {
@@ -229,14 +236,14 @@ const serverInit = (uid, server, tilesetUid, authHeader) => {
   serverInfos[uid] = {
     server,
     tilesetUid,
-    authHeader
+    authHeader,
   };
 };
 
 const init = (uid, bamUrl, chromSizesUrl) => {
   if (!bamFiles[bamUrl]) {
     bamFiles[bamUrl] = new BamFile({
-      bamUrl
+      bamUrl,
     });
 
     // we have to fetch the header before we can fetch data
@@ -255,7 +262,7 @@ const init = (uid, bamUrl, chromSizesUrl) => {
 
   dataConfs[uid] = {
     bamUrl,
-    chromSizesUrl
+    chromSizesUrl,
   };
 };
 
@@ -304,7 +311,7 @@ const tilesetInfo = uid => {
       ),
       max_width: chromInfo.totalLength,
       min_pos: [0],
-      max_pos: [chromInfo.totalLength]
+      max_pos: [chromInfo.totalLength],
     };
 
     return retVal;
@@ -357,7 +364,9 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
-                tileValues[`${uid}.${z}.${x}`] = tileValues[`${uid}.${z}.${x}`].concat(mappedRecords);
+                tileValues[`${uid}.${z}.${x}`] = tileValues[
+                  `${uid}.${z}.${x}`
+                ].concat(mappedRecords);
               })
           );
 
@@ -377,7 +386,9 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
-                tileValues[`${uid}.${z}.${x}`] = tileValues[`${uid}.${z}.${x}`].concat(mappedRecords);
+                tileValues[`${uid}.${z}.${x}`] = tileValues[
+                  `${uid}.${z}.${x}`
+                ].concat(mappedRecords);
 
                 return [];
               })
@@ -477,13 +488,13 @@ const parseMD = (mdString, useCounts) => {
       if (useCounts) {
         substitutions.push({
           length: +lettersBefore.join(''),
-          type: mdString[i]
+          type: mdString[i],
         });
       } else {
         substitutions.push({
           pos: currPos,
           base: mdString[i + 0],
-          length: 1
+          length: 1,
         });
       }
 
@@ -640,9 +651,11 @@ const renderSegments = (
   scaleRange,
   position,
   dimensions,
-  prevRows
+  prevRows,
+  groupByOption
 ) => {
   const allSegments = {};
+  console.log('prevRows:', prevRows);
 
   for (const tileId of tileIds) {
     const tileValue = tileValues[`${uid}.${tileId}`];
@@ -657,19 +670,41 @@ const renderSegments = (
   }
 
   const segmentList = Object.values(allSegments);
+  console.log('segmentList:', segmentList);
 
-  // console.log(
-  //   'allSegements',
-  //   Object.values(allSegments).filter(x => x.to - x.from > 1000)
-  // );
+  let grouped = null;
 
-  const xScale = scaleLinear()
-    .domain(domain)
-    .range(scaleRange);
+  // group by some attribute or don't
+  if (groupBy) {
+    grouped = groupBy(segmentList, groupByOption);
+  } else {
+    grouped = { null: segmentList };
+  }
 
-  let currPosition = 0;
+  // calculate the the rows of reads for each group
+  for (let key of Object.keys(grouped)) {
+    console.log('prevRows:', prevRows);
 
-  let currColor = 0;
+    grouped[key].rows = segmentsToRows(grouped[key], {
+      prevRows: (prevRows[key] && prevRows[key].rows) || [],
+    });
+  }
+
+  // calculate the height of each group
+  const totalRows = Object.values(grouped)
+    .map(x => x.rows.length)
+    .reduce((a, b) => a + b, 0);
+  let currStart = 0;
+
+  console.log('totalRows:', totalRows);
+  console.log('dimensions[1]', dimensions[1]);
+
+  // const d = range(0, rows.length);
+  const yGlobalScale = scaleBand()
+    .domain(range(0, totalRows))
+    .range([0, dimensions[1]])
+    .paddingInner(0.2);
+  
 
   const addPosition = (x1, y1) => {
     if (currPosition > allPositionsLength - 2) {
@@ -717,185 +752,227 @@ const renderSegments = (
     addColor(r, g, b, a, 6);
   };
 
-  const rows = segmentsToRows(segmentList, {
-    prevRows
-  });
-  const d = range(0, rows.length);
-  const r = [0, dimensions[1]];
-  const yScale = scaleBand()
-    .domain(d)
-    .range(r)
-    .paddingInner(0.2);
 
-  let xLeft;
-  let xRight;
-  let yTop;
-  let yBottom;
+  console.log('grouped:', grouped);
 
-  rows.map((row, i) => {
-    row.map((segment, j) => {
-      const from = xScale(segment.from);
-      const to = xScale(segment.to);
+  const xScale = scaleLinear()
+    .domain(domain)
+    .range(scaleRange);
 
-      xLeft = from;
-      xRight = to;
-      yTop = yScale(i);
-      yBottom = yTop + yScale.bandwidth();
+  let currPosition = 0;
+  let currColor = 0;
 
-      addPosition(xLeft, yTop);
-      addPosition(xRight, yTop);
-      addPosition(xLeft, yBottom);
+  let groupCounter = 0;
+  for (const key of Object.keys(grouped)) {
+    const groupHeight = (grouped[key].rows.length / totalRows) * dimensions[1];
+    grouped[key].start = yGlobalScale(currStart);
+    currStart += grouped[key].rows.length;
+    grouped[key].end = yGlobalScale(currStart-1) + yGlobalScale.bandwidth();
+    console.log("end:", currStart, yGlobalScale(currStart), grouped[key].end);
+    const lineHeight = yGlobalScale.step() - yGlobalScale.bandwidth();
+    console.log('lineHeight:', 
+      0, grouped[key].start, 
+      dimensions[0], lineHeight);
 
-      addPosition(xLeft, yBottom);
-      addPosition(xRight, yTop);
-      addPosition(xRight, yBottom);
+    addRect(
+      0, grouped[key].end, 
+      dimensions[0], lineHeight,
+      0, 0, 0, 1
+    );
 
-      addColor(0.8, 0.8, 0.8, 1, 6);
+    if (groupCounter % 2) {
+      addRect(
+        0, grouped[key].start, 
+        dimensions[0], grouped[key].end - grouped[key].start,
+        0, 0, 0, 0.050
+      );
+    }
 
-      let substitutions = [];
+    groupCounter += 1;
+  }
 
-      if (segment.md) {
-        substitutions = parseMD(segment.md);
-      }
+  for (const group of Object.values(grouped)) {
+    const rows = group.rows;
 
-      if (segment.cigar) {
-        const cigarSubs = parseMD(segment.cigar, true);
+    const d = range(0, rows.length);
+    const r = [group.start, group.end];
+    const yScale = scaleBand()
+      .domain(d)
+      .range(r)
+      .paddingInner(0.2);
 
-        // console.log('cigarSubs', cigarSubs);
+    let xLeft;
+    let xRight;
+    let yTop;
+    let yBottom;
 
-        let currPos = 0;
+    rows.map((row, i) => {
+      row.map((segment, j) => {
+        const from = xScale(segment.from);
+        const to = xScale(segment.to);
 
-        for (const sub of cigarSubs) {
-          if (sub.type === 'X') {
-            // sequence mismatch, no need to do anything
-            substitutions.push({
-              pos: currPos,
-              length: sub.length,
-              type: 'X'
-            });
-
-            currPos += sub.length;
-          } else if (sub.type === 'I') {
-            substitutions.push({
-              pos: currPos,
-              length: 0.1,
-              type: 'I'
-            });
-          } else if (sub.type === 'D') {
-            substitutions.push({
-              pos: currPos,
-              length: sub.length,
-              type: 'D'
-            });
-            currPos += sub.length;
-          } else if (sub.type === 'N') {
-            substitutions.push({
-              pos: currPos,
-              length: sub.length,
-              type: 'N'
-            });
-            currPos += sub.length;
-          } else if (sub.type === '=' || sub.type === 'M') {
-            currPos += sub.length;
-          } else {
-            // console.log('skipping:', sub.type);
-          }
-          // if (referenceConsuming.has(sub.base)) {
-          //   if (queryConsuming.has(sub.base)) {
-          //     substitutions.push(
-          //     {
-          //       pos:
-          //     })
-          //   }
-          // }
-        }
-
-        const firstSub = cigarSubs[0];
-        const lastSub = cigarSubs[cigarSubs.length - 1];
-
-        // positions are from the beginning of the read
-        if (firstSub.type === 'S') {
-          // soft clipping at the beginning
-          substitutions.push({
-            pos: -firstSub.length + 1,
-            type: 'S',
-            length: firstSub.length
-          });
-        } else if (lastSub.type === 'S') {
-          // soft clipping at the end
-          substitutions.push({
-            pos: segment.to - segment.from + 1,
-            length: lastSub.length,
-            type: 'S'
-          });
-        }
-      }
-
-      for (const substitution of substitutions) {
-        xLeft = xScale(segment.from + substitution.pos - 1);
-        const width = Math.max(1, xScale(substitution.length) - xScale(0));
-        xRight = xLeft + width;
+        xLeft = from;
+        xRight = to;
         yTop = yScale(i);
-        const height = yScale.bandwidth();
-        yBottom = yTop + height;
+        yBottom = yTop + yScale.bandwidth();
 
-        if (substitution.base === 'A') {
-          addRect(xLeft, yTop, width, height, 0, 0, 1, 1);
-        } else if (substitution.base === 'C') {
-          addRect(xLeft, yTop, width, height, 1, 0, 0, 1);
-        } else if (substitution.base === 'G') {
-          addRect(xLeft, yTop, width, height, 0, 1, 0, 1);
-        } else if (substitution.base === 'T') {
-          addRect(xLeft, yTop, width, height, 1, 1, 0, 1);
-        } else if (substitution.type === 'S') {
-          addRect(xLeft, yTop, width, height, 0, 1, 1, 0.5);
-        } else if (substitution.type === 'X') {
-          addRect(xLeft, yTop, width, height, 0, 0, 0, 0.7);
-        } else if (substitution.type === 'I') {
-          addRect(xLeft, yTop, width, height, 1, 0, 1, 0.5);
-        } else if (substitution.type === 'D') {
-          addRect(xLeft, yTop, width, height, 1, 0.5, 0.5, 0.5);
-        } else if (substitution.type === 'N') {
-          // deletions so we're going to draw a thinner line
-          // across
-          const xMiddle = (yTop + yBottom) / 2;
-          const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
+        addPosition(xLeft, yTop);
+        addPosition(xRight, yTop);
+        addPosition(xLeft, yBottom);
 
-          const yMidTop = xMiddle - delWidth / 2;
-          const yMidBottom = xMiddle + delWidth / 2;
+        addPosition(xLeft, yBottom);
+        addPosition(xRight, yTop);
+        addPosition(xRight, yBottom);
 
-          addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, 1, 1, 1, 1);
-          addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, 1, 1, 1, 1);
+        addColor(0.8, 0.8, 0.8, 1, 6);
 
-          let currPos = xLeft;
-          const DASH_LENGTH = 6;
-          const DASH_SPACE = 4;
+        let substitutions = [];
 
-          // draw dashes
-          while (currPos <= xRight) {
-            // make sure the last dash doesn't overrun
-            const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
-
-            addRect(currPos, yMidTop, dashLength, delWidth, 1, 1, 1, 1);
-            currPos += DASH_LENGTH + DASH_SPACE;
-          }
-          // allready handled above
-        } else {
-          addRect(xLeft, yTop, width, height, 0, 0, 0, 1);
+        if (segment.md) {
+          substitutions = parseMD(segment.md);
         }
-      }
+
+        if (segment.cigar) {
+          const cigarSubs = parseMD(segment.cigar, true);
+
+          // console.log('cigarSubs', cigarSubs);
+
+          let currPos = 0;
+
+          for (const sub of cigarSubs) {
+            if (sub.type === 'X') {
+              // sequence mismatch, no need to do anything
+              substitutions.push({
+                pos: currPos,
+                length: sub.length,
+                type: 'X',
+              });
+
+              currPos += sub.length;
+            } else if (sub.type === 'I') {
+              substitutions.push({
+                pos: currPos,
+                length: 0.1,
+                type: 'I',
+              });
+            } else if (sub.type === 'D') {
+              substitutions.push({
+                pos: currPos,
+                length: sub.length,
+                type: 'D',
+              });
+              currPos += sub.length;
+            } else if (sub.type === 'N') {
+              substitutions.push({
+                pos: currPos,
+                length: sub.length,
+                type: 'N',
+              });
+              currPos += sub.length;
+            } else if (sub.type === '=' || sub.type === 'M') {
+              currPos += sub.length;
+            } else {
+              // console.log('skipping:', sub.type);
+            }
+            // if (referenceConsuming.has(sub.base)) {
+            //   if (queryConsuming.has(sub.base)) {
+            //     substitutions.push(
+            //     {
+            //       pos:
+            //     })
+            //   }
+            // }
+          }
+
+          const firstSub = cigarSubs[0];
+          const lastSub = cigarSubs[cigarSubs.length - 1];
+
+          // positions are from the beginning of the read
+          if (firstSub.type === 'S') {
+            // soft clipping at the beginning
+            substitutions.push({
+              pos: -firstSub.length + 1,
+              type: 'S',
+              length: firstSub.length,
+            });
+          } else if (lastSub.type === 'S') {
+            // soft clipping at the end
+            substitutions.push({
+              pos: segment.to - segment.from + 1,
+              length: lastSub.length,
+              type: 'S',
+            });
+          }
+        }
+
+        for (const substitution of substitutions) {
+          xLeft = xScale(segment.from + substitution.pos - 1);
+          const width = Math.max(1, xScale(substitution.length) - xScale(0));
+          xRight = xLeft + width;
+          yTop = yScale(i);
+          const height = yScale.bandwidth();
+          yBottom = yTop + height;
+
+          if (substitution.base === 'A') {
+            addRect(xLeft, yTop, width, height, 0, 0, 1, 1);
+          } else if (substitution.base === 'C') {
+            addRect(xLeft, yTop, width, height, 1, 0, 0, 1);
+          } else if (substitution.base === 'G') {
+            addRect(xLeft, yTop, width, height, 0, 1, 0, 1);
+          } else if (substitution.base === 'T') {
+            addRect(xLeft, yTop, width, height, 1, 1, 0, 1);
+          } else if (substitution.type === 'S') {
+            addRect(xLeft, yTop, width, height, 0, 1, 1, 0.5);
+          } else if (substitution.type === 'X') {
+            addRect(xLeft, yTop, width, height, 0, 0, 0, 0.7);
+          } else if (substitution.type === 'I') {
+            addRect(xLeft, yTop, width, height, 1, 0, 1, 0.5);
+          } else if (substitution.type === 'D') {
+            addRect(xLeft, yTop, width, height, 1, 0.5, 0.5, 0.5);
+          } else if (substitution.type === 'N') {
+            // deletions so we're going to draw a thinner line
+            // across
+            const xMiddle = (yTop + yBottom) / 2;
+            const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
+
+            const yMidTop = xMiddle - delWidth / 2;
+            const yMidBottom = xMiddle + delWidth / 2;
+
+            addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, 1, 1, 1, 1);
+            addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, 1, 1, 1, 1);
+
+            let currPos = xLeft;
+            const DASH_LENGTH = 6;
+            const DASH_SPACE = 4;
+
+            // draw dashes
+            while (currPos <= xRight) {
+              // make sure the last dash doesn't overrun
+              const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
+
+              addRect(currPos, yMidTop, dashLength, delWidth, 1, 1, 1, 1);
+              currPos += DASH_LENGTH + DASH_SPACE;
+            }
+            // allready handled above
+          } else {
+            addRect(xLeft, yTop, width, height, 0, 0, 0, 1);
+          }
+        }
+      });
     });
-  });
+  }
 
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
 
+  console.log('grouped:', grouped);
+
   const objData = {
-    rows,
+    rows: grouped,
     positionsBuffer,
     colorsBuffer,
     xScaleDomain: domain,
-    xScaleRange: scaleRange
+    xScaleRange: scaleRange,
   };
 
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer]);
@@ -909,7 +986,7 @@ const tileFunctions = {
   serverFetchTilesDebounced,
   fetchTilesDebounced,
   tile,
-  renderSegments
+  renderSegments,
 };
 
 expose(tileFunctions);
