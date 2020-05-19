@@ -94,11 +94,11 @@ function natcmp(xRow, yRow) {
   const yParts = [];
 
   for (const part of x.match(/(\d+|[^\d]+)/g)) {
-    xParts.push(isNaN(part) ? part.toLowerCase() : +part);
+    xParts.push(Number.isNaN(part) ? part.toLowerCase() : +part);
   }
 
   for (const part of y.match(/(\d+|[^\d]+)/g)) {
-    xParts.push(isNaN(part) ? part.toLowerCase() : +part);
+    xParts.push(Number.isNaN(part) ? part.toLowerCase() : +part);
   }
 
   // order of these parameters is purposefully reverse how they should be
@@ -112,8 +112,6 @@ function natcmp(xRow, yRow) {
     return -1;
   } else if (yParts > xParts) {
     return 1;
-  } else {
-    return 0;
   }
 
   return 0;
@@ -655,7 +653,6 @@ const renderSegments = (
   groupByOption
 ) => {
   const allSegments = {};
-  console.log('prevRows:', prevRows);
 
   for (const tileId of tileIds) {
     const tileValue = tileValues[`${uid}.${tileId}`];
@@ -670,8 +667,18 @@ const renderSegments = (
   }
 
   const segmentList = Object.values(allSegments);
-  console.log('segmentList:', segmentList);
 
+  let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
+
+  for (let i = 0; i < segmentList.length; i++) {
+    if (segmentList[i].from < minPos) {
+      minPos = segmentList[i].from;
+    }
+
+    if (segmentList[i].to > maxPos) {
+      maxPos = segmentList[i].to;
+    }
+  }
   let grouped = null;
 
   // group by some attribute or don't
@@ -683,8 +690,6 @@ const renderSegments = (
 
   // calculate the the rows of reads for each group
   for (let key of Object.keys(grouped)) {
-    console.log('prevRows:', prevRows);
-
     grouped[key].rows = segmentsToRows(grouped[key], {
       prevRows: (prevRows[key] && prevRows[key].rows) || [],
     });
@@ -696,15 +701,14 @@ const renderSegments = (
     .reduce((a, b) => a + b, 0);
   let currStart = 0;
 
-  console.log('totalRows:', totalRows);
-  console.log('dimensions[1]', dimensions[1]);
-
   // const d = range(0, rows.length);
   const yGlobalScale = scaleBand()
     .domain(range(0, totalRows))
     .range([0, dimensions[1]])
     .paddingInner(0.2);
-  
+
+  let currPosition = 0;
+  let currColor = 0;
 
   const addPosition = (x1, y1) => {
     if (currPosition > allPositionsLength - 2) {
@@ -752,39 +756,31 @@ const renderSegments = (
     addColor(r, g, b, a, 6);
   };
 
-
-  console.log('grouped:', grouped);
-
   const xScale = scaleLinear()
     .domain(domain)
     .range(scaleRange);
 
-  let currPosition = 0;
-  let currColor = 0;
-
   let groupCounter = 0;
-  for (const key of Object.keys(grouped)) {
-    const groupHeight = (grouped[key].rows.length / totalRows) * dimensions[1];
+  const groupKeys = Object.keys(grouped).sort();
+
+  for (const key of groupKeys) {
     grouped[key].start = yGlobalScale(currStart);
     currStart += grouped[key].rows.length;
-    grouped[key].end = yGlobalScale(currStart-1) + yGlobalScale.bandwidth();
-    console.log("end:", currStart, yGlobalScale(currStart), grouped[key].end);
+    grouped[key].end = yGlobalScale(currStart - 1) + yGlobalScale.bandwidth();
     const lineHeight = yGlobalScale.step() - yGlobalScale.bandwidth();
-    console.log('lineHeight:', 
-      0, grouped[key].start, 
-      dimensions[0], lineHeight);
 
-    addRect(
-      0, grouped[key].end, 
-      dimensions[0], lineHeight,
-      0, 0, 0, 1
-    );
+    addRect(0, grouped[key].end, dimensions[0], lineHeight, 0, 0, 0, 1);
 
     if (groupCounter % 2) {
       addRect(
-        0, grouped[key].start, 
-        dimensions[0], grouped[key].end - grouped[key].start,
-        0, 0, 0, 0.050
+        0,
+        grouped[key].start,
+        xScale(maxPos) - xScale(minPos),
+        grouped[key].end - grouped[key].start,
+        0,
+        0,
+        0,
+        0.05
       );
     }
 
@@ -792,7 +788,7 @@ const renderSegments = (
   }
 
   for (const group of Object.values(grouped)) {
-    const rows = group.rows;
+    const { rows } = group;
 
     const d = range(0, rows.length);
     const r = [group.start, group.end];
@@ -964,8 +960,6 @@ const renderSegments = (
 
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
-
-  console.log('grouped:', grouped);
 
   const objData = {
     rows: grouped,

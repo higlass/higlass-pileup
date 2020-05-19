@@ -97,7 +97,7 @@ const getTilePosAndDimensions = (
       tileX,
       tileY,
       tileWidth,
-      tileHeight
+      tileHeight,
     };
   }
 
@@ -118,7 +118,7 @@ const getTilePosAndDimensions = (
     tileX,
     tileY,
     tileWidth,
-    tileHeight
+    tileHeight,
   };
 };
 
@@ -135,7 +135,7 @@ const PileupTrack = (HGC, ...args) => {
     constructor(context, options) {
       const worker = spawn(
         new Worker('./bam-fetcher-worker.js', {
-          _baseURL: `${getThisScriptLocation()}/`
+          _baseURL: `${getThisScriptLocation()}/`,
         })
       );
 
@@ -161,7 +161,7 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText = new PIXI.Text('Loading', {
         fontSize: '12px',
         fontFamily: 'Arial',
-        fill: 'grey'
+        fill: 'grey',
       });
 
       this.loadingText.x = 100;
@@ -176,9 +176,7 @@ const PileupTrack = (HGC, ...args) => {
       this.pLabel.addChild(this.loadingText);
     }
 
-    initTile() {
-
-    }
+    initTile() {}
 
     rerender() {
       this.updateExistingGraphics();
@@ -188,17 +186,13 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.text = 'Rendering...';
       // console.log('rendering', Object.keys(this.fetchedTiles));
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-      fetchedTileKeys.forEach(
-        (x) => {
-          this.fetching.delete(x);
-          this.rendering.add(x);
-        },
-      );
+      fetchedTileKeys.forEach(x => {
+        this.fetching.delete(x);
+        this.rendering.add(x);
+      });
       this.updateLoadingText();
 
-      this.worker.then((tileFunctions) => {
-        console.log('this.options:', this.options);
-
+      this.worker.then(tileFunctions => {
         tileFunctions
           .renderSegments(
             this.dataFetcher.uid,
@@ -208,15 +202,13 @@ const PileupTrack = (HGC, ...args) => {
             this.position,
             this.dimensions,
             this.prevRows,
-            this.options && this.options.groupBy,
+            this.options && this.options.groupBy
           )
           .then(toRender => {
             this.loadingText.visible = false;
-            fetchedTileKeys.forEach(
-              (x) => {
-                this.rendering.delete(x);
-              },
-            );
+            fetchedTileKeys.forEach(x => {
+              this.rendering.delete(x);
+            });
             this.updateLoadingText();
 
             this.errorTextText = null;
@@ -279,20 +271,20 @@ const PileupTrack = (HGC, ...args) => {
 
             this.draw();
             this.animate();
-          })
-          // .catch(err => {
-          //   // console.log('err:', err);
-          //   // console.log('err:', err.message);
-          //   this.errorTextText = err.message;
+          });
+        // .catch(err => {
+        //   // console.log('err:', err);
+        //   // console.log('err:', err.message);
+        //   this.errorTextText = err.message;
 
-          //   // console.log('errorTextText:', this.errorTextText);
-          //   // this.draw();
-          //   // this.animate();
-          //   this.drawError();
-          //   this.animate();
+        //   // console.log('errorTextText:', this.errorTextText);
+        //   // this.draw();
+        //   // this.animate();
+        //   this.drawError();
+        //   this.animate();
 
-          //   // console.log('this.pBorder:', this.pBorder);
-          // });
+        //   // console.log('this.pBorder:', this.pBorder);
+        // });
       });
     }
 
@@ -301,18 +293,18 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.text = '';
 
       if (!this.tilesetInfo) {
-        this.loadingText.text = "Fetching tileset info...";
+        this.loadingText.text = 'Fetching tileset info...';
         return;
       }
 
       if (this.fetching.size) {
-        this.loadingText.text = `Fetching... ${
-          [...this.fetching].map(x => x.split('|')[0]).join(" ")
-        }`;
+        this.loadingText.text = `Fetching... ${[...this.fetching]
+          .map(x => x.split('|')[0])
+          .join(' ')}`;
       }
 
       if (this.rendering.size) {
-        this.loadingText.text = `Rendering... ${[...this.rendering].join(" ")}`;
+        this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
       }
 
       if (!this.fetching.size && !this.rendering.size) {
@@ -507,10 +499,7 @@ const PileupTrack = (HGC, ...args) => {
         // }
         const gImage = document.createElement('g');
 
-        gImage.setAttribute(
-          'transform',
-          `translate(0,0)`
-        );
+        gImage.setAttribute('transform', `translate(0,0)`);
 
         const image = document.createElement('image');
         image.setAttributeNS(
@@ -573,7 +562,7 @@ PileupTrack.config = {
   availableOptions: [
     'axisPositionHorizontal',
     'axisLabelFormatting',
-    'groupBy'
+    'groupBy',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -583,19 +572,19 @@ PileupTrack.config = {
   },
   optionsInfo: {
     groupBy: {
-      name: "Group by",
+      name: 'Group by',
       inlineOptions: {
         hpTag: {
-          value: "tags.HP",
-          name: "HP tag"
+          value: 'tags.HP',
+          name: 'HP tag',
         },
         nothing: {
           value: null,
-          name: "Nothing"
-        }
-      }
-    }
-  }
+          name: 'Nothing',
+        },
+      },
+    },
+  },
 };
 
 export default PileupTrack;
