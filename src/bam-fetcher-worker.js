@@ -786,6 +786,8 @@ const renderSegments = (
 
     groupCounter += 1;
   }
+  let insertions = 0;
+  let insertions10 = 0;
 
   for (const group of Object.values(grouped)) {
     const { rows } = group;
@@ -846,9 +848,14 @@ const renderSegments = (
 
               currPos += sub.length;
             } else if (sub.type === 'I') {
+              insertions += 1;
+              if (sub.length > 10) {
+                insertions10 += 1;
+              }
               substitutions.push({
                 pos: currPos,
                 length: 0.1,
+                sub,
                 type: 'I',
               });
             } else if (sub.type === 'D') {
@@ -957,6 +964,8 @@ const renderSegments = (
       });
     });
   }
+  console.log('insertions:', insertions);
+  console.log('insertions10:', insertions10);
 
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
