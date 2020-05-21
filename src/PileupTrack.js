@@ -576,6 +576,10 @@ PileupTrack.config = {
     groupBy: {
       name: 'Group by',
       inlineOptions: {
+        strand: {
+          value: 'strand',
+          name: 'Strand',
+        },
         hpTag: {
           value: 'tags.HP',
           name: 'HP tag',
