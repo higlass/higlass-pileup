@@ -178,7 +178,9 @@ const PileupTrack = (HGC, ...args) => {
 
     initTile() {}
 
-    rerender() {
+    rerender(options) {
+      this.options = options;
+
       this.updateExistingGraphics();
     }
 
