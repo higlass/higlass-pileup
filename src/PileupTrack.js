@@ -190,8 +190,6 @@ const PileupTrack = (HGC, ...args) => {
         })
       );
 
-      console.log('HGC.utils', HGC.utils);
-
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
       super(context, options);
