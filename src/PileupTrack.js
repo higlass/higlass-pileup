@@ -250,11 +250,17 @@ const PileupTrack = (HGC, ...args) => {
             this.pMain.addChild(newGraphics);
             this.segmentGraphics = newGraphics;
 
-            this.yScaleBand = HGC.libraries.d3Scale
-              .scaleBand()
-              .domain(HGC.libraries.d3Array.range(0, this.prevRows.length))
-              .range([this.position[1], this.position[1] + this.dimensions[1]])
-              .paddingInner(0.2);
+            this.yScaleBands = {};
+            for (let key in this.prevRows) {
+              this.yScaleBands[key] = HGC.libraries.d3Scale
+                .scaleBand()
+                .domain(
+                  HGC.libraries.d3Array.range(0, this.prevRows[key].rows.length)
+                )
+                .range([this.prevRows[key].start, this.prevRows[key].end])
+                .paddingInner(0.2);
+            }
+
             this.drawnAtScale = HGC.libraries.d3Scale
               .scaleLinear()
               .domain(toRender.xScaleDomain)
@@ -315,34 +321,49 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     draw() {
-      const valueScale = HGC.libraries.d3Scale
-        .scaleLinear()
-        .domain([0, this.prevRows.length])
-        .range([0, this.dimensions[1]]);
-      HGC.utils.trackUtils.drawAxis(this, valueScale);
+      // const valueScale = HGC.libraries.d3Scale
+      //   .scaleLinear()
+      //   .domain([0, this.prevRows.length])
+      //   .range([0, this.dimensions[1]]);
+      // HGC.utils.trackUtils.drawAxis(this, valueScale);
       this.trackNotFoundText.text = 'Pete rules11!';
       this.trackNotFoundText.visible = true;
     }
 
     getMouseOverHtml(trackX, trackY) {
-      if (this.yScaleBand) {
-        const eachBand = this.yScaleBand.step();
-        const index = Math.round(trackY / eachBand);
+      console.log('this.prevRows', this.prevRows);
 
-        if (index >= 0 && index < this.prevRows.length) {
-          const row = this.prevRows[index];
+      if (this.yScaleBands) {
+        for (const key of Object.keys(this.yScaleBands)) {
+          const yScaleBand = this.yScaleBands[key];
 
-          for (const read of row) {
-            const readTrackFrom = this._xScale(read.from);
-            const readTrackTo = this._xScale(read.to);
+          const [start, end] = yScaleBand.range();
 
-            if (readTrackFrom <= trackX && trackX <= readTrackTo) {
-              return (
-                `Position: ${read.chrName}:${read.from - read.chrOffset}<br>` +
-                `Read length: ${read.to - read.from}<br>` +
-                `MAPQ: ${read.mapq}<br>`
-              );
-              // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
+          if (start <= trackY && trackY <= end) {
+            const eachBand = yScaleBand.step();
+            const index = Math.round((trackY - start) / eachBand);
+            const rows = this.prevRows[key].rows;
+
+            console.log('prevRows:', this.prevRows);
+            console.log('index', index, 'key', key);
+
+            if (index >= 0 && index < rows.length) {
+              const row = rows[index];
+
+              for (const read of row) {
+                const readTrackFrom = this._xScale(read.from);
+                const readTrackTo = this._xScale(read.to);
+
+                if (readTrackFrom <= trackX && trackX <= readTrackTo) {
+                  return (
+                    `Position: ${read.chrName}:${read.from -
+                      read.chrOffset}<br>` +
+                    `Read length: ${read.to - read.from}<br>` +
+                    `MAPQ: ${read.mapq}<br>`
+                  );
+                  // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
+                }
+              }
             }
           }
         }

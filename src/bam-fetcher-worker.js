@@ -970,6 +970,7 @@ const renderSegments = (
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
 
+  console.log('grouped:', grouped);
   const objData = {
     rows: grouped,
     positionsBuffer,
