@@ -1,5 +1,6 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, Worker } from 'threads';
+import { getSubstitutions } from './bam-utils';
 
 const shader = PIXI.Shader.from(
   `
@@ -28,6 +29,56 @@ varying vec4 vColor;
 `
 );
 
+function transformY(p, t) {
+  return p * t.k + t.y;
+}
+
+function invY(p, t) {
+  return (p - t.y) / t.k;
+}
+
+function subPos(read, sub) {
+  const subStart = read.from + sub.pos;
+  const subEnd = read.from + sub.pos + sub.length;
+
+  return [subStart, subEnd];
+}
+
+/** The distance between a substitution and the mouse position */
+function calcSubDistance(mousePos, read, sub) {
+  const [subStart, subEnd] = subPos(read, sub);
+  let subDistance = null;
+  if (mousePos < subStart) {
+    subDistance = subStart - mousePos;
+  } else if (mousePos > subEnd) {
+    subDistance = mousePos - subEnd;
+  } else {
+    subDistance = 0;
+  }
+
+  return subDistance;
+}
+
+/** Find the thearest substition to the mouse position */
+function findNearestSub(mousePos, read, nearestDistance) {
+  const subs = getSubstitutions(read);
+  let nearestSub = null;
+  let nearestSubDistance = Number.MAX_VALUE;
+
+  for (const sub of subs) {
+    const subDistance = calcSubDistance(mousePos, read, sub);
+
+    if (subDistance < nearestSubDistance) {
+      nearestSub = sub;
+      nearestSubDistance = subDistance;
+    }
+  }
+
+  if (nearestSubDistance < nearestDistance) {
+    return nearestSub;
+  }
+  return null;
+}
 /**
  * Get the location of this script so that we can use it to fetch
  * the worker script.
@@ -139,6 +190,8 @@ const PileupTrack = (HGC, ...args) => {
         })
       );
 
+      console.log('HGC.utils', HGC.utils);
+
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
       super(context, options);
@@ -172,6 +225,16 @@ const PileupTrack = (HGC, ...args) => {
       this.fetching = new Set();
       this.rendering = new Set();
 
+      this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
+
+      if (this.options.showMousePosition && !this.hideMousePosition) {
+        this.hideMousePosition = HGC.utils.showMousePosition(
+          this,
+          this.is2d,
+          this.isShowGlobalMousePosition()
+        );
+      }
+
       this.pLabel.addChild(this.loadingText);
     }
 
@@ -179,6 +242,19 @@ const PileupTrack = (HGC, ...args) => {
 
     rerender(options) {
       this.options = options;
+
+      if (this.options.showMousePosition && !this.hideMousePosition) {
+        this.hideMousePosition = HGC.utils.showMousePosition(
+          this,
+          this.is2d,
+          this.isShowGlobalMousePosition()
+        );
+      }
+
+      if (!this.options.showMousePosition && this.hideMousePosition) {
+        this.hideMousePosition();
+        this.hideMousePosition = undefined;
+      }
 
       this.updateExistingGraphics();
     }
@@ -333,10 +409,12 @@ const PileupTrack = (HGC, ...args) => {
       this.trackNotFoundText.visible = true;
     }
 
-    getMouseOverHtml(trackX, trackY) {
+    getMouseOverHtml(trackX, trackYIn) {
       // console.log('this.prevRows', this.prevRows);
-
+      // const trackY = this.valueScaleTransform.invert(track)
       this.mouseOverGraphics.clear();
+      const trackY = invY(trackYIn, this.valueScaleTransform);
+
       if (this.yScaleBands) {
         for (const key of Object.keys(this.yScaleBands)) {
           const yScaleBand = this.yScaleBands[key];
@@ -345,7 +423,7 @@ const PileupTrack = (HGC, ...args) => {
 
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
-            const index = Math.round((trackY - start) / eachBand);
+            const index = Math.floor((trackY - start) / eachBand);
             const { rows } = this.prevRows[key];
 
             // console.log('prevRows:', this.prevRows);
@@ -353,6 +431,7 @@ const PileupTrack = (HGC, ...args) => {
 
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
+              // console.log('row:', row);
 
               for (const read of row) {
                 const readTrackFrom = this._xScale(read.from);
@@ -360,24 +439,52 @@ const PileupTrack = (HGC, ...args) => {
 
                 if (readTrackFrom <= trackX && trackX <= readTrackTo) {
                   const xPos = this._xScale(read.from);
-                  const yPos = yScaleBand(index);
+                  const yPos = transformY(
+                    yScaleBand(index),
+                    this.valueScaleTransform
+                  );
 
-                  const width = this._xScale(read.to) - this._xScale(read.from);
-                  const height = eachBand;
+                  const MAX_DIST = 10;
+                  const nearestDistance =
+                    this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
 
-                  this.mouseOverGraphics.lineStyle({
-                    width: 1,
-                    color: 0,
-                  });
-                  this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
-                  this.animate();
+                  const mousePos = this._xScale.invert(trackX);
+                  // find the nearest substitution (or indel)
+                  const nearestSub = findNearestSub(
+                    mousePos,
+                    read,
+                    nearestDistance
+                  );
 
-                  return (
+                  // console.log('mousePos', mousePos);
+                  // console.log('read:', read);
+                  // console.log('nearestSub', nearestSub);
+
+                  if (this.options.outlineReadOnHover) {
+                    const width =
+                      this._xScale(read.to) - this._xScale(read.from);
+                    const height =
+                      yScaleBand.bandwidth() * this.valueScaleTransform.k;
+
+                    this.mouseOverGraphics.lineStyle({
+                      width: 1,
+                      color: 0,
+                    });
+                    this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
+                    this.animate();
+                  }
+
+                  let mouseOverHtml =
                     `Position: ${read.chrName}:${read.from -
                       read.chrOffset}<br>` +
                     `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mapq}<br>`
-                  );
+                    `MAPQ: ${read.mapq}<br>`;
+
+                  if (nearestSub) {
+                    // const [subStart, subEnd] = subPos(read, nearestSub);
+                    mouseOverHtml += `Nearest sub: ${nearestSub.type} (${nearestSub.sub.length})`;
+                  }
+                  return mouseOverHtml;
                   // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                 }
               }
@@ -478,6 +585,7 @@ const PileupTrack = (HGC, ...args) => {
       this.segmentGraphics.scale.y = newTransform.k;
       this.segmentGraphics.position.y = newTransform.y;
 
+      this.mouseOverGraphics.clear();
       this.animate();
     }
 
@@ -491,6 +599,8 @@ const PileupTrack = (HGC, ...args) => {
           this.drawnAtScale
         );
       }
+      this.mouseOverGraphics.clear();
+      this.animate();
     }
 
     exportSVG() {
@@ -602,14 +712,31 @@ PileupTrack.config = {
     'axisPositionHorizontal',
     'axisLabelFormatting',
     'groupBy',
+    'outlineReadOnHover',
+    'showMousePosition',
     // 'minZoom'
   ],
   defaultOptions: {
     // minZoom: null,
     axisPositionHorizontal: 'right',
     axisLabelFormatting: 'normal',
+    outlineReadOnHover: false,
+    showMousePosition: false,
   },
   optionsInfo: {
+    outlineReadOnHover: {
+      name: 'Outline read on hover',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
     groupBy: {
       name: 'Group by',
       inlineOptions: {

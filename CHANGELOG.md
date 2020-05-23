@@ -1,3 +1,9 @@
+v0.3.4
+
+- Highlight reads on mouseOver
+- Show nearest mismatch in mouseover popup
+- Enabled the showMousePosition option
+
 v0.2.2
 
 - Implemented exportAsSvg
