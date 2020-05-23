@@ -142,7 +142,6 @@ const PileupTrack = (HGC, ...args) => {
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
       super(context, options);
-
       context.dataFetcher.track = this;
 
       this.worker = worker;
@@ -250,6 +249,10 @@ const PileupTrack = (HGC, ...args) => {
             this.pMain.addChild(newGraphics);
             this.segmentGraphics = newGraphics;
 
+            // remove and add again to place on top
+            this.pMain.removeChild(this.mouseOverGraphics);
+            this.pMain.addChild(this.mouseOverGraphics);
+
             this.yScaleBands = {};
             for (let key in this.prevRows) {
               this.yScaleBands[key] = HGC.libraries.d3Scale
@@ -331,8 +334,9 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     getMouseOverHtml(trackX, trackY) {
-      console.log('this.prevRows', this.prevRows);
+      // console.log('this.prevRows', this.prevRows);
 
+      this.mouseOverGraphics.clear();
       if (this.yScaleBands) {
         for (const key of Object.keys(this.yScaleBands)) {
           const yScaleBand = this.yScaleBands[key];
@@ -342,10 +346,10 @@ const PileupTrack = (HGC, ...args) => {
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
             const index = Math.round((trackY - start) / eachBand);
-            const rows = this.prevRows[key].rows;
+            const { rows } = this.prevRows[key];
 
-            console.log('prevRows:', this.prevRows);
-            console.log('index', index, 'key', key);
+            // console.log('prevRows:', this.prevRows);
+            // console.log('index', index, 'key', key);
 
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
@@ -355,6 +359,19 @@ const PileupTrack = (HGC, ...args) => {
                 const readTrackTo = this._xScale(read.to);
 
                 if (readTrackFrom <= trackX && trackX <= readTrackTo) {
+                  const xPos = this._xScale(read.from);
+                  const yPos = yScaleBand(index);
+
+                  const width = this._xScale(read.to) - this._xScale(read.from);
+                  const height = eachBand;
+
+                  this.mouseOverGraphics.lineStyle({
+                    width: 1,
+                    color: 0,
+                  });
+                  this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
+                  this.animate();
+
                   return (
                     `Position: ${read.chrName}:${read.from -
                       read.chrOffset}<br>` +
@@ -425,8 +442,7 @@ const PileupTrack = (HGC, ...args) => {
       [this.pMain.position.x, this.pMain.position.y] = this.position;
       [this.pMouseOver.position.x, this.pMouseOver.position.y] = this.position;
 
-      this.loadingText.x = newPosition[0];
-      this.loadingText.y = newPosition[1];
+      [this.loadingText.x, this.loadingText.y] = newPosition;
     }
 
     movedY(dY) {
