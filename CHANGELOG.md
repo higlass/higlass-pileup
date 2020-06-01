@@ -1,3 +1,7 @@
+v0.3.5
+
+- Added label position options
+
 v0.3.4
 
 - Highlight reads on mouseOver
