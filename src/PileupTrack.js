@@ -239,6 +239,8 @@ const PileupTrack = (HGC, ...args) => {
     initTile() {}
 
     rerender(options) {
+      super.rerender(options);
+
       this.options = options;
 
       if (this.options.showMousePosition && !this.hideMousePosition) {
@@ -710,6 +712,14 @@ PileupTrack.config = {
     'axisPositionHorizontal',
     'axisLabelFormatting',
     'groupBy',
+    'labelPosition',
+    'labelLeftMargin',
+    'labelRightMargin',
+    'labelTopMargin',
+    'labelBottomMargin',
+    'labelColor',
+    'labelTextOpacity',
+    'labelBackgroundOpacity',
     'outlineReadOnHover',
     'showMousePosition',
     // 'minZoom'
