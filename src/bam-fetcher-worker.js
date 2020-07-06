@@ -183,6 +183,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
   chrName,
   chrOffset,
   cigar: bamRecord.get('cigar'),
+  mapq: bamRecord.get('MQ'),
 });
 
 const tabularJsonToRowJson = tabularJson => {

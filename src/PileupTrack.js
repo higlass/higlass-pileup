@@ -481,8 +481,9 @@ const PileupTrack = (HGC, ...args) => {
                     `MAPQ: ${read.mapq}<br>`;
 
                   if (nearestSub) {
-                    // const [subStart, subEnd] = subPos(read, nearestSub);
-                    mouseOverHtml += `Nearest sub: ${nearestSub.type} (${nearestSub.sub.length})`;
+                    if (nearestSub.sub) {
+                      mouseOverHtml += `Nearest sub: ${nearestSub.type} (${nearestSub.sub.length})`;
+                    }
                   }
                   return mouseOverHtml;
                   // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
