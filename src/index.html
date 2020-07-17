@@ -67,40 +67,66 @@ const testViewConfig =
   "views": [
     {
       "initialXDomain": [
-        1622770.8990947946,
-        1626711.5178468754
+        1102123385.6434557,
+        1102267020.2564254
       ],
       "initialYDomain": [
-        65461661.096948035,
-        65465388.70927979
+        -50893688.28972676,
+        -50802508.474140644
       ],
       "tracks": {
         "top": [
           {
-            "type": "top-axis",
-            "local": true,
-            "orientation": "1d-horizontal",
-            "thumbnail": {},
-            "defaultOptions": {},
-            "server": "",
-            "tilesetUid": "JrURt-9UTAGZNdqLvrk7Fg",
-            "uid": "QI6X6rFESmKHEPjQRH3Sjw",
-            "options": {},
-            "width": 20,
-            "height": 20
+            "type": "combined",
+            "uid": "Q10AxA4hTaK595ei_GnDMA",
+            "height": 241,
+            "width": 470,
+            "contents": [
+              {
+                "type": "pileup",
+                "uid": "b3fCi-MgTACi2yHSqY-Meg",
+                "tilesetUid": "VgmchLEnQ1WB68wh0BHHkw",
+                "server": "https://resgen.io/api/v1",
+                "options": {
+                  "axisPositionHorizontal": "right",
+                  "axisLabelFormatting": "normal",
+                  "outlineReadOnHover": false,
+                  "showMousePosition": false,
+                  "name": "https://s3.amazonaws.com/nanopore-human-wgs/chm13/nanopore/rel3/rel3_to_v0.7.cram"
+                },
+                "width": 470,
+                "height": 241
+              },
+              {
+                "uid": "Wys9D-_0SmSclHORlqauIA",
+                "type": "viewport-projection-horizontal",
+                "fromViewUid": "E02NZNzuRZGLlD36eCn9sw",
+                "options": {
+                  "projectionFillColor": "#777",
+                  "projectionStrokeColor": "#777",
+                  "projectionFillOpacity": 0.3,
+                  "projectionStrokeOpacity": 0.7,
+                  "strokeWidth": 1
+                }
+              }
+            ],
+            "options": {}
           },
           {
-            "type": "pileup",
-            "uid": "CDl5ezSYQ1iUPAa_dqGOgw",
-            "tilesetUid": "VBK3X-DyQBGyhD9709IA0Q",
-            "server": "http://localhost:8000/api/v1",
+            "type": "horizontal-chromosome-labels",
+            "uid": "bkGgXjmDSN2zc1amr4S55Q",
+            "tilesetUid": "ZpZ8c5JJRUS1J7ZkofcUrg",
+            "server": "https://resgen.io/api/v1",
             "options": {
-              "axisPositionHorizontal": "right",
-              "axisLabelFormatting": "normal",
-              "showMousePosition": true,
+              "color": "#808080",
+              "stroke": "#ffffff",
+              "fontSize": 12,
+              "fontIsLeftAligned": false,
+              "showMousePosition": false,
+              "mousePositionColor": "#000000"
             },
-            "width": 305,
-            "height": 156
+            "width": 470,
+            "height": 30
           }
         ],
         "left": [],
@@ -116,16 +142,38 @@ const testViewConfig =
         "x": 0,
         "y": 0
       },
-      "uid": "e17N0CPQSWmNL6nNWAE1aQ"
+      "uid": "WNoAGmVDT6OeE5bsAFbeww"
     }
   ],
   "zoomLocks": {
-    "locksByViewUid": {},
-    "locksDict": {}
+    "locksByViewUid": {
+      "WNoAGmVDT6OeE5bsAFbeww": "IBIx1enSTDKfQyqbWfmVsg"
+    },
+    "locksDict": {
+      "IBIx1enSTDKfQyqbWfmVsg": {
+        "WNoAGmVDT6OeE5bsAFbeww": [
+          1097463396.609,
+          -50458512.770209946,
+          227.0388298034668
+        ],
+        "uid": "IBIx1enSTDKfQyqbWfmVsg"
+      }
+    }
   },
   "locationLocks": {
-    "locksByViewUid": {},
-    "locksDict": {}
+    "locksByViewUid": {
+      "WNoAGmVDT6OeE5bsAFbeww": "fbm_-C35T1u7NsKqhCI6Og"
+    },
+    "locksDict": {
+      "fbm_-C35T1u7NsKqhCI6Og": {
+        "WNoAGmVDT6OeE5bsAFbeww": [
+          1097463396.609,
+          -50458512.770209946,
+          227.0388298034668
+        ],
+        "uid": "fbm_-C35T1u7NsKqhCI6Og"
+      }
+    }
   },
   "valueScaleLocks": {
     "locksByViewUid": {},

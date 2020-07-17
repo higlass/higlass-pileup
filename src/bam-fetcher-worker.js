@@ -5,6 +5,8 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
 import { getSubstitutions } from './bam-utils';
+import LRU from 'lru-cache';
+
 
 function currTime() {
   const d = new Date();
@@ -210,10 +212,12 @@ const bamHeaders = {};
 
 const serverInfos = {};
 
+const MAX_TILES = 20;
+
 // promises indexed by url
 const chromSizes = {};
 const chromInfos = {};
-const tileValues = {};
+const tileValues = new LRU({ max: MAX_TILES});
 
 // indexed by uuid
 const dataConfs = {};
@@ -344,7 +348,7 @@ const tile = async (uid, z, x) => {
       const chromStart = cumPositions[i].pos;
 
       const chromEnd = cumPositions[i].pos + chromLengths[chromName];
-      tileValues[`${uid}.${z}.${x}`] = [];
+      tileValues.set(`${uid}.${z}.${x}`, []);
 
       if (chromStart <= minX && minX < chromEnd) {
         // start of the visible region is within this chromosome
@@ -363,9 +367,9 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
-                tileValues[`${uid}.${z}.${x}`] = tileValues[
+                tileValues.set(`${uid}.${z}.${x}`, tileValues.get(
                   `${uid}.${z}.${x}`
-                ].concat(mappedRecords);
+                ).concat(mappedRecords));
               })
           );
 
@@ -385,9 +389,9 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map(rec =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos)
                 );
-                tileValues[`${uid}.${z}.${x}`] = tileValues[
+                tileValues.set(`${uid}.${z}.${x}`, tileValues.get(
                   `${uid}.${z}.${x}`
-                ].concat(mappedRecords);
+                ).concat(mappedRecords));
 
                 return [];
               })
@@ -427,7 +431,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
 
           rowJsonTile.tilePositionId = tileId;
           newTiles[tileId] = rowJsonTile;
-          tileValues[hereTileId] = rowJsonTile;
+          tileValues.set(hereTileId, rowJsonTile);
         }
       }
 
@@ -471,6 +475,8 @@ const fetchTilesDebounced = async (uid, tileIds) => {
 ///////////////////////////////////////////////////
 
 function segmentsToRows(segments, optionsIn) {
+  const t1 = currTime();
+
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
     optionsIn || {}
@@ -596,6 +602,8 @@ function segmentsToRows(segments, optionsIn) {
     currRow += 1;
   }
 
+  const t2 = currTime()
+  console.log('segmentsToRows', t2 - t1)
   return outputRows;
 }
 
@@ -618,10 +626,11 @@ const renderSegments = (
   prevRows,
   groupByOption
 ) => {
+  const t1 = currTime();
   const allSegments = {};
 
   for (const tileId of tileIds) {
-    const tileValue = tileValues[`${uid}.${tileId}`];
+    const tileValue = tileValues.get(`${uid}.${tileId}`);
 
     if (tileValue.error) {
       throw new Error(tileValue.error);
@@ -769,6 +778,8 @@ const renderSegments = (
     let yBottom;
 
     rows.map((row, i) => {
+      const tx1 =  currTime();
+
       row.map((segment, j) => {
         const from = xScale(segment.from);
         const to = xScale(segment.to);
@@ -788,7 +799,7 @@ const renderSegments = (
 
         addColor(0.8, 0.8, 0.8, 1, 6);
 
-        let substitutions = getSubstitutions(segment);
+        const substitutions = getSubstitutions(segment);
 
         for (const substitution of substitutions) {
           xLeft = xScale(segment.from + substitution.pos - 1);
@@ -844,6 +855,9 @@ const renderSegments = (
           }
         }
       });
+
+      const tx2 = currTime();
+      console.log('group', tx2 - tx1)
     });
   }
 
@@ -858,6 +872,8 @@ const renderSegments = (
     xScaleRange: scaleRange,
   };
 
+  const t2 = currTime();
+  console.log('renderSegments:', t2 - t1);
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer]);
 };
 
