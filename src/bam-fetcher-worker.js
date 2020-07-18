@@ -12,67 +12,6 @@ function currTime() {
   const d = new Date();
   return d.getTime();
 }
-
-const INIT_ARRAY_SIZE = 100;
-
-class SubStorage {
-  constructor() {
-    this.size = INIT_ARRAY_SIZE;
-
-    this.initArrays();
-  }
-
-  initArrays() {
-    this.pos = new Int32Array(this.size);
-    this.length = new Int32Array(this.size);
-    this.type = new Uint8Array(this.size);
-    this.base = new Uint8Array(this.size);
-  }
-
-  extendArrays() {
-    this.size *= 2;
-
-    this.prevPos = this.pos;
-    this.prevLength = this.length;
-    this.prevType = this.type;
-    this.prevBase = this.base;
-
-    this.initArrays();
-
-    this.pos.set(this.prevPos);
-    this.length.set(this.prevLength);
-    this.type.set(this.prevType);
-    this.base.set(this.prevBase);
-  }
-
-  push(pos, length, sub, type = '', base = '') {
-    if (this.pos.length >= this.size) {
-      this.extendArrays();
-    }
-
-    this.pos[this.size] = pos;
-    this.length[this.size] = length;
-    this.type[this.size] = type.charCodeAt(0)
-    this.base[this.size] = base.charCodeAt(0)
-
-    this.size += 1;
-  }
-
-  get(i) {
-    return {
-      pos: this.pos[i],
-      length: this.length[i],
-      type: String.fromCharCode(this.type[i]),
-      base: String.fromCharCode(this.base[i]),
-    }
-  }
-
-  reset() {
-    this.size = 0;
-  }
-}
-
-const  subStorage = new SubStorage();
 /////////////////////////////////////////////////
 /// ChromInfo
 /////////////////////////////////////////////////
@@ -832,24 +771,18 @@ const renderSegments = (
     let yBottom;
 
     rows.map((row, i) => {
+      yTop = yScale(i);
+      const height = yScale.bandwidth();
+      yBottom = yTop + height;
+
       row.map((segment, j) => {
         const from = xScale(segment.from);
         const to = xScale(segment.to);
 
         xLeft = from;
         xRight = to;
-        yTop = yScale(i);
-        yBottom = yTop + yScale.bandwidth();
 
-        addPosition(xLeft, yTop);
-        addPosition(xRight, yTop);
-        addPosition(xLeft, yBottom);
-
-        addPosition(xLeft, yBottom);
-        addPosition(xRight, yTop);
-        addPosition(xRight, yBottom);
-
-        addColor(PILEUP_COLOR_IXS.BG, 6);
+        addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.BG);
 
         const substitutions = getSubstitutions(segment);
 
@@ -857,9 +790,6 @@ const renderSegments = (
           xLeft = xScale(segment.from + substitution.pos - 1);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));
           xRight = xLeft + width;
-          yTop = yScale(i);
-          const height = yScale.bandwidth();
-          yBottom = yTop + height;
 
           if (substitution.base === 'A') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
