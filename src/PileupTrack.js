@@ -1,21 +1,60 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, Worker } from 'threads';
-import { getSubstitutions } from './bam-utils';
+import { getSubstitutions, PILEUP_COLORS } from './bam-utils';
+
+const createColorTexture = (PIXI, colors) => {
+  console.log('colors:', colors);
+
+  const colorTexRes = Math.max(2, Math.ceil(Math.sqrt(colors.length)));
+  const rgba = new Float32Array(colorTexRes ** 2 * 4);
+  colors.forEach((color, i) => {
+    // eslint-disable-next-line prefer-destructuring
+    rgba[i * 4] = color[0]; // r
+    // eslint-disable-next-line prefer-destructuring
+    rgba[i * 4 + 1] = color[1]; // g
+    // eslint-disable-next-line prefer-destructuring
+    rgba[i * 4 + 2] = color[2]; // b
+    // eslint-disable-next-line prefer-destructuring
+    rgba[i * 4 + 3] = color[3]; // a
+  });
+
+  return [PIXI.Texture.fromBuffer(rgba, colorTexRes, colorTexRes), colorTexRes];
+};
+
+const  colors = Object.values(PILEUP_COLORS);
+const [colorMapTex, colorMapTexRes] = createColorTexture(PIXI, colors);
+
+console.log('colorMapTexRes:', colorMapTexRes);
+
+const uniforms = new PIXI.UniformGroup({
+  uColorMapTex: colorMapTex,
+  uColorMapTexRes: colorMapTexRes,
+});
 
 const shader = PIXI.Shader.from(
   `
-
     attribute vec2 position;
-    attribute vec4 aColor;
+    attribute float aColorIdx;
 
     uniform mat3 projectionMatrix;
     uniform mat3 translationMatrix;
+
+    uniform sampler2D uColorMapTex;
+    uniform float uColorMapTexRes;
 
     varying vec4 vColor;
 
     void main(void)
     {
-        vColor = aColor;
+        // Half a texel (i.e., pixel in texture coordinates)
+        float eps = 0.5 / uColorMapTexRes;
+        float colorRowIndex = floor((aColorIdx + eps) / uColorMapTexRes);
+        vec2 colorTexIndex = vec2(
+          (aColorIdx / uColorMapTexRes) - colorRowIndex + eps,
+          (colorRowIndex / uColorMapTexRes) + eps
+        );
+        vColor = texture2D(uColorMapTex, colorTexIndex);
+
         gl_Position = vec4((projectionMatrix * translationMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
     }
 
@@ -26,7 +65,7 @@ varying vec4 vColor;
     void main(void) {
         gl_FragColor = vColor;
     }
-`
+`,  uniforms
 );
 
 function transformY(p, t) {
@@ -299,13 +338,14 @@ const PileupTrack = (HGC, ...args) => {
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
+            console.log('this.colors:', this.colors);
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
               this.positions,
               2
             ); // x,y
-            geometry.addAttribute('aColor', this.colors, 4);
+            geometry.addAttribute('aColorIdx', this.colors, 1);
 
             if (this.positions.length) {
               const state = new HGC.libraries.PIXI.State();

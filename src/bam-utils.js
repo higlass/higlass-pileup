@@ -1,3 +1,21 @@
+export const PILEUP_COLORS = {
+  BG: [0.8, 0.8, 0.8, 1],  // gray for the read background
+  A: [0, 0, 1, 1], // blue for A
+  C: [1, 0, 0, 1], // red for c
+  G: [0, 1, 0, 1], // green for g
+  T: [1, 1, 0, 1], // yellow for T
+  S: [0, 1, 1, 0.5], // cyan for soft-clipping
+  X: [0, 0, 0, 0.7], // black for unknown
+  I: [1, 0, 1, 0.5], // purple for insertions
+  D: [1, 0.5, 0.5, 0.5], // pink-ish for deletions
+  N: [1, 1, 1, 1],
+  BLACK: [0,0,0,1],
+  BLACK_05: [0,0,0,0.5]
+};
+
+export const PILEUP_COLOR_IXS = {};
+Object.keys(PILEUP_COLORS).map((x,i) => PILEUP_COLOR_IXS[x] = i);
+
 export const parseMD = (mdString, useCounts) => {
   let currPos = 1;
   let lettersBefore = [];

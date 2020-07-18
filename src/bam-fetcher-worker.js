@@ -6,7 +6,7 @@ import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
 import { getSubstitutions } from './bam-utils';
 import LRU from 'lru-cache';
-
+import { PILEUP_COLORS, PILEUP_COLOR_IXS } from './bam-utils';
 
 function currTime() {
   const d = new Date();
@@ -697,8 +697,8 @@ const renderSegments = (
     allPositions[currPosition++] = y1;
   };
 
-  const addColor = (r, g, b, a, n) => {
-    if (currColor >= allColorsLength - n * 4) {
+  const addColor = (colorIdx, n) => {
+    if (currColor >= allColorsLength - n) {
       allColorsLength *= 2;
       const prevAllColors = allColors;
 
@@ -707,14 +707,11 @@ const renderSegments = (
     }
 
     for (let k = 0; k < n; k++) {
-      allColors[currColor++] = r;
-      allColors[currColor++] = g;
-      allColors[currColor++] = b;
-      allColors[currColor++] = a;
+      allColors[currColor++] = colorIdx;
     }
   };
 
-  const addRect = (x, y, width, height, r, g, b, a) => {
+  const addRect = (x, y, width, height, colorIdx) => {
     const xLeft = x;
     const xRight = xLeft + width;
     const yTop = y;
@@ -728,7 +725,7 @@ const renderSegments = (
     addPosition(xRight, yTop);
     addPosition(xRight, yBottom);
 
-    addColor(r, g, b, a, 6);
+    addColor(colorIdx, 6);
   };
 
   const xScale = scaleLinear()
@@ -744,7 +741,7 @@ const renderSegments = (
     grouped[key].end = yGlobalScale(currStart - 1) + yGlobalScale.bandwidth();
     const lineHeight = yGlobalScale.step() - yGlobalScale.bandwidth();
 
-    addRect(0, grouped[key].end, dimensions[0], lineHeight, 0, 0, 0, 1);
+    addRect(0, grouped[key].end, dimensions[0], lineHeight, PILEUP_COLOR_IXS.BLACK);
 
     if (groupCounter % 2) {
       addRect(
@@ -752,10 +749,7 @@ const renderSegments = (
         grouped[key].start,
         xScale(maxPos) - xScale(minPos),
         grouped[key].end - grouped[key].start,
-        0,
-        0,
-        0,
-        0.05
+        PILEUP_COLOR_IXS.BLACK_05
       );
     }
 
@@ -778,8 +772,6 @@ const renderSegments = (
     let yBottom;
 
     rows.map((row, i) => {
-      const tx1 =  currTime();
-
       row.map((segment, j) => {
         const from = xScale(segment.from);
         const to = xScale(segment.to);
@@ -797,7 +789,7 @@ const renderSegments = (
         addPosition(xRight, yTop);
         addPosition(xRight, yBottom);
 
-        addColor(0.8, 0.8, 0.8, 1, 6);
+        addColor(PILEUP_COLOR_IXS.BG, 6);
 
         const substitutions = getSubstitutions(segment);
 
@@ -810,21 +802,21 @@ const renderSegments = (
           yBottom = yTop + height;
 
           if (substitution.base === 'A') {
-            addRect(xLeft, yTop, width, height, 0, 0, 1, 1);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
           } else if (substitution.base === 'C') {
-            addRect(xLeft, yTop, width, height, 1, 0, 0, 1);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
           } else if (substitution.base === 'G') {
-            addRect(xLeft, yTop, width, height, 0, 1, 0, 1);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
           } else if (substitution.base === 'T') {
-            addRect(xLeft, yTop, width, height, 1, 1, 0, 1);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
           } else if (substitution.type === 'S') {
-            addRect(xLeft, yTop, width, height, 0, 1, 1, 0.5);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
           } else if (substitution.type === 'X') {
-            addRect(xLeft, yTop, width, height, 0, 0, 0, 0.7);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
           } else if (substitution.type === 'I') {
-            addRect(xLeft, yTop, width, height, 1, 0, 1, 0.5);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.I);
           } else if (substitution.type === 'D') {
-            addRect(xLeft, yTop, width, height, 1, 0.5, 0.5, 0.5);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
           } else if (substitution.type === 'N') {
             // deletions so we're going to draw a thinner line
             // across
@@ -834,8 +826,8 @@ const renderSegments = (
             const yMidTop = xMiddle - delWidth / 2;
             const yMidBottom = xMiddle + delWidth / 2;
 
-            addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, 1, 1, 1, 1);
-            addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, 1, 1, 1, 1);
+            addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, PILEUP_COLOR_IXS.N);
+            addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, PILEUP_COLOR_IXS.N);
 
             let currPos = xLeft;
             const DASH_LENGTH = 6;
@@ -846,18 +838,15 @@ const renderSegments = (
               // make sure the last dash doesn't overrun
               const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
 
-              addRect(currPos, yMidTop, dashLength, delWidth, 1, 1, 1, 1);
+              addRect(currPos, yMidTop, dashLength, delWidth, PILEUP_COLOR_IXS.N);
               currPos += DASH_LENGTH + DASH_SPACE;
             }
             // allready handled above
           } else {
-            addRect(xLeft, yTop, width, height, 0, 0, 0, 1);
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
           }
         }
       });
-
-      const tx2 = currTime();
-      console.log('group', tx2 - tx1)
     });
   }
 
@@ -874,6 +863,7 @@ const renderSegments = (
 
   const t2 = currTime();
   console.log('renderSegments:', t2 - t1);
+  console.log('currPosition',  currPosition)
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer]);
 };
 
