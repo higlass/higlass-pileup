@@ -332,6 +332,7 @@ const PileupTrack = (HGC, ...args) => {
 
             this.positions = new Float32Array(toRender.positionsBuffer);
             this.colors = new Float32Array(toRender.colorsBuffer);
+            this.ixs = new Int32Array(toRender.ixBuffer);
 
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
@@ -344,6 +345,7 @@ const PileupTrack = (HGC, ...args) => {
               2
             ); // x,y
             geometry.addAttribute('aColorIdx', this.colors, 1);
+            geometry.addIndex(this.ixs);
 
             if (this.positions.length) {
               const state = new HGC.libraries.PIXI.State();

@@ -608,12 +608,15 @@ function segmentsToRows(segments, optionsIn) {
 
 const STARTING_POSITIONS_ARRAY_LENGTH = 2 ** 20;
 const STARTING_COLORS_ARRAY_LENGTH = 2 ** 21;
+const STARTING_INDEXES_LENGTH = 2 ** 21;
 
 let allPositionsLength = STARTING_POSITIONS_ARRAY_LENGTH;
 let allColorsLength = STARTING_COLORS_ARRAY_LENGTH;
+let allIndexesLength = STARTING_INDEXES_LENGTH;
 
 let allPositions = new Float32Array(allPositionsLength);
 let allColors = new Float32Array(allColorsLength);
+let allIndexes = new Int32Array(allIndexesLength);
 
 const renderSegments = (
   uid,
@@ -683,6 +686,7 @@ const renderSegments = (
 
   let currPosition = 0;
   let currColor = 0;
+  let currIdx = 0;
 
   const addPosition = (x1, y1) => {
     if (currPosition > allPositionsLength - 2) {
@@ -694,6 +698,8 @@ const renderSegments = (
     }
     allPositions[currPosition++] = x1;
     allPositions[currPosition++] = y1;
+
+    return (currPosition / 2) - 1;
   };
 
   const addColor = (colorIdx, n) => {
@@ -710,21 +716,34 @@ const renderSegments = (
     }
   };
 
+  const addTriangleIxs = (ix1, ix2, ix3) => {
+    if (currIdx >= allIndexesLength - 3) {
+      allIndexesLength *= 2;
+      const prevAllIndexes = allIndexes;
+
+      allIndexes = new Int32Array(allIndexesLength);
+      allIndexes.set(prevAllIndexes);
+    }
+
+    allIndexes[currIdx++] = ix1;
+    allIndexes[currIdx++] = ix2;
+    allIndexes[currIdx++] = ix3;
+  }
+
   const addRect = (x, y, width, height, colorIdx) => {
     const xLeft = x;
     const xRight = xLeft + width;
     const yTop = y;
     const yBottom = y + height;
 
-    addPosition(xLeft, yTop);
-    addPosition(xRight, yTop);
-    addPosition(xLeft, yBottom);
+    const ulIx = addPosition(xLeft, yTop);
+    const urIx = addPosition(xRight, yTop);
+    const llIx = addPosition(xLeft, yBottom);
+    const lrIx = addPosition(xRight, yBottom);
+    addColor(colorIdx, 4);
 
-    addPosition(xLeft, yBottom);
-    addPosition(xRight, yTop);
-    addPosition(xRight, yBottom);
-
-    addColor(colorIdx, 6);
+    addTriangleIxs(ulIx, urIx, llIx);
+    addTriangleIxs(llIx, lrIx, urIx);
   };
 
   const xScale = scaleLinear()
@@ -842,18 +861,20 @@ const renderSegments = (
 
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
+  const ixBuffer = allIndexes.slice(0, currIdx).buffer;
 
   const objData = {
     rows: grouped,
     positionsBuffer,
     colorsBuffer,
+    ixBuffer,
     xScaleDomain: domain,
     xScaleRange: scaleRange,
   };
 
   const t2 = currTime();
   console.log('renderSegments:', t2 - t1);
-  return Transfer(objData, [objData.positionsBuffer, colorsBuffer]);
+  return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
 const tileFunctions = {
