@@ -24,8 +24,6 @@ const createColorTexture = (PIXI, colors) => {
 const  colors = Object.values(PILEUP_COLORS);
 const [colorMapTex, colorMapTexRes] = createColorTexture(PIXI, colors);
 
-console.log('colorMapTexRes:', colorMapTexRes);
-
 const uniforms = new PIXI.UniformGroup({
   uColorMapTex: colorMapTex,
   uColorMapTexRes: colorMapTexRes,

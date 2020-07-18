@@ -16,23 +16,22 @@ export const PILEUP_COLORS = {
 export const PILEUP_COLOR_IXS = {};
 Object.keys(PILEUP_COLORS).map((x,i) => PILEUP_COLOR_IXS[x] = i);
 
-export const parseMD = (mdString, useCounts) => {
+export const parseMD = (mdString, useCounts, subStorage) => {
   let currPos = 1;
+  let currNum = 0
   let lettersBefore = [];
   const substitutions = [];
 
   for (let i = 0; i < mdString.length; i++) {
     if (mdString[i].match(/[0-9]/g)) {
       // a number, keep on going
-      lettersBefore.push(mdString[i]);
+      currNum = currNum * 10 + +mdString[i];
     } else {
-      if (lettersBefore.length) {
-        currPos += +lettersBefore.join('');
-      }
+      currPos += currNum;
 
       if (useCounts) {
         substitutions.push({
-          length: +lettersBefore.join(''),
+          length: currNum,
           type: mdString[i],
         });
       } else {
@@ -43,7 +42,7 @@ export const parseMD = (mdString, useCounts) => {
         });
       }
 
-      lettersBefore = [];
+      currNum = 0;
       currPos += 1;
     }
   }
@@ -54,7 +53,6 @@ export const parseMD = (mdString, useCounts) => {
 export const getSubstitutions = segment => {
   let substitutions = [];
   let insertions = 0;
-  let insertions10 = 0;
 
   if (segment.md) {
     substitutions = parseMD(segment.md);
@@ -80,9 +78,6 @@ export const getSubstitutions = segment => {
         currPos += sub.length;
       } else if (sub.type === 'I') {
         insertions += 1;
-        if (sub.length > 10) {
-          insertions10 += 1;
-        }
         substitutions.push({
           pos: currPos,
           length: 0.1,

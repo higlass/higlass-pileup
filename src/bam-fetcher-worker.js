@@ -13,6 +13,66 @@ function currTime() {
   return d.getTime();
 }
 
+const INIT_ARRAY_SIZE = 100;
+
+class SubStorage {
+  constructor() {
+    this.size = INIT_ARRAY_SIZE;
+
+    this.initArrays();
+  }
+
+  initArrays() {
+    this.pos = new Int32Array(this.size);
+    this.length = new Int32Array(this.size);
+    this.type = new Uint8Array(this.size);
+    this.base = new Uint8Array(this.size);
+  }
+
+  extendArrays() {
+    this.size *= 2;
+
+    this.prevPos = this.pos;
+    this.prevLength = this.length;
+    this.prevType = this.type;
+    this.prevBase = this.base;
+
+    this.initArrays();
+
+    this.pos.set(this.prevPos);
+    this.length.set(this.prevLength);
+    this.type.set(this.prevType);
+    this.base.set(this.prevBase);
+  }
+
+  push(pos, length, sub, type = '', base = '') {
+    if (this.pos.length >= this.size) {
+      this.extendArrays();
+    }
+
+    this.pos[this.size] = pos;
+    this.length[this.size] = length;
+    this.type[this.size] = type.charCodeAt(0)
+    this.base[this.size] = base.charCodeAt(0)
+
+    this.size += 1;
+  }
+
+  get(i) {
+    return {
+      pos: this.pos[i],
+      length: this.length[i],
+      type: String.fromCharCode(this.type[i]),
+      base: String.fromCharCode(this.base[i]),
+    }
+  }
+
+  reset() {
+    this.size = 0;
+  }
+}
+
+const  subStorage = new SubStorage();
 /////////////////////////////////////////////////
 /// ChromInfo
 /////////////////////////////////////////////////
@@ -863,7 +923,6 @@ const renderSegments = (
 
   const t2 = currTime();
   console.log('renderSegments:', t2 - t1);
-  console.log('currPosition',  currPosition)
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer]);
 };
 
