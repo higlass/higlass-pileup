@@ -760,16 +760,16 @@ const renderSegments = (
     grouped[key].end = yGlobalScale(currStart - 1) + yGlobalScale.bandwidth();
     const lineHeight = yGlobalScale.step() - yGlobalScale.bandwidth();
 
-    addRect(0, grouped[key].end, dimensions[0], lineHeight, PILEUP_COLOR_IXS.BLACK);
+    // addRect(0, grouped[key].end, dimensions[0], lineHeight, PILEUP_COLOR_IXS.BLACK);
 
     if (groupCounter % 2) {
-      addRect(
-        0,
-        grouped[key].start,
-        xScale(maxPos) - xScale(minPos),
-        grouped[key].end - grouped[key].start,
-        PILEUP_COLOR_IXS.BLACK_05
-      );
+      // addRect(
+      //   0,
+      //   grouped[key].start,
+      //   xScale(maxPos) - xScale(minPos),
+      //   grouped[key].end - grouped[key].start,
+      //   PILEUP_COLOR_IXS.BLACK_05
+      // );
     }
 
     groupCounter += 1;
