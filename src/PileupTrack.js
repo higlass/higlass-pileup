@@ -440,6 +440,8 @@ const PileupTrack = (HGC, ...args) => {
         return;
       }
 
+      console.log('fetching:', this.fetching);
+
       if (this.fetching.size) {
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map(x => x.split('|')[0])

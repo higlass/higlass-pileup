@@ -217,6 +217,7 @@ const MAX_TILES = 20;
 const chromSizes = {};
 const chromInfos = {};
 const tileValues = new LRU({ max: MAX_TILES});
+const tilesetInfos = {}
 
 // indexed by uuid
 const dataConfs = {};
@@ -273,7 +274,12 @@ const serverTilesetInfo = uid => {
 
   return authFetch(url, uid)
     .then(d => d.json())
-    .then(j => j[serverInfos[uid].tilesetUid]);
+    .then(j => {
+      const retVal = j[serverInfos[uid].tilesetUid];
+      tilesetInfos[uid] = retVal;
+
+      return retVal;
+    });
 };
 
 const tilesetInfo = uid => {
@@ -315,6 +321,8 @@ const tilesetInfo = uid => {
       min_pos: [0],
       max_pos: [chromInfo.totalLength],
     };
+
+    tilesetInfos[uid] = retVal;
 
     return retVal;
   });
@@ -408,20 +416,56 @@ const tile = async (uid, z, x) => {
   });
 };
 
+const tilesetInfoToStartEnd = (tsInfo, z, x) => {
+  const tileWidth = tsInfo.max_width / 2 ** z;
+  return [x * tileWidth, (x+1) * tileWidth];
+}
+
 const serverFetchTilesDebounced = async (uid, tileIds) => {
   const serverInfo = serverInfos[uid];
-  const serverTileIds = tileIds.map(x => `d=${serverInfo.tilesetUid}.${x}`);
+  const existingTiles = {}
+  const toFetchIds = [];
+
+  // first let's check if we have a larger tile that contains this
+  // one
+  for (const tileId of tileIds) {
+    let [zoomLevel, tileX] = tileId.split('.');
+    const  tilesetInfo = tilesetInfos[uid];
+    const found = false;
+
+    const [xStart, xEnd] = tilesetInfoToStartEnd(tilesetInfo, zoomLevel, tileX);
+
+    while (zoomLevel > 0) {
+      const hereTileId = `${uid}.${zoomLevel}.${tileX}`
+
+      if (tileValues.has(hereTileId)) {
+        existingTiles[tileId] = tileValues.get(hereTileId).filter(x => xStart < x.to && xEnd > x.from)
+        existingTiles[tileId].tilePositionId = tileId;
+        tileValues.set(`${uid}.${tileId}`, existingTiles[tileId])
+        found = true;
+        break;
+      }
+
+      zoomLevel -= 1;
+      tileX = Math.floor(tileX / 2)
+    }
+
+    if (!found) {
+      toFetchIds.push(tileId)
+    }
+  }
+
+  const serverTileIds = toFetchIds.map(x => `d=${serverInfo.tilesetUid}.${x}`);
   const url = `${serverInfos[uid].server}/tiles/?${serverTileIds.join('&')}`;
 
   return authFetch(url, uid)
     .then(d => d.json())
     .then(rt => {
       const newTiles = {};
-      console.log('response');
 
       for (const tileId of tileIds) {
-        const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
         const hereTileId = `${uid}.${tileId}`;
+        const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
         if (rt[fullTileId]) {
           let rowJsonTile = rt[fullTileId];
 
@@ -431,11 +475,14 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
 
           rowJsonTile.tilePositionId = tileId;
           newTiles[tileId] = rowJsonTile;
+
           tileValues.set(hereTileId, rowJsonTile);
         }
       }
 
-      return newTiles;
+      const toRet = {...existingTiles, ...newTiles}
+      console.log('toRet:', toRet);
+      return toRet;
     });
 };
 
