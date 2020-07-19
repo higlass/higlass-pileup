@@ -1,9 +1,15 @@
+const DEBOUNCE_TIME = 200;
+
 class BAMDataFetcher {
   constructor(dataConfig, worker, HGC) {
     this.dataConfig = dataConfig;
     this.uid = HGC.libraries.slugid.nice();
     this.worker = worker;
     this.isServerFetcher = !(dataConfig.type && dataConfig.type === 'bam');
+    this.prevRequestTime = 0;
+
+    this.toFetch = new Set();
+    this.fetchTimeout = null;
 
     this.initPromise = this.worker.then(tileFunctions => {
       if (this.isServerFetcher) {
@@ -33,6 +39,31 @@ class BAMDataFetcher {
   }
 
   fetchTilesDebounced(receivedTiles, tileIds) {
+    const { toFetch  } = this;
+
+    const thisZoomLevel = tileIds[0].split('.')[0];
+    const toFetchZoomLevel = toFetch.size ? [...toFetch][0].split('.')[0] : null;
+
+    if (thisZoomLevel !== toFetchZoomLevel) {
+      for (const tileId of this.toFetch) {
+        this.track.fetching.delete(tileId);
+      }
+      this.toFetch.clear();
+    }
+
+    tileIds.forEach(x => this.toFetch.add(x)) ;
+
+    if (this.fetchTimeout) {
+      clearTimeout(this.fetchTimeout)
+    }
+
+    this.fetchTimeout = setTimeout(() => {
+      this.sendFetch(receivedTiles, [...this.toFetch])
+      this.toFetch.clear()
+    }, DEBOUNCE_TIME)
+  }
+
+  sendFetch(receivedTiles, tileIds) {
     this.track.updateLoadingText();
 
     this.worker.then(tileFunctions => {

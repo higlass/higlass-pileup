@@ -417,6 +417,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
     .then(d => d.json())
     .then(rt => {
       const newTiles = {};
+      console.log('response');
 
       for (const tileId of tileIds) {
         const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
@@ -602,7 +603,7 @@ function segmentsToRows(segments, optionsIn) {
   }
 
   const t2 = currTime()
-  console.log('segmentsToRows', t2 - t1)
+  // console.log('segmentsToRows', t2 - t1)
   return outputRows;
 }
 
@@ -873,7 +874,7 @@ const renderSegments = (
   };
 
   const t2 = currTime();
-  console.log('renderSegments:', t2 - t1);
+  // console.log('renderSegments:', t2 - t1);
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 

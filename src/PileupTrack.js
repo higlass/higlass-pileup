@@ -3,8 +3,6 @@ import { spawn, Worker } from 'threads';
 import { getSubstitutions, PILEUP_COLORS } from './bam-utils';
 
 const createColorTexture = (PIXI, colors) => {
-  console.log('colors:', colors);
-
   const colorTexRes = Math.max(2, Math.ceil(Math.sqrt(colors.length)));
   const rgba = new Float32Array(colorTexRes ** 2 * 4);
   colors.forEach((color, i) => {
@@ -211,6 +209,20 @@ const getTilePosAndDimensions = (
 };
 
 const toVoid = () => {};
+function eqSet(as, bs) {
+    return as.size === bs.size && all(isIn(bs), as);
+}
+
+function all(pred, as) {
+    for (var a of as) if (!pred(a)) return false;
+    return true;
+}
+
+function isIn(as) {
+    return function (a) {
+        return as.has(a);
+    };
+}
 
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
@@ -230,7 +242,7 @@ const PileupTrack = (HGC, ...args) => {
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
       super(context, options);
-      context.dataFetcher.track = this;
+      context.dataFetcher.track   = this;
 
       this.worker = worker;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
@@ -298,7 +310,12 @@ const PileupTrack = (HGC, ...args) => {
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
-      // console.log('rendering', Object.keys(this.fetchedTiles));
+
+      if (!eqSet(this.visibleTileIds, new Set(Object.keys(this.fetchedTiles)))) {
+        this.updateLoadingText();
+        return;
+      }
+
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
       fetchedTileKeys.forEach(x => {
         this.fetching.delete(x);
@@ -337,7 +354,6 @@ const PileupTrack = (HGC, ...args) => {
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
-            console.log('this.colors:', this.colors);
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
