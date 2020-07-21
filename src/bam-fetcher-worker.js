@@ -426,8 +426,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   const existingTiles = {}
   const toFetchIds = [];
 
-  // first let's check if we have a larger tile that contains this
-  // one
+  // first let's check if we have a larger tile that contains this one
   for (const tileId of tileIds) {
     let [zoomLevel, tileX] = tileId.split('.');
     const  tilesetInfo = tilesetInfos[uid];
@@ -481,7 +480,6 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
       }
 
       const toRet = {...existingTiles, ...newTiles}
-      console.log('toRet:', toRet);
       return toRet;
     });
 };
