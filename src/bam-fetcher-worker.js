@@ -16,8 +16,8 @@ function currTime() {
 /// ChromInfo
 /////////////////////////////////////////////////
 
-const chromInfoBisector = bisector(d => d.pos).left;
-const segmentFromBisector = bisector(d => d.from).right;
+const chromInfoBisector = bisector((d) => d.pos).left;
+const segmentFromBisector = bisector((d) => d.from).right;
 
 const groupBy = (xs, key) =>
   xs.reduce((rv, x) => {
@@ -40,7 +40,7 @@ const absToChr = (absPosition, chromInfo) => {
   insertPoint -= insertPoint > 0 && 1;
 
   let chrPosition = Math.floor(
-    absPosition - chromInfo.cumPositions[insertPoint].pos
+    absPosition - chromInfo.cumPositions[insertPoint].pos,
   );
   let offset = 0;
 
@@ -151,7 +151,7 @@ function parseChromsizesRows(data) {
 function ChromosomeInfo(filepath, success) {
   const ret = {};
 
-  ret.absToChr = absPos => (ret.chrPositions ? absToChr(absPos, ret) : null);
+  ret.absToChr = (absPos) => (ret.chrPositions ? absToChr(absPos, ret) : null);
 
   ret.chrToAbs = ([chrName, chrPos] = []) =>
     ret.chrPositions ? chrToAbs(chrName, chrPos, ret) : null;
@@ -164,7 +164,7 @@ function ChromosomeInfo(filepath, success) {
       const data = tsvParseRows(chrInfoText);
       const chromInfo = parseChromsizesRows(data);
 
-      Object.keys(chromInfo).forEach(key => {
+      Object.keys(chromInfo).forEach((key) => {
         ret[key] = chromInfo[key];
       });
       if (success) success(ret);
@@ -187,7 +187,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
   mapq: bamRecord.get('MQ'),
 });
 
-const tabularJsonToRowJson = tabularJson => {
+const tabularJsonToRowJson = (tabularJson) => {
   const rowJson = [];
 
   const headers = Object.keys(tabularJson);
@@ -216,8 +216,8 @@ const MAX_TILES = 20;
 // promises indexed by url
 const chromSizes = {};
 const chromInfos = {};
-const tileValues = new LRU({ max: MAX_TILES});
-const tilesetInfos = {}
+const tileValues = new LRU({ max: MAX_TILES });
+const tilesetInfos = {};
 
 // indexed by uuid
 const dataConfs = {};
@@ -258,7 +258,7 @@ const init = (uid, bamUrl, chromSizesUrl) => {
     // from the BAM file
     chromSizes[chromSizesUrl] =
       chromSizes[chromSizesUrl] ||
-      new Promise(resolve => {
+      new Promise((resolve) => {
         ChromosomeInfo(chromSizesUrl, resolve);
       });
   }
@@ -269,12 +269,12 @@ const init = (uid, bamUrl, chromSizesUrl) => {
   };
 };
 
-const serverTilesetInfo = uid => {
+const serverTilesetInfo = (uid) => {
   const url = `${serverInfos[uid].server}/tileset_info/?d=${serverInfos[uid].tilesetUid}`;
 
   return authFetch(url, uid)
-    .then(d => d.json())
-    .then(j => {
+    .then((d) => d.json())
+    .then((j) => {
       const retVal = j[serverInfos[uid].tilesetUid];
       tilesetInfos[uid] = retVal;
 
@@ -282,13 +282,13 @@ const serverTilesetInfo = uid => {
     });
 };
 
-const tilesetInfo = uid => {
+const tilesetInfo = (uid) => {
   const { chromSizesUrl, bamUrl } = dataConfs[uid];
   const promises = chromSizesUrl
     ? [bamHeaders[bamUrl], chromSizes[chromSizesUrl]]
     : [bamHeaders[bamUrl]];
 
-  return Promise.all(promises).then(values => {
+  return Promise.all(promises).then((values) => {
     const TILE_SIZE = 1024;
     let chromInfo = null;
 
@@ -315,7 +315,7 @@ const tilesetInfo = uid => {
       tile_size: TILE_SIZE,
       bins_per_dimension: TILE_SIZE,
       max_zoom: Math.ceil(
-        Math.log(chromInfo.totalLength / TILE_SIZE) / Math.log(2)
+        Math.log(chromInfo.totalLength / TILE_SIZE) / Math.log(2),
       ),
       max_width: chromInfo.totalLength,
       min_pos: [0],
@@ -333,13 +333,13 @@ const tile = async (uid, z, x) => {
   const { bamUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
 
-  return tilesetInfo(uid).then(tsInfo => {
+  return tilesetInfo(uid).then((tsInfo) => {
     const tileWidth = +tsInfo.max_width / 2 ** +z;
     const recordPromises = [];
 
     if (tileWidth > MAX_TILE_WIDTH) {
       // this.errorTextText('Zoomed out too far for this track. Zoomin further to see reads');
-      return new Promise(resolve => resolve([]));
+      return new Promise((resolve) => resolve([]));
     }
 
     // get the bounds of the tile
@@ -368,16 +368,17 @@ const tile = async (uid, z, x) => {
               .getRecordsForRange(
                 chromName,
                 minX - chromStart,
-                chromEnd - chromStart
+                chromEnd - chromStart,
               )
-              .then(records => {
-                const mappedRecords = records.map(rec =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos)
+              .then((records) => {
+                const mappedRecords = records.map((rec) =>
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos),
                 );
-                tileValues.set(`${uid}.${z}.${x}`, tileValues.get(
-                  `${uid}.${z}.${x}`
-                ).concat(mappedRecords));
-              })
+                tileValues.set(
+                  `${uid}.${z}.${x}`,
+                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                );
+              }),
           );
 
           // continue onto the next chromosome
@@ -392,16 +393,17 @@ const tile = async (uid, z, x) => {
                 // viewAsPairs: true,
                 // maxInsertSize: 2000,
               })
-              .then(records => {
-                const mappedRecords = records.map(rec =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos)
+              .then((records) => {
+                const mappedRecords = records.map((rec) =>
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos),
                 );
-                tileValues.set(`${uid}.${z}.${x}`, tileValues.get(
-                  `${uid}.${z}.${x}`
-                ).concat(mappedRecords));
+                tileValues.set(
+                  `${uid}.${z}.${x}`,
+                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                );
 
                 return [];
-              })
+              }),
           );
 
           // end the loop because we've retrieved the last chromosome
@@ -412,54 +414,58 @@ const tile = async (uid, z, x) => {
 
     // flatten the array of promises so that it looks like we're
     // getting one long list of value
-    return Promise.all(recordPromises).then(values => values.flat());
+    return Promise.all(recordPromises).then((values) => values.flat());
   });
 };
 
 const tilesetInfoToStartEnd = (tsInfo, z, x) => {
   const tileWidth = tsInfo.max_width / 2 ** z;
-  return [x * tileWidth, (x+1) * tileWidth];
-}
+  return [x * tileWidth, (x + 1) * tileWidth];
+};
 
 const serverFetchTilesDebounced = async (uid, tileIds) => {
   const serverInfo = serverInfos[uid];
-  const existingTiles = {}
+  const existingTiles = {};
   const toFetchIds = [];
 
   // first let's check if we have a larger tile that contains this one
   for (const tileId of tileIds) {
     let [zoomLevel, tileX] = tileId.split('.');
-    const  tilesetInfo = tilesetInfos[uid];
+    const tilesetInfo = tilesetInfos[uid];
     const found = false;
 
     const [xStart, xEnd] = tilesetInfoToStartEnd(tilesetInfo, zoomLevel, tileX);
 
     while (zoomLevel > 0) {
-      const hereTileId = `${uid}.${zoomLevel}.${tileX}`
+      const hereTileId = `${uid}.${zoomLevel}.${tileX}`;
 
       if (tileValues.has(hereTileId)) {
-        existingTiles[tileId] = tileValues.get(hereTileId).filter(x => xStart < x.to && xEnd > x.from)
+        existingTiles[tileId] = tileValues
+          .get(hereTileId)
+          .filter((x) => xStart < x.to && xEnd > x.from);
         existingTiles[tileId].tilePositionId = tileId;
-        tileValues.set(`${uid}.${tileId}`, existingTiles[tileId])
+        tileValues.set(`${uid}.${tileId}`, existingTiles[tileId]);
         found = true;
         break;
       }
 
       zoomLevel -= 1;
-      tileX = Math.floor(tileX / 2)
+      tileX = Math.floor(tileX / 2);
     }
 
     if (!found) {
-      toFetchIds.push(tileId)
+      toFetchIds.push(tileId);
     }
   }
 
-  const serverTileIds = toFetchIds.map(x => `d=${serverInfo.tilesetUid}.${x}`);
+  const serverTileIds = toFetchIds.map(
+    (x) => `d=${serverInfo.tilesetUid}.${x}`,
+  );
   const url = `${serverInfos[uid].server}/tiles/?${serverTileIds.join('&')}`;
 
   return authFetch(url, uid)
-    .then(d => d.json())
-    .then(rt => {
+    .then((d) => d.json())
+    .then((rt) => {
       const newTiles = {};
 
       for (const tileId of tileIds) {
@@ -479,7 +485,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
         }
       }
 
-      const toRet = {...existingTiles, ...newTiles}
+      const toRet = { ...existingTiles, ...newTiles };
       return toRet;
     });
 };
@@ -504,7 +510,7 @@ const fetchTilesDebounced = async (uid, tileIds) => {
     tilePromises.push(tile(uid, z, x));
   }
 
-  return Promise.all(tilePromises).then(values => {
+  return Promise.all(tilePromises).then((values) => {
     for (let i = 0; i < values.length; i++) {
       const validTileId = validTileIds[i];
       tiles[validTileId] = values[i];
@@ -524,25 +530,25 @@ function segmentsToRows(segments, optionsIn) {
 
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
-    optionsIn || {}
+    optionsIn || {},
   );
 
   segments.sort((a, b) => a.from - b.from);
 
-  const rowIds = new Set(prevRows.flatMap(x => x).map(x => x.id));
+  const rowIds = new Set(prevRows.flatMap((x) => x).map((x) => x.id));
 
   // we only want to go through the segments that
   // don't already have a row
-  const filteredSegments = segments.filter(x => !rowIds.has(x.id));
+  const filteredSegments = segments.filter((x) => !rowIds.has(x.id));
 
   // we also want to remove all row entries that are
   // not in our list of segments
-  const segmentIds = new Set(segments.map(x => x.id));
+  const segmentIds = new Set(segments.map((x) => x.id));
 
   // also, remove all rows that don't have any entries remaining
   const newRows = prevRows
-    .map(row => row.filter(segment => segmentIds.has(segment.id)))
-    .filter(row => row.length);
+    .map((row) => row.filter((segment) => segmentIds.has(segment.id)))
+    .filter((row) => row.length);
 
   let currRow = 0;
 
@@ -612,7 +618,7 @@ function segmentsToRows(segments, optionsIn) {
           if (direction === 1) {
             const newIx = segmentFromBisector(
               filteredSegments,
-              row[currRowPosition].to + padding
+              row[currRowPosition].to + padding,
             );
 
             ix = newIx;
@@ -647,7 +653,7 @@ function segmentsToRows(segments, optionsIn) {
     currRow += 1;
   }
 
-  const t2 = currTime()
+  const t2 = currTime();
   // console.log('segmentsToRows', t2 - t1)
   return outputRows;
 }
@@ -672,7 +678,7 @@ const renderSegments = (
   position,
   dimensions,
   prevRows,
-  groupByOption
+  groupByOption,
 ) => {
   const t1 = currTime();
   const allSegments = {};
@@ -720,7 +726,7 @@ const renderSegments = (
 
   // calculate the height of each group
   const totalRows = Object.values(grouped)
-    .map(x => x.rows.length)
+    .map((x) => x.rows.length)
     .reduce((a, b) => a + b, 0);
   let currStart = 0;
 
@@ -745,7 +751,7 @@ const renderSegments = (
     allPositions[currPosition++] = x1;
     allPositions[currPosition++] = y1;
 
-    return (currPosition / 2) - 1;
+    return currPosition / 2 - 1;
   };
 
   const addColor = (colorIdx, n) => {
@@ -774,7 +780,7 @@ const renderSegments = (
     allIndexes[currIdx++] = ix1;
     allIndexes[currIdx++] = ix2;
     allIndexes[currIdx++] = ix3;
-  }
+  };
 
   const addRect = (x, y, width, height, colorIdx) => {
     const xLeft = x;
@@ -792,9 +798,7 @@ const renderSegments = (
     addTriangleIxs(llIx, lrIx, urIx);
   };
 
-  const xScale = scaleLinear()
-    .domain(domain)
-    .range(scaleRange);
+  const xScale = scaleLinear().domain(domain).range(scaleRange);
 
   let groupCounter = 0;
   const groupKeys = Object.keys(grouped).sort();
@@ -825,10 +829,7 @@ const renderSegments = (
 
     const d = range(0, rows.length);
     const r = [group.start, group.end];
-    const yScale = scaleBand()
-      .domain(d)
-      .range(r)
-      .paddingInner(0.2);
+    const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
 
     let xLeft;
     let xRight;
@@ -852,7 +853,7 @@ const renderSegments = (
         const substitutions = getSubstitutions(segment);
 
         for (const substitution of substitutions) {
-          xLeft = xScale(segment.from + substitution.pos - 1);
+          xLeft = xScale(segment.from + substitution.pos);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));
           xRight = xLeft + width;
 
@@ -881,8 +882,20 @@ const renderSegments = (
             const yMidTop = xMiddle - delWidth / 2;
             const yMidBottom = xMiddle + delWidth / 2;
 
-            addRect(xLeft, yTop, xRight - xLeft, yMidTop - yTop, PILEUP_COLOR_IXS.N);
-            addRect(xLeft, yMidBottom, width, yBottom - yMidBottom, PILEUP_COLOR_IXS.N);
+            addRect(
+              xLeft,
+              yTop,
+              xRight - xLeft,
+              yMidTop - yTop,
+              PILEUP_COLOR_IXS.N,
+            );
+            addRect(
+              xLeft,
+              yMidBottom,
+              width,
+              yBottom - yMidBottom,
+              PILEUP_COLOR_IXS.N,
+            );
 
             let currPos = xLeft;
             const DASH_LENGTH = 6;
@@ -893,7 +906,13 @@ const renderSegments = (
               // make sure the last dash doesn't overrun
               const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
 
-              addRect(currPos, yMidTop, dashLength, delWidth, PILEUP_COLOR_IXS.N);
+              addRect(
+                currPos,
+                yMidTop,
+                dashLength,
+                delWidth,
+                PILEUP_COLOR_IXS.N,
+              );
               currPos += DASH_LENGTH + DASH_SPACE;
             }
             // allready handled above

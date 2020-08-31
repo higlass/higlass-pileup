@@ -19,7 +19,7 @@ const createColorTexture = (PIXI, colors) => {
   return [PIXI.Texture.fromBuffer(rgba, colorTexRes, colorTexRes), colorTexRes];
 };
 
-const  colors = Object.values(PILEUP_COLORS);
+const colors = Object.values(PILEUP_COLORS);
 const [colorMapTex, colorMapTexRes] = createColorTexture(PIXI, colors);
 
 const uniforms = new PIXI.UniformGroup({
@@ -61,7 +61,8 @@ varying vec4 vColor;
     void main(void) {
         gl_FragColor = vColor;
     }
-`,  uniforms
+`,
+  uniforms,
 );
 
 function transformY(p, t) {
@@ -150,7 +151,7 @@ const getTilePosAndDimensions = (
   zoomLevel,
   tilePos,
   binsPerTileIn,
-  tilesetInfo
+  tilesetInfo,
 ) => {
   /**
    * Get the tile's position in its coordinate system.
@@ -168,7 +169,7 @@ const getTilePosAndDimensions = (
     const binsPerTile = binsPerTileIn;
 
     const sortedResolutions = tilesetInfo.resolutions
-      .map(x => +x)
+      .map((x) => +x)
       .sort((a, b) => b - a);
 
     const chosenResolution = sortedResolutions[zoomLevel];
@@ -210,24 +211,24 @@ const getTilePosAndDimensions = (
 
 const toVoid = () => {};
 function eqSet(as, bs) {
-    return as.size === bs.size && all(isIn(bs), as);
+  return as.size === bs.size && all(isIn(bs), as);
 }
 
 function all(pred, as) {
-    for (var a of as) if (!pred(a)) return false;
-    return true;
+  for (var a of as) if (!pred(a)) return false;
+  return true;
 }
 
 function isIn(as) {
-    return function (a) {
-        return as.has(a);
-    };
+  return function (a) {
+    return as.has(a);
+  };
 }
 
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
     throw new Error(
-      'Uncaught TypeError: Class constructor cannot be invoked without "new"'
+      'Uncaught TypeError: Class constructor cannot be invoked without "new"',
     );
   }
 
@@ -236,13 +237,13 @@ const PileupTrack = (HGC, ...args) => {
       const worker = spawn(
         new Worker('./bam-fetcher-worker.js', {
           _baseURL: `${getThisScriptLocation()}/`,
-        })
+        }),
       );
 
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
       super(context, options);
-      context.dataFetcher.track   = this;
+      context.dataFetcher.track = this;
 
       this.worker = worker;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
@@ -278,7 +279,7 @@ const PileupTrack = (HGC, ...args) => {
         this.hideMousePosition = HGC.utils.showMousePosition(
           this,
           this.is2d,
-          this.isShowGlobalMousePosition()
+          this.isShowGlobalMousePosition(),
         );
       }
 
@@ -296,7 +297,7 @@ const PileupTrack = (HGC, ...args) => {
         this.hideMousePosition = HGC.utils.showMousePosition(
           this,
           this.is2d,
-          this.isShowGlobalMousePosition()
+          this.isShowGlobalMousePosition(),
         );
       }
 
@@ -311,33 +312,35 @@ const PileupTrack = (HGC, ...args) => {
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
 
-      if (!eqSet(this.visibleTileIds, new Set(Object.keys(this.fetchedTiles)))) {
+      if (
+        !eqSet(this.visibleTileIds, new Set(Object.keys(this.fetchedTiles)))
+      ) {
         this.updateLoadingText();
         return;
       }
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-      fetchedTileKeys.forEach(x => {
+      fetchedTileKeys.forEach((x) => {
         this.fetching.delete(x);
         this.rendering.add(x);
       });
       this.updateLoadingText();
 
-      this.worker.then(tileFunctions => {
+      this.worker.then((tileFunctions) => {
         tileFunctions
           .renderSegments(
             this.dataFetcher.uid,
-            Object.values(this.fetchedTiles).map(x => x.remoteId),
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
             this._xScale.domain(),
             this._xScale.range(),
             this.position,
             this.dimensions,
             this.prevRows,
-            this.options && this.options.groupBy
+            this.options && this.options.groupBy,
           )
-          .then(toRender => {
+          .then((toRender) => {
             this.loadingText.visible = false;
-            fetchedTileKeys.forEach(x => {
+            fetchedTileKeys.forEach((x) => {
               this.rendering.delete(x);
             });
             this.updateLoadingText();
@@ -358,7 +361,7 @@ const PileupTrack = (HGC, ...args) => {
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
               this.positions,
-              2
+              2,
             ); // x,y
             geometry.addAttribute('aColorIdx', this.colors, 1);
             geometry.addIndex(this.ixs);
@@ -390,7 +393,10 @@ const PileupTrack = (HGC, ...args) => {
               this.yScaleBands[key] = HGC.libraries.d3Scale
                 .scaleBand()
                 .domain(
-                  HGC.libraries.d3Array.range(0, this.prevRows[key].rows.length)
+                  HGC.libraries.d3Array.range(
+                    0,
+                    this.prevRows[key].rows.length,
+                  ),
                 )
                 .range([this.prevRows[key].start, this.prevRows[key].end])
                 .paddingInner(0.2);
@@ -404,7 +410,7 @@ const PileupTrack = (HGC, ...args) => {
             scaleScalableGraphics(
               this.segmentGraphics,
               this._xScale,
-              this.drawnAtScale
+              this.drawnAtScale,
             );
 
             // if somebody zoomed vertically, we want to readjust so that
@@ -442,7 +448,7 @@ const PileupTrack = (HGC, ...args) => {
 
       if (this.fetching.size) {
         this.loadingText.text = `Fetching... ${[...this.fetching]
-          .map(x => x.split('|')[0])
+          .map((x) => x.split('|')[0])
           .join(' ')}`;
       }
 
@@ -497,7 +503,7 @@ const PileupTrack = (HGC, ...args) => {
                   const xPos = this._xScale(read.from);
                   const yPos = transformY(
                     yScaleBand(index),
-                    this.valueScaleTransform
+                    this.valueScaleTransform,
                   );
 
                   const MAX_DIST = 10;
@@ -509,7 +515,7 @@ const PileupTrack = (HGC, ...args) => {
                   const nearestSub = findNearestSub(
                     mousePos,
                     read,
-                    nearestDistance
+                    nearestDistance,
                   );
 
                   // console.log('mousePos', mousePos);
@@ -531,8 +537,9 @@ const PileupTrack = (HGC, ...args) => {
                   }
 
                   let mouseOverHtml =
-                    `Position: ${read.chrName}:${read.from -
-                      read.chrOffset}<br>` +
+                    `Position: ${read.chrName}:${
+                      read.from - read.chrOffset
+                    }<br>` +
                     `Read length: ${read.to - read.from}<br>` +
                     `MAPQ: ${read.mapq}<br>`;
 
@@ -558,14 +565,14 @@ const PileupTrack = (HGC, ...args) => {
       return HGC.utils.trackUtils.calculate1DZoomLevel(
         this.tilesetInfo,
         this._xScale,
-        this.maxZoom
+        this.maxZoom,
       );
     }
 
     calculateVisibleTiles() {
       const tiles = HGC.utils.trackUtils.calculate1DVisibleTiles(
         this.tilesetInfo,
-        this._xScale
+        this._xScale,
       );
 
       for (const tile of tiles) {
@@ -573,7 +580,7 @@ const PileupTrack = (HGC, ...args) => {
           tile[0],
           [tile[1]],
           this.tilesetInfo.tile_size,
-          this.tilesetInfo
+          this.tilesetInfo,
         );
 
         const DEFAULT_MAX_TILE_WIDTH = 2e5;
@@ -635,7 +642,7 @@ const PileupTrack = (HGC, ...args) => {
         yPos,
         kMultiplier,
         this.valueScaleTransform,
-        this.dimensions[1]
+        this.dimensions[1],
       );
 
       this.valueScaleTransform = newTransform;
@@ -653,7 +660,7 @@ const PileupTrack = (HGC, ...args) => {
         scaleScalableGraphics(
           this.segmentGraphics,
           newXScale,
-          this.drawnAtScale
+          this.drawnAtScale,
         );
       }
       this.mouseOverGraphics.clear();
@@ -676,7 +683,7 @@ const PileupTrack = (HGC, ...args) => {
 
       output.setAttribute(
         'transform',
-        `translate(${this.pMain.position.x},${this.pMain.position.y}) scale(${this.pMain.scale.x},${this.pMain.scale.y})`
+        `translate(${this.pMain.position.x},${this.pMain.position.y}) scale(${this.pMain.scale.x},${this.pMain.scale.y})`,
       );
 
       const gSegment = document.createElement('g');
@@ -684,7 +691,7 @@ const PileupTrack = (HGC, ...args) => {
       gSegment.setAttribute(
         'transform',
         `translate(${this.segmentGraphics.position.x},${this.segmentGraphics.position.y})` +
-          `scale(${this.segmentGraphics.scale.x},${this.segmentGraphics.scale.y})`
+          `scale(${this.segmentGraphics.scale.x},${this.segmentGraphics.scale.y})`,
       );
 
       output.appendChild(gSegment);
@@ -692,7 +699,7 @@ const PileupTrack = (HGC, ...args) => {
       if (this.segmentGraphics) {
         const b64string = HGC.services.pixiRenderer.plugins.extract.base64(
           // this.segmentGraphics, 'image/png', 1,
-          this.pMain.parent.parent
+          this.pMain.parent.parent,
         );
 
         // const xPositions = this.positions.filter((x,i) => i%2 == 0);
@@ -711,7 +718,7 @@ const PileupTrack = (HGC, ...args) => {
         image.setAttributeNS(
           'http://www.w3.org/1999/xlink',
           'xlink:href',
-          b64string
+          b64string,
         );
         gImage.appendChild(image);
         gSegment.appendChild(gImage);
