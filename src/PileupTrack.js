@@ -19,52 +19,6 @@ const createColorTexture = (PIXI, colors) => {
   return [PIXI.Texture.fromBuffer(rgba, colorTexRes, colorTexRes), colorTexRes];
 };
 
-const colors = Object.values(PILEUP_COLORS);
-const [colorMapTex, colorMapTexRes] = createColorTexture(PIXI, colors);
-
-const uniforms = new PIXI.UniformGroup({
-  uColorMapTex: colorMapTex,
-  uColorMapTexRes: colorMapTexRes,
-});
-
-const shader = PIXI.Shader.from(
-  `
-    attribute vec2 position;
-    attribute float aColorIdx;
-
-    uniform mat3 projectionMatrix;
-    uniform mat3 translationMatrix;
-
-    uniform sampler2D uColorMapTex;
-    uniform float uColorMapTexRes;
-
-    varying vec4 vColor;
-
-    void main(void)
-    {
-        // Half a texel (i.e., pixel in texture coordinates)
-        float eps = 0.5 / uColorMapTexRes;
-        float colorRowIndex = floor((aColorIdx + eps) / uColorMapTexRes);
-        vec2 colorTexIndex = vec2(
-          (aColorIdx / uColorMapTexRes) - colorRowIndex + eps,
-          (colorRowIndex / uColorMapTexRes) + eps
-        );
-        vColor = texture2D(uColorMapTex, colorTexIndex);
-
-        gl_Position = vec4((projectionMatrix * translationMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
-    }
-
-`,
-  `
-varying vec4 vColor;
-
-    void main(void) {
-        gl_FragColor = vColor;
-    }
-`,
-  uniforms,
-);
-
 function transformY(p, t) {
   return p * t.k + t.y;
 }
@@ -284,9 +238,77 @@ const PileupTrack = (HGC, ...args) => {
       }
 
       this.pLabel.addChild(this.loadingText);
+      this.setUpShaderAndTextures();
     }
 
     initTile() {}
+
+    colorToArray(color) {
+      const rgb = HGC.libraries.d3Color.rgb(color);
+
+      const array = [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
+      return array;
+    }
+
+    setUpShaderAndTextures() {
+      const colorDict = PILEUP_COLORS;
+
+      if (this.options && this.options.colorScale) {
+        [
+          colorDict.A,
+          colorDict.T,
+          colorDict.G,
+          colorDict.C,
+          colorDict.N,
+          colorDict.X,
+        ] = this.options.colorScale.map((x) => this.colorToArray(x));
+      }
+
+      const colors = Object.values(colorDict);
+
+      const [colorMapTex, colorMapTexRes] = createColorTexture(PIXI, colors);
+      const uniforms = new PIXI.UniformGroup({
+        uColorMapTex: colorMapTex,
+        uColorMapTexRes: colorMapTexRes,
+      });
+      this.shader = PIXI.Shader.from(
+        `
+    attribute vec2 position;
+    attribute float aColorIdx;
+
+    uniform mat3 projectionMatrix;
+    uniform mat3 translationMatrix;
+
+    uniform sampler2D uColorMapTex;
+    uniform float uColorMapTexRes;
+
+    varying vec4 vColor;
+
+    void main(void)
+    {
+        // Half a texel (i.e., pixel in texture coordinates)
+        float eps = 0.5 / uColorMapTexRes;
+        float colorRowIndex = floor((aColorIdx + eps) / uColorMapTexRes);
+        vec2 colorTexIndex = vec2(
+          (aColorIdx / uColorMapTexRes) - colorRowIndex + eps,
+          (colorRowIndex / uColorMapTexRes) + eps
+        );
+        vColor = texture2D(uColorMapTex, colorTexIndex);
+
+        gl_Position = vec4((projectionMatrix * translationMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
+    }
+
+`,
+        `
+varying vec4 vColor;
+
+    void main(void) {
+        gl_FragColor = vColor;
+    }
+`,
+        uniforms,
+      );
+    }
 
     rerender(options) {
       super.rerender(options);
@@ -306,6 +328,7 @@ const PileupTrack = (HGC, ...args) => {
         this.hideMousePosition = undefined;
       }
 
+      this.setUpShaderAndTextures();
       this.updateExistingGraphics();
     }
 
@@ -368,9 +391,11 @@ const PileupTrack = (HGC, ...args) => {
 
             if (this.positions.length) {
               const state = new HGC.libraries.PIXI.State();
-              const mesh = new HGC.libraries.PIXI.Mesh(geometry, shader, state);
-
-              // console.log('this.prevRows:', this.prevRows);
+              const mesh = new HGC.libraries.PIXI.Mesh(
+                geometry,
+                this.shader,
+                state,
+              );
 
               newGraphics.addChild(mesh);
             }
@@ -775,6 +800,7 @@ PileupTrack.config = {
   availableOptions: [
     'axisPositionHorizontal',
     'axisLabelFormatting',
+    'colorScale',
     'groupBy',
     'labelPosition',
     'labelLeftMargin',
@@ -792,6 +818,15 @@ PileupTrack.config = {
     // minZoom: null,
     axisPositionHorizontal: 'right',
     axisLabelFormatting: 'normal',
+    colorScale: [
+      // A T G C N other
+      '#2c7bb6',
+      '#abfff9',
+      '#ffffbf',
+      '#fdae61',
+      '#808080',
+      '#DCDCDC',
+    ],
     outlineReadOnHover: false,
     showMousePosition: false,
   },
@@ -823,6 +858,59 @@ PileupTrack.config = {
         nothing: {
           value: null,
           name: 'Nothing',
+        },
+      },
+    },
+    colorScale: {
+      name: 'Color scheme',
+      inlineOptions: {
+        drums: {
+          value: [
+            // A T G C N other
+            '#007FFF',
+            '#e8e500',
+            '#008000',
+            '#FF0038',
+            '#800080',
+            '#DCDCDC',
+          ],
+          name: 'DRuMS',
+        },
+        logos: {
+          value: [
+            // A T G C N other
+            '#22ca03',
+            '#c40003',
+            '#f6af08',
+            '#0000c7',
+            '#808080',
+            '#DCDCDC',
+          ],
+          name: 'Logos / IGV',
+        },
+        bluesGreens: {
+          value: [
+            // A T G C N other
+            '#a6cee3',
+            '#1f78b4',
+            '#b2df8a',
+            '#33a02c',
+            '#808080',
+            '#DCDCDC',
+          ],
+          name: 'Blues / Greens  (CB friendly)',
+        },
+        bluesBeiges: {
+          value: [
+            // A T G C N other
+            '#2c7bb6',
+            '#abfff9',
+            '#ffffbf',
+            '#fdae61',
+            '#808080',
+            '#DCDCDC',
+          ],
+          name: 'Blues / Beiges (CB friendly, default)',
         },
       },
     },

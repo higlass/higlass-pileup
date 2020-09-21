@@ -4,7 +4,7 @@ export const PILEUP_COLORS = {
   C: [1, 0, 0, 1], // red for c
   G: [0, 1, 0, 1], // green for g
   T: [1, 1, 0, 1], // yellow for T
-  S: [0, 1, 1, 0.5], // cyan for soft-clipping
+  S: [0, 0, 0, 0.5], // darker grey for soft clipping
   X: [0, 0, 0, 0.7], // black for unknown
   I: [1, 0, 1, 0.5], // purple for insertions
   D: [1, 0.5, 0.5, 0.5], // pink-ish for deletions
@@ -14,12 +14,15 @@ export const PILEUP_COLORS = {
 };
 
 export const PILEUP_COLOR_IXS = {};
-Object.keys(PILEUP_COLORS).map((x, i) => (PILEUP_COLOR_IXS[x] = i));
+Object.keys(PILEUP_COLORS).map((x, i) => {
+  PILEUP_COLOR_IXS[x] = i;
 
-export const parseMD = (mdString, useCounts, subStorage) => {
+  return null;
+});
+
+export const parseMD = (mdString, useCounts) => {
   let currPos = 1;
   let currNum = 0;
-  let lettersBefore = [];
   const substitutions = [];
 
   for (let i = 0; i < mdString.length; i++) {

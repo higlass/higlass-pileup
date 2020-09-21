@@ -40,7 +40,7 @@ Note that `higlass-pileup` currently requires a worker thread. It'll automatical
 </script>
 ```
 
-2. Now, configure the track in your view config and be happy! 
+2. Now, configure the track in your view config and be happy!
 
 ```
 {
@@ -61,7 +61,16 @@ Note that `higlass-pileup` currently requires a worker thread. It'll automatical
             "type": "pileup",
             "options": {
               "axisPositionHorizontal": "right",
-              "axisLabelFormatting": "normal"
+              "axisLabelFormatting": "normal",
+              "colorScale": [
+                // A T G C N Other
+                "#2c7bb6",
+                "#abfff9",
+                "#ffffbf",
+                "#fdae61",
+                "#808080",
+                "#DCDCDC"
+              ]
             },
             "height": 180,
             "uid": "FylkvVBTSumoJ959HT4-5A",
@@ -87,11 +96,11 @@ Note that `higlass-pileup` currently requires a worker thread. It'll automatical
 
 3. To use in higlass.io:
 
-  - Modify the viewconf above to specify the URL for your BAM file.
-  - Either remove or update the `chromSizesUrl` entry to point to a chromosome sizes file for the assembly that your BAM file is aligned to. If it's omitted, the chromosome sizes will be extracted directly from the BAM file and ordered best-guess semantically (i.e. chr1, chr2, ...., chrM, chrX, chrY). 
-  - Save the viewconf as a JSON file.
-  - Navigate to higlass.io/app and drag the JSON file onto the viewer.
-  - Browse away!
+- Modify the viewconf above to specify the URL for your BAM file.
+- Either remove or update the `chromSizesUrl` entry to point to a chromosome sizes file for the assembly that your BAM file is aligned to. If it's omitted, the chromosome sizes will be extracted directly from the BAM file and ordered best-guess semantically (i.e. chr1, chr2, ...., chrM, chrX, chrY).
+- Save the viewconf as a JSON file.
+- Navigate to higlass.io/app and drag the JSON file onto the viewer.
+- Browse away!
 
 ## Support
 
