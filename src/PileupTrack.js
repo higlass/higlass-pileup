@@ -820,10 +820,10 @@ PileupTrack.config = {
     axisLabelFormatting: 'normal',
     colorScale: [
       // A T G C N other
-      '#2c7bb6',
-      '#abfff9',
-      '#ffffbf',
-      '#fdae61',
+      '#08519c',
+      '#6baed6',
+      '#993404',
+      '#fe9929',
       '#808080',
       '#DCDCDC',
     ],
@@ -902,11 +902,10 @@ PileupTrack.config = {
         },
         bluesBeiges: {
           value: [
-            // A T G C N other
-            '#2c7bb6',
-            '#abfff9',
-            '#ffffbf',
-            '#fdae61',
+            '#08519c',
+            '#6baed6',
+            '#993404',
+            '#fe9929',
             '#808080',
             '#DCDCDC',
           ],

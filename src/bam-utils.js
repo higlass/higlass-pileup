@@ -1,5 +1,5 @@
 export const PILEUP_COLORS = {
-  BG: [0.8, 0.8, 0.8, 1], // gray for the read background
+  BG: [0.9, 0.9, 0.9, 1], // gray for the read background
   A: [0, 0, 1, 1], // blue for A
   C: [1, 0, 0, 1], // red for c
   G: [0, 1, 0, 1], // green for g

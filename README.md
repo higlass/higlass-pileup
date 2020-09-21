@@ -65,7 +65,7 @@ Note that `higlass-pileup` currently requires a worker thread. It'll automatical
               "colorScale": [
                 // A T G C N Other
                 "#2c7bb6",
-                "#abfff9",
+                "#92c5de",
                 "#ffffbf",
                 "#fdae61",
                 "#808080",

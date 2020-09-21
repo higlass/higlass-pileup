@@ -1,3 +1,7 @@
+v0.4.0
+
+- Added customizeable color scheme
+
 v0.3.5
 
 - Added label position options
