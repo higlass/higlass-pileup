@@ -4,6 +4,8 @@ test_html
 *.swo
 node_modules
 dist
+es
 *.zip
 *.log
 *.DS_cache
+*.DS_Store

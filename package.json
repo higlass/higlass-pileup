@@ -1,6 +1,6 @@
 {
   "name": "higlass-pileup",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "HiGlass Pileup Track",
   "keywords": [
     "HiGlass",
@@ -20,8 +20,10 @@
   },
   "main": "src/index.js",
   "unpkg": "dist/higlass-pileup.min.js",
+  "module": "./es",
   "files": [
-    "dist"
+    "dist",
+    "es"
   ],
   "devDependencies": {
     "autoprefixer": "^8.2.0",
@@ -56,12 +58,14 @@
     "webpack-plugin-replace": "^1.2.0"
   },
   "scripts": {
-    "build": "webpack --mode production",
+    "build-es": "rm -rf ./es/* && npx babel ./src/ --out-dir ./es/ --env-name esm",
+    "build": "npm run build-es && webpack --mode production",
     "start": "webpack-dev-server --mode development --open",
     "prerelease": "rm -rf dist/*; npm run build; zip -r dist.zip dist"
   },
   "dependencies": {
     "@gmod/bam": "^1.0.21",
+    "babel-cli": "^6.26.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "d3-array": "^2.3.1",
     "d3-dsv": "^1.1.1",
