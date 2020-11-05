@@ -176,16 +176,27 @@ function ChromosomeInfo(filepath, success) {
 /// End Chrominfo
 /////////////////////////////////////////////////////
 
-const bamRecordToJson = (bamRecord, chrName, chrOffset) => ({
-  id: bamRecord._id,
-  from: +bamRecord.data.start + chrOffset,
-  to: +bamRecord.data.end + chrOffset,
-  md: bamRecord.get('MD'),
-  chrName,
-  chrOffset,
-  cigar: bamRecord.get('cigar'),
-  mapq: bamRecord.get('MQ'),
-});
+const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
+
+  const seq = bamRecord.get('seq');
+
+  const segment = {
+    id: bamRecord._id,
+    from: +bamRecord.data.start + 1 + chrOffset,
+    to: +bamRecord.data.end + 1 + chrOffset,
+    md: bamRecord.get('MD'),
+    chrName,
+    chrOffset,
+    cigar: bamRecord.get('cigar'),
+    mapq: bamRecord.get('mq'),
+    strand: bamRecord.get('strand') === 1 ? '+' : '-',
+    substitutions: []
+  }
+
+  segment["substitutions"] = getSubstitutions(segment, seq);
+
+  return segment;
+};
 
 const tabularJsonToRowJson = (tabularJson) => {
   const rowJson = [];
@@ -217,6 +228,7 @@ const MAX_TILES = 20;
 const chromSizes = {};
 const chromInfos = {};
 const tileValues = new LRU({ max: MAX_TILES });
+const readCounts = new LRU({ max: MAX_TILES });
 const tilesetInfos = {};
 
 // indexed by uuid
@@ -243,10 +255,11 @@ const serverInit = (uid, server, tilesetUid, authHeader) => {
   };
 };
 
-const init = (uid, bamUrl, chromSizesUrl) => {
+const init = (uid, bamUrl, baiUrl, chromSizesUrl) => {
   if (!bamFiles[bamUrl]) {
     bamFiles[bamUrl] = new BamFile({
       bamUrl,
+      baiUrl
     });
 
     // we have to fetch the header before we can fetch data
@@ -280,6 +293,54 @@ const serverTilesetInfo = (uid) => {
 
       return retVal;
     });
+};
+
+const getReadCounts = (allSegments) => {
+
+  const segmentList = Object.values(allSegments);
+  const readCounts = {};
+  let maxReadCount = 0;
+
+  for (let j = 0; j < segmentList.length; j++) {
+    const from = segmentList[j].from;
+    const to = segmentList[j].to;
+
+    for(let i = from; i<to; i++){
+      if(!readCounts[i]){
+        readCounts[i] = {
+          reads: 0,
+          matches: 0,
+          variants: {
+            A: 0,
+            C: 0,
+            G: 0,
+            T: 0,
+            N: 0,
+          }
+          
+        }
+      }
+      readCounts[i].reads++;
+      readCounts[i].matches++;
+      maxReadCount = Math.max(maxReadCount,readCounts[i].reads);
+    }
+
+    segmentList[j].substitutions.forEach(substitution => {
+      if(substitution.variant){
+        const posSub = from + substitution.pos;
+        readCounts[posSub].matches--;
+        if(!readCounts[posSub]['variants'][substitution.variant]){
+          readCounts[posSub]['variants'][substitution.variant] = 0;
+        }
+        readCounts[posSub]['variants'][substitution.variant]++;
+      }
+    });
+  }
+
+  return {
+    readCounts: readCounts,
+    maxReadCount: maxReadCount,
+}
 };
 
 const tilesetInfo = (uid) => {
@@ -397,11 +458,11 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos),
                 );
+                
                 tileValues.set(
                   `${uid}.${z}.${x}`,
                   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
                 );
-
                 return [];
               }),
           );
@@ -678,10 +739,12 @@ const renderSegments = (
   position,
   dimensions,
   prevRows,
-  groupByOption,
+  trackOptions,
 ) => {
   const t1 = currTime();
   const allSegments = {};
+  let allReadCounts = {};
+  let maxReadCount = 0;
 
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
@@ -693,7 +756,15 @@ const renderSegments = (
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
+
   }
+
+  if(trackOptions.showReadCounts){
+    const result = getReadCounts(allSegments);
+    allReadCounts = result.readCounts;
+    maxReadCount = result.maxReadCount;
+  }
+  //console.log(allSegments)
 
   const segmentList = Object.values(allSegments);
 
@@ -712,6 +783,8 @@ const renderSegments = (
 
   // group by some attribute or don't
   if (groupBy) {
+    let groupByOption = trackOptions && trackOptions.groupBy;
+    groupByOption = groupByOption ? groupByOption : null;
     grouped = groupBy(segmentList, groupByOption);
   } else {
     grouped = { null: segmentList };
@@ -728,11 +801,11 @@ const renderSegments = (
   const totalRows = Object.values(grouped)
     .map((x) => x.rows.length)
     .reduce((a, b) => a + b, 0);
-  let currStart = 0;
+  let currStart = trackOptions.showReadCounts ? trackOptions.readCountHeight : 0;
 
   // const d = range(0, rows.length);
   const yGlobalScale = scaleBand()
-    .domain(range(0, totalRows))
+    .domain(range(0, totalRows+currStart))
     .range([0, dimensions[1]])
     .paddingInner(0.2);
 
@@ -824,11 +897,43 @@ const renderSegments = (
     groupCounter += 1;
   }
 
+  if(trackOptions.showReadCounts){
+    const d = range(0, trackOptions.readCountHeight);
+    const groupStart = yGlobalScale(0);
+    const groupEnd = yGlobalScale(trackOptions.readCountHeight-1) + yGlobalScale.bandwidth();
+    const r = [groupStart, groupEnd];
+
+    const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
+
+    let xLeft, yTop, barHeight, bgColor;
+    const width = xScale(1)-xScale(0);
+    const groupHeight = yScale.bandwidth()*trackOptions.readCountHeight;
+    const scalingFactor = groupHeight/maxReadCount;
+
+    for (const pos of Object.keys(allReadCounts)) {
+      xLeft= xScale(pos);
+      yTop = groupHeight;
+
+      // Draw rects for variants counts on top of each other
+      for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
+        barHeight = allReadCounts[pos]['variants'][variant]*scalingFactor;
+        yTop -= barHeight;
+        addRect(xLeft, yTop, width, barHeight, PILEUP_COLOR_IXS[variant]);
+      }
+
+      barHeight = allReadCounts[pos]['matches']*scalingFactor;
+      yTop -= barHeight;
+      bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+      addRect(xLeft, yTop, width, barHeight, bgColor);
+    }
+  }
+
   for (const group of Object.values(grouped)) {
     const { rows } = group;
 
     const d = range(0, rows.length);
     const r = [group.start, group.end];
+
     const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
 
     let xLeft;
@@ -848,31 +953,50 @@ const renderSegments = (
         xLeft = from;
         xRight = to;
 
-        addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.BG);
+        //console.log(xLeft, yTop, xRight - xLeft, height)
+        if(segment.strand === '+' && trackOptions.plusStrandColor){
+          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.PLUS_STRAND);
+        }
+        else if(segment.strand === '-' && trackOptions.minusStrandColor){
+          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.MINUS_STRAND);
+        }
+        else{
+          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.BG);
+        }
+        //console.log(allColors)
+        
 
-        const substitutions = getSubstitutions(segment);
-
-        for (const substitution of substitutions) {
+        for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));
           xRight = xLeft + width;
 
-          if (substitution.base === 'A') {
+          if (substitution.variant === 'A') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
-          } else if (substitution.base === 'C') {
+          } else if (substitution.variant === 'C') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
-          } else if (substitution.base === 'G') {
+          } else if (substitution.variant === 'G') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
-          } else if (substitution.base === 'T') {
+          } else if (substitution.variant === 'T') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
           } else if (substitution.type === 'S') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
+          } else if (substitution.type === 'H') {
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
           } else if (substitution.type === 'X') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
           } else if (substitution.type === 'I') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.I);
           } else if (substitution.type === 'D') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
+
+            // add some stripes
+            const numStripes = 6;
+            const stripeWidth = 0.1;
+            for(let i = 0; i<=numStripes; i++){
+              const xStripe = xLeft + i*width/numStripes
+              addRect(xStripe, yTop, stripeWidth, height, PILEUP_COLOR_IXS.BLACK);
+            }
           } else if (substitution.type === 'N') {
             // deletions so we're going to draw a thinner line
             // across
@@ -930,6 +1054,7 @@ const renderSegments = (
 
   const objData = {
     rows: grouped,
+    readCounts: allReadCounts,
     positionsBuffer,
     colorsBuffer,
     ixBuffer,

@@ -1,6 +1,6 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, Worker } from 'threads';
-import { getSubstitutions, PILEUP_COLORS } from './bam-utils';
+import { PILEUP_COLORS, cigarTypeToText } from './bam-utils';
 
 const createColorTexture = (PIXI, colors) => {
   const colorTexRes = Math.max(2, Math.ceil(Math.sqrt(colors.length)));
@@ -51,13 +51,12 @@ function calcSubDistance(mousePos, read, sub) {
 
 /** Find the thearest substition to the mouse position */
 function findNearestSub(mousePos, read, nearestDistance) {
-  const subs = getSubstitutions(read);
+  const subs = read.substitutions;
   let nearestSub = null;
   let nearestSubDistance = Number.MAX_VALUE;
 
   for (const sub of subs) {
     const subDistance = calcSubDistance(mousePos, read, sub);
-
     if (subDistance < nearestSubDistance) {
       nearestSub = sub;
       nearestSubDistance = subDistance;
@@ -123,7 +122,7 @@ const getTilePosAndDimensions = (
     const binsPerTile = binsPerTileIn;
 
     const sortedResolutions = tilesetInfo.resolutions
-      .map((x) => +x)
+      .map(x => +x)
       .sort((a, b) => b - a);
 
     const chosenResolution = sortedResolutions[zoomLevel];
@@ -174,7 +173,7 @@ function all(pred, as) {
 }
 
 function isIn(as) {
-  return function (a) {
+  return function(a) {
     return as.has(a);
   };
 }
@@ -188,9 +187,14 @@ const PileupTrack = (HGC, ...args) => {
 
   class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
+      let baseUrl = `${getThisScriptLocation()}/`;
+      if (options.workerScriptLocation) {
+        baseUrl = options.workerScriptLocation;
+      }
+
       const worker = spawn(
         new Worker('./bam-fetcher-worker.js', {
-          _baseURL: `${getThisScriptLocation()}/`,
+          _baseURL: baseUrl,
         }),
       );
 
@@ -209,10 +213,11 @@ const PileupTrack = (HGC, ...args) => {
       // we last rendered everything
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
       this.prevRows = [];
+      this.readCounts = {};
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
-      this.loadingText = new PIXI.Text('Loading', {
+      this.loadingText = new HGC.libraries.PIXI.Text('Loading', {
         fontSize: '12px',
         fontFamily: 'Arial',
         fill: 'grey',
@@ -261,17 +266,30 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.C,
           colorDict.N,
           colorDict.X,
-        ] = this.options.colorScale.map((x) => this.colorToArray(x));
+        ] = this.options.colorScale.map(x => this.colorToArray(x));
+      }
+
+      if (this.options && this.options.plusStrandColor) {
+        colorDict.PLUS_STRAND = this.colorToArray(this.options.plusStrandColor);
+      }
+
+      if (this.options && this.options.minusStrandColor) {
+        colorDict.MINUS_STRAND = this.colorToArray(
+          this.options.minusStrandColor,
+        );
       }
 
       const colors = Object.values(colorDict);
 
-      const [colorMapTex, colorMapTexRes] = createColorTexture(PIXI, colors);
-      const uniforms = new PIXI.UniformGroup({
+      const [colorMapTex, colorMapTexRes] = createColorTexture(
+        HGC.libraries.PIXI,
+        colors,
+      );
+      const uniforms = new HGC.libraries.PIXI.UniformGroup({
         uColorMapTex: colorMapTex,
         uColorMapTexRes: colorMapTexRes,
       });
-      this.shader = PIXI.Shader.from(
+      this.shader = HGC.libraries.PIXI.Shader.from(
         `
     attribute vec2 position;
     attribute float aColorIdx;
@@ -343,27 +361,27 @@ varying vec4 vColor;
       }
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-      fetchedTileKeys.forEach((x) => {
+      fetchedTileKeys.forEach(x => {
         this.fetching.delete(x);
         this.rendering.add(x);
       });
       this.updateLoadingText();
 
-      this.worker.then((tileFunctions) => {
+      this.worker.then(tileFunctions => {
         tileFunctions
           .renderSegments(
             this.dataFetcher.uid,
-            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            Object.values(this.fetchedTiles).map(x => x.remoteId),
             this._xScale.domain(),
             this._xScale.range(),
             this.position,
             this.dimensions,
             this.prevRows,
-            this.options && this.options.groupBy,
+            this.options,
           )
-          .then((toRender) => {
+          .then(toRender => {
             this.loadingText.visible = false;
-            fetchedTileKeys.forEach((x) => {
+            fetchedTileKeys.forEach(x => {
               this.rendering.delete(x);
             });
             this.updateLoadingText();
@@ -380,6 +398,7 @@ varying vec4 vColor;
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
+            this.readCounts = toRender.readCounts;
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -473,7 +492,7 @@ varying vec4 vColor;
 
       if (this.fetching.size) {
         this.loadingText.text = `Fetching... ${[...this.fetching]
-          .map((x) => x.split('|')[0])
+          .map(x => x.split('|')[0])
           .join(' ')}`;
       }
 
@@ -500,13 +519,20 @@ varying vec4 vColor;
       // console.log('this.prevRows', this.prevRows);
       // const trackY = this.valueScaleTransform.invert(track)
       this.mouseOverGraphics.clear();
+      // Prevents 'stuck' read outlines when hovering quickly 
+      requestAnimationFrame(this.animate);
       const trackY = invY(trackYIn, this.valueScaleTransform);
+
+      const bandReadCounterStart = 0;
+      let bandReadCounterEnd = Number.MAX_SAFE_INTEGER;
 
       if (this.yScaleBands) {
         for (const key of Object.keys(this.yScaleBands)) {
           const yScaleBand = this.yScaleBands[key];
 
           const [start, end] = yScaleBand.range();
+
+          bandReadCounterEnd = Math.min(start, bandReadCounterEnd);
 
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
@@ -562,17 +588,18 @@ varying vec4 vColor;
                   }
 
                   let mouseOverHtml =
-                    `Position: ${read.chrName}:${
-                      read.from - read.chrOffset
-                    }<br>` +
+                    `Position: ${read.chrName}:${read.from -
+                      read.chrOffset}<br>` +
                     `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mapq}<br>`;
+                    `MAPQ: ${read.mapq}<br>` +
+                    `Strand: ${read.strand}<br>`;
 
-                  if (nearestSub) {
-                    if (nearestSub.sub) {
-                      mouseOverHtml += `Nearest sub: ${nearestSub.type} (${nearestSub.sub.length})`;
-                    }
+                  if (nearestSub && nearestSub.type) {
+                    mouseOverHtml += `Nearest substitution: ${cigarTypeToText(nearestSub.type)} (${nearestSub.length})`;
+                  }else if(nearestSub && nearestSub.variant){
+                    mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
                   }
+
                   return mouseOverHtml;
                   // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                 }
@@ -580,8 +607,35 @@ varying vec4 vColor;
             }
           }
         }
+
         // var val = self.yScale.domain()[index];
+        if (
+          this.options.showReadCounts &&
+          bandReadCounterStart <= trackY &&
+          trackY <= bandReadCounterEnd
+        ) {
+          const mousePos = this._xScale.invert(trackX);
+          const bpIndex = Math.floor(mousePos);
+          if(this.readCounts[bpIndex]){
+            const readCount = this.readCounts[bpIndex];
+            const matchPercent = readCount.matches/readCount.reads*100;
+            let mouseOverHtml = 
+              `Reads: ${readCount.reads}<br>` +
+              `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>`;
+            
+            for (let variant of Object.keys(readCount.variants)) {
+              if(readCount.variants[variant]>0){
+                const variantPercent = readCount.variants[variant]/readCount.reads*100;
+                mouseOverHtml += `${variant}: ${readCount.variants[variant]} (${variantPercent.toFixed(2)}%)<br>`
+              }
+            }
+            
+            return mouseOverHtml;
+          }
+          
+        }
       }
+      
 
       return '';
     }
@@ -812,6 +866,11 @@ PileupTrack.config = {
     'labelBackgroundOpacity',
     'outlineReadOnHover',
     'showMousePosition',
+    'workerScriptLocation',
+    'plusStrandColor',
+    'minusStrandColor',
+    'showReadCounts',
+    'readCountHeight',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -829,6 +888,8 @@ PileupTrack.config = {
     ],
     outlineReadOnHover: false,
     showMousePosition: false,
+    showReadCounts: false,
+    readCountHeight: 10, // unit: number of rows
   },
   optionsInfo: {
     outlineReadOnHover: {

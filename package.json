@@ -64,7 +64,7 @@
     "prerelease": "rm -rf dist/*; npm run build; zip -r dist.zip dist"
   },
   "dependencies": {
-    "@gmod/bam": "^1.0.21",
+    "@gmod/bam": "^1.1.3",
     "babel-cli": "^6.26.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "d3-array": "^2.3.1",
