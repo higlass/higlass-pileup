@@ -168,7 +168,25 @@ export const getSubstitutions = (segment, seq) => {
         type: 'S',
       });
     }
+
+    // Hard clipping can happen at the beginning, at the end or both
+    // positions are from the beginning of the read
+    if (firstSub.type === 'H') {
+      substitutions.push({
+        pos: -firstSub.length,
+        type: 'H',
+        length: firstSub.length,
+      });
+    } 
+    if (lastSub.type === 'H') {
+      substitutions.push({
+        pos: segment.to - segment.from,
+        length: lastSub.length,
+        type: 'H',
+      });
+    }
   }
+
 
   if (segment.md) {
     const mdSubstitutions = parseMD(segment.md, false);
