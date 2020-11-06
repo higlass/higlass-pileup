@@ -228,7 +228,6 @@ const MAX_TILES = 20;
 const chromSizes = {};
 const chromInfos = {};
 const tileValues = new LRU({ max: MAX_TILES });
-const readCounts = new LRU({ max: MAX_TILES });
 const tilesetInfos = {};
 
 // indexed by uuid
