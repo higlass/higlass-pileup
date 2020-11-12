@@ -81,13 +81,16 @@ export const parseMD = (mdString, useCounts) => {
       currPos += 1;
     }
   }
-  // if(!useCounts){
-  //   console.log(mdString, substitutions)
-  // }
   
   return substitutions;
 };
 
+/**
+   * Gets an array of all substitutions in the segment
+   * @param  {String} segment  Current segment
+   * @param  {String} seq   Read sequence from bam file.
+   * @return {Array}  Substitutions.
+   */
 export const getSubstitutions = (segment, seq) => {
   let substitutions = [];
   let insertions = 0;
@@ -126,7 +129,6 @@ export const getSubstitutions = (segment, seq) => {
         substitutions.push({
           pos: currPos,
           length: sub.length,
-          //sub,
           type: 'N',
         });
         currPos += sub.length;
@@ -134,7 +136,6 @@ export const getSubstitutions = (segment, seq) => {
         currPos += sub.length;
       } else {
         // console.log('skipping:', sub.type);
-        // console.log(cigarSubs)
       }
       // if (referenceConsuming.has(sub.base)) {
       //   if (queryConsuming.has(sub.base)) {

@@ -1,6 +1,6 @@
 {
   "name": "higlass-pileup",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "HiGlass Pileup Track",
   "keywords": [
     "HiGlass",
@@ -73,7 +73,7 @@
     "d3-scale": "^3.0.1",
     "higlass-register": "^0.1.0",
     "lru-cache": "^6.0.0",
-    "prettier": "^1.18.2",
+    "prettier": "^2.1.2",
     "threads": "v1.0.0-beta.6"
   }
 }

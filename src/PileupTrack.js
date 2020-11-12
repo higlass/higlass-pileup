@@ -122,7 +122,7 @@ const getTilePosAndDimensions = (
     const binsPerTile = binsPerTileIn;
 
     const sortedResolutions = tilesetInfo.resolutions
-      .map(x => +x)
+      .map((x) => +x)
       .sort((a, b) => b - a);
 
     const chosenResolution = sortedResolutions[zoomLevel];
@@ -173,7 +173,7 @@ function all(pred, as) {
 }
 
 function isIn(as) {
-  return function(a) {
+  return function (a) {
     return as.has(a);
   };
 }
@@ -213,7 +213,7 @@ const PileupTrack = (HGC, ...args) => {
       // we last rendered everything
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
       this.prevRows = [];
-      this.readCounts = {};
+      this.coverage = {};
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
@@ -266,7 +266,7 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.C,
           colorDict.N,
           colorDict.X,
-        ] = this.options.colorScale.map(x => this.colorToArray(x));
+        ] = this.options.colorScale.map((x) => this.colorToArray(x));
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -361,17 +361,17 @@ varying vec4 vColor;
       }
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-      fetchedTileKeys.forEach(x => {
+      fetchedTileKeys.forEach((x) => {
         this.fetching.delete(x);
         this.rendering.add(x);
       });
       this.updateLoadingText();
 
-      this.worker.then(tileFunctions => {
+      this.worker.then((tileFunctions) => {
         tileFunctions
           .renderSegments(
             this.dataFetcher.uid,
-            Object.values(this.fetchedTiles).map(x => x.remoteId),
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
             this._xScale.domain(),
             this._xScale.range(),
             this.position,
@@ -379,9 +379,9 @@ varying vec4 vColor;
             this.prevRows,
             this.options,
           )
-          .then(toRender => {
+          .then((toRender) => {
             this.loadingText.visible = false;
-            fetchedTileKeys.forEach(x => {
+            fetchedTileKeys.forEach((x) => {
               this.rendering.delete(x);
             });
             this.updateLoadingText();
@@ -398,7 +398,7 @@ varying vec4 vColor;
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
-            this.readCounts = toRender.readCounts;
+            this.coverage = toRender.coverage;
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -492,7 +492,7 @@ varying vec4 vColor;
 
       if (this.fetching.size) {
         this.loadingText.text = `Fetching... ${[...this.fetching]
-          .map(x => x.split('|')[0])
+          .map((x) => x.split('|')[0])
           .join(' ')}`;
       }
 
@@ -511,20 +511,19 @@ varying vec4 vColor;
       //   .domain([0, this.prevRows.length])
       //   .range([0, this.dimensions[1]]);
       // HGC.utils.trackUtils.drawAxis(this, valueScale);
-      this.trackNotFoundText.text = 'Pete rules!!!';
+      this.trackNotFoundText.text = 'Track not found.';
       this.trackNotFoundText.visible = true;
     }
 
     getMouseOverHtml(trackX, trackYIn) {
-      // console.log('this.prevRows', this.prevRows);
       // const trackY = this.valueScaleTransform.invert(track)
       this.mouseOverGraphics.clear();
-      // Prevents 'stuck' read outlines when hovering quickly 
+      // Prevents 'stuck' read outlines when hovering quickly
       requestAnimationFrame(this.animate);
       const trackY = invY(trackYIn, this.valueScaleTransform);
 
-      const bandReadCounterStart = 0;
-      let bandReadCounterEnd = Number.MAX_SAFE_INTEGER;
+      const bandCoverageStart = 0;
+      let bandCoverageEnd = Number.MAX_SAFE_INTEGER;
 
       if (this.yScaleBands) {
         for (const key of Object.keys(this.yScaleBands)) {
@@ -532,19 +531,15 @@ varying vec4 vColor;
 
           const [start, end] = yScaleBand.range();
 
-          bandReadCounterEnd = Math.min(start, bandReadCounterEnd);
+          bandCoverageEnd = Math.min(start, bandCoverageEnd);
 
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
             const index = Math.floor((trackY - start) / eachBand);
             const { rows } = this.prevRows[key];
 
-            // console.log('prevRows:', this.prevRows);
-            // console.log('index', index, 'key', key);
-
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
-              // console.log('row:', row);
 
               for (const read of row) {
                 const readTrackFrom = this._xScale(read.from);
@@ -569,10 +564,6 @@ varying vec4 vColor;
                     nearestDistance,
                   );
 
-                  // console.log('mousePos', mousePos);
-                  // console.log('read:', read);
-                  // console.log('nearestSub', nearestSub);
-
                   if (this.options.outlineReadOnHover) {
                     const width =
                       this._xScale(read.to) - this._xScale(read.from);
@@ -588,15 +579,18 @@ varying vec4 vColor;
                   }
 
                   let mouseOverHtml =
-                    `Position: ${read.chrName}:${read.from -
-                      read.chrOffset}<br>` +
+                    `Position: ${read.chrName}:${
+                      read.from - read.chrOffset
+                    }<br>` +
                     `Read length: ${read.to - read.from}<br>` +
                     `MAPQ: ${read.mapq}<br>` +
                     `Strand: ${read.strand}<br>`;
 
                   if (nearestSub && nearestSub.type) {
-                    mouseOverHtml += `Nearest substitution: ${cigarTypeToText(nearestSub.type)} (${nearestSub.length})`;
-                  }else if(nearestSub && nearestSub.variant){
+                    mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
+                      nearestSub.type,
+                    )} (${nearestSub.length})`;
+                  } else if (nearestSub && nearestSub.variant) {
                     mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
                   }
 
@@ -610,32 +604,33 @@ varying vec4 vColor;
 
         // var val = self.yScale.domain()[index];
         if (
-          this.options.showReadCounts &&
-          bandReadCounterStart <= trackY &&
-          trackY <= bandReadCounterEnd
+          this.options.showCoverage &&
+          bandCoverageStart <= trackY &&
+          trackY <= bandCoverageEnd
         ) {
           const mousePos = this._xScale.invert(trackX);
           const bpIndex = Math.floor(mousePos);
-          if(this.readCounts[bpIndex]){
-            const readCount = this.readCounts[bpIndex];
-            const matchPercent = readCount.matches/readCount.reads*100;
-            let mouseOverHtml = 
+          if (this.coverage[bpIndex]) {
+            const readCount = this.coverage[bpIndex];
+            const matchPercent = (readCount.matches / readCount.reads) * 100;
+            let mouseOverHtml =
               `Reads: ${readCount.reads}<br>` +
               `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>`;
-            
+
             for (let variant of Object.keys(readCount.variants)) {
-              if(readCount.variants[variant]>0){
-                const variantPercent = readCount.variants[variant]/readCount.reads*100;
-                mouseOverHtml += `${variant}: ${readCount.variants[variant]} (${variantPercent.toFixed(2)}%)<br>`
+              if (readCount.variants[variant] > 0) {
+                const variantPercent =
+                  (readCount.variants[variant] / readCount.reads) * 100;
+                mouseOverHtml += `${variant}: ${
+                  readCount.variants[variant]
+                } (${variantPercent.toFixed(2)}%)<br>`;
               }
             }
-            
+
             return mouseOverHtml;
           }
-          
         }
       }
-      
 
       return '';
     }
@@ -869,8 +864,8 @@ PileupTrack.config = {
     'workerScriptLocation',
     'plusStrandColor',
     'minusStrandColor',
-    'showReadCounts',
-    'readCountHeight',
+    'showCoverage',
+    'coverageHeight',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -888,8 +883,8 @@ PileupTrack.config = {
     ],
     outlineReadOnHover: false,
     showMousePosition: false,
-    showReadCounts: false,
-    readCountHeight: 10, // unit: number of rows
+    showCoverage: false,
+    coverageHeight: 10, // unit: number of rows
   },
   optionsInfo: {
     outlineReadOnHover: {

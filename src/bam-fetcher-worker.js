@@ -294,19 +294,19 @@ const serverTilesetInfo = (uid) => {
     });
 };
 
-const getReadCounts = (allSegments) => {
+const getCoverage = (allSegments) => {
 
   const segmentList = Object.values(allSegments);
-  const readCounts = {};
-  let maxReadCount = 0;
+  const coverage = {};
+  let maxCoverage = 0;
 
   for (let j = 0; j < segmentList.length; j++) {
     const from = segmentList[j].from;
     const to = segmentList[j].to;
 
     for(let i = from; i<to; i++){
-      if(!readCounts[i]){
-        readCounts[i] = {
+      if(!coverage[i]){
+        coverage[i] = {
           reads: 0,
           matches: 0,
           variants: {
@@ -319,26 +319,26 @@ const getReadCounts = (allSegments) => {
           
         }
       }
-      readCounts[i].reads++;
-      readCounts[i].matches++;
-      maxReadCount = Math.max(maxReadCount,readCounts[i].reads);
+      coverage[i].reads++;
+      coverage[i].matches++;
+      maxCoverage = Math.max(maxCoverage,coverage[i].reads);
     }
 
     segmentList[j].substitutions.forEach(substitution => {
       if(substitution.variant){
         const posSub = from + substitution.pos;
-        readCounts[posSub].matches--;
-        if(!readCounts[posSub]['variants'][substitution.variant]){
-          readCounts[posSub]['variants'][substitution.variant] = 0;
+        coverage[posSub].matches--;
+        if(!coverage[posSub]['variants'][substitution.variant]){
+          coverage[posSub]['variants'][substitution.variant] = 0;
         }
-        readCounts[posSub]['variants'][substitution.variant]++;
+        coverage[posSub]['variants'][substitution.variant]++;
       }
     });
   }
 
   return {
-    readCounts: readCounts,
-    maxReadCount: maxReadCount,
+    coverage: coverage,
+    maxCoverage: maxCoverage,
 }
 };
 
@@ -586,7 +586,7 @@ const fetchTilesDebounced = async (uid, tileIds) => {
 ///////////////////////////////////////////////////
 
 function segmentsToRows(segments, optionsIn) {
-  const t1 = currTime();
+  //const t1 = performance.now();//currTime();
 
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
@@ -713,8 +713,8 @@ function segmentsToRows(segments, optionsIn) {
     currRow += 1;
   }
 
-  const t2 = currTime();
-  // console.log('segmentsToRows', t2 - t1)
+  //const t2 = performance.now();//currTime();
+  //console.log('segmentsToRows', t2 - t1)
   return outputRows;
 }
 
@@ -758,12 +758,11 @@ const renderSegments = (
 
   }
 
-  if(trackOptions.showReadCounts){
-    const result = getReadCounts(allSegments);
-    allReadCounts = result.readCounts;
-    maxReadCount = result.maxReadCount;
+  if(trackOptions.showCoverage){
+    const result = getCoverage(allSegments);
+    allReadCounts = result.coverage;
+    maxReadCount = result.maxCoverage;
   }
-  //console.log(allSegments)
 
   const segmentList = Object.values(allSegments);
 
@@ -800,7 +799,7 @@ const renderSegments = (
   const totalRows = Object.values(grouped)
     .map((x) => x.rows.length)
     .reduce((a, b) => a + b, 0);
-  let currStart = trackOptions.showReadCounts ? trackOptions.readCountHeight : 0;
+  let currStart = trackOptions.showCoverage ? trackOptions.coverageHeight : 0;
 
   // const d = range(0, rows.length);
   const yGlobalScale = scaleBand()
@@ -896,17 +895,17 @@ const renderSegments = (
     groupCounter += 1;
   }
 
-  if(trackOptions.showReadCounts){
-    const d = range(0, trackOptions.readCountHeight);
+  if(trackOptions.showCoverage){
+    const d = range(0, trackOptions.coverageHeight);
     const groupStart = yGlobalScale(0);
-    const groupEnd = yGlobalScale(trackOptions.readCountHeight-1) + yGlobalScale.bandwidth();
+    const groupEnd = yGlobalScale(trackOptions.coverageHeight-1) + yGlobalScale.bandwidth();
     const r = [groupStart, groupEnd];
 
     const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
 
     let xLeft, yTop, barHeight, bgColor;
     const width = xScale(1)-xScale(0);
-    const groupHeight = yScale.bandwidth()*trackOptions.readCountHeight;
+    const groupHeight = yScale.bandwidth()*trackOptions.coverageHeight;
     const scalingFactor = groupHeight/maxReadCount;
 
     for (const pos of Object.keys(allReadCounts)) {
@@ -952,7 +951,6 @@ const renderSegments = (
         xLeft = from;
         xRight = to;
 
-        //console.log(xLeft, yTop, xRight - xLeft, height)
         if(segment.strand === '+' && trackOptions.plusStrandColor){
           addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.PLUS_STRAND);
         }
@@ -961,9 +959,7 @@ const renderSegments = (
         }
         else{
           addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.BG);
-        }
-        //console.log(allColors)
-        
+        }     
 
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
@@ -1053,7 +1049,7 @@ const renderSegments = (
 
   const objData = {
     rows: grouped,
-    readCounts: allReadCounts,
+    coverage: allReadCounts,
     positionsBuffer,
     colorsBuffer,
     ixBuffer,
