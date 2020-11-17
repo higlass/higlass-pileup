@@ -62,6 +62,7 @@ Note that `higlass-pileup` currently requires a worker thread. It'll automatical
             "options": {
               "axisPositionHorizontal": "right",
               "axisLabelFormatting": "normal",
+              "showCoverage": false,
               "colorScale": [
                 // A T G C N Other
                 "#2c7bb6",
