@@ -282,6 +282,56 @@ const serverTilesetInfo = (uid) => {
     });
 };
 
+const getCoverage = (segmentList, samplingDistance) => {
+  const coverage = {};
+  let maxCoverage = 0;
+
+  for (let j = 0; j < segmentList.length; j++) {
+    const from = segmentList[j].from;
+    const to = segmentList[j].to;
+    // Find the first position that is in the samplin set
+    const firstFrom = from - from % samplingDistance + samplingDistance;
+
+    for (let i = firstFrom; i < to; i=i+samplingDistance) {
+      if (!coverage[i]) {
+        coverage[i] = {
+          reads: 0,
+          matches: 0,
+          variants: {
+            A: 0,
+            C: 0,
+            G: 0,
+            T: 0,
+            N: 0,
+          },
+        };
+      }
+      coverage[i].reads++;
+      coverage[i].matches++;
+      maxCoverage = Math.max(maxCoverage, coverage[i].reads);
+    }
+            
+    segmentList[j].substitutions.forEach((substitution) => {
+      if (substitution.variant) {
+        const posSub = from + substitution.pos;
+        if(!coverage[posSub]){
+          return;
+        }
+        coverage[posSub].matches--;
+        if (!coverage[posSub]['variants'][substitution.variant]) {
+          coverage[posSub]['variants'][substitution.variant] = 0;
+        }
+        coverage[posSub]['variants'][substitution.variant]++;
+      }
+    });
+  }
+
+  return {
+    coverage: coverage,
+    maxCoverage: maxCoverage,
+  };
+};
+
 const tilesetInfo = (uid) => {
   const { chromSizesUrl, bamUrl } = dataConfs[uid];
   const promises = chromSizesUrl
@@ -682,6 +732,8 @@ const renderSegments = (
 ) => {
   const t1 = currTime();
   const allSegments = {};
+  let allReadCounts = {};
+  let coverageSamplingDistance;
 
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
@@ -824,6 +876,50 @@ const renderSegments = (
     groupCounter += 1;
   }
 
+  if (trackOptions.showCoverage) {
+    
+    const maxCoverageSamples = 8000;
+    coverageSamplingDistance = Math.max(Math.floor((maxPos - minPos) / maxCoverageSamples), 1);
+    const result = getCoverage(segmentList, coverageSamplingDistance);
+
+    allReadCounts = result.coverage;
+    const maxReadCount = result.maxCoverage;
+
+    const d = range(0, trackOptions.coverageHeight);
+    const groupStart = yGlobalScale(0);
+    const groupEnd =
+      yGlobalScale(trackOptions.coverageHeight - 1) + yGlobalScale.bandwidth();
+    const r = [groupStart, groupEnd];
+
+    const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
+
+    let xLeft, yTop, barHeight;
+    let bgColor = PILEUP_COLOR_IXS.BG;
+    const width = (xScale(1) - xScale(0))*coverageSamplingDistance;
+    const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
+    const scalingFactor = groupHeight / maxReadCount;
+
+    for (const pos of Object.keys(allReadCounts)) {
+      xLeft = xScale(pos);
+      yTop = groupHeight;
+
+      // Draw rects for variants counts on top of each other
+      for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
+        barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
+        yTop -= barHeight;
+        addRect(xLeft, yTop, width, barHeight, PILEUP_COLOR_IXS[variant]);
+      }
+
+      barHeight = allReadCounts[pos]['matches'] * scalingFactor;
+      yTop -= barHeight;
+      if(coverageSamplingDistance === 1){
+        bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+      }
+      
+      addRect(xLeft, yTop, width, barHeight, bgColor);
+    }
+  }
+
   for (const group of Object.values(grouped)) {
     const { rows } = group;
 
@@ -930,6 +1026,8 @@ const renderSegments = (
 
   const objData = {
     rows: grouped,
+    coverage: allReadCounts,
+    coverageSamplingDistance,
     positionsBuffer,
     colorsBuffer,
     ixBuffer,
@@ -938,7 +1036,8 @@ const renderSegments = (
   };
 
   const t2 = currTime();
-  // console.log('renderSegments:', t2 - t1);
+  console.log('renderSegments time:', t2 - t1, 'ms');
+  
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 

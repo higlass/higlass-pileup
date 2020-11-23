@@ -209,6 +209,8 @@ const PileupTrack = (HGC, ...args) => {
       // we last rendered everything
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
       this.prevRows = [];
+      this.coverage = {};
+      this.coverageSamplingDistance = 1;
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
@@ -380,6 +382,8 @@ varying vec4 vColor;
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
+            this.coverage = toRender.coverage;
+            this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -581,6 +585,34 @@ varying vec4 vColor;
           }
         }
         // var val = self.yScale.domain()[index];
+        if (
+          this.options.showCoverage &&
+          bandCoverageStart <= trackY &&
+          trackY <= bandCoverageEnd
+        ) {
+          const mousePos = this._xScale.invert(trackX);
+          let bpIndex = Math.floor(mousePos);
+          bpIndex = bpIndex - bpIndex % this.coverageSamplingDistance;
+          if (this.coverage[bpIndex]) {
+            const readCount = this.coverage[bpIndex];
+            const matchPercent = (readCount.matches / readCount.reads) * 100;
+            let mouseOverHtml =
+              `Reads: ${readCount.reads}<br>` +
+              `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>`;
+
+            for (let variant of Object.keys(readCount.variants)) {
+              if (readCount.variants[variant] > 0) {
+                const variantPercent =
+                  (readCount.variants[variant] / readCount.reads) * 100;
+                mouseOverHtml += `${variant}: ${
+                  readCount.variants[variant]
+                } (${variantPercent.toFixed(2)}%)<br>`;
+              }
+            }
+
+            return mouseOverHtml;
+          }
+        }
       }
 
       return '';
