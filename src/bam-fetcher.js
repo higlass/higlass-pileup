@@ -22,8 +22,16 @@ class BAMDataFetcher {
           )
           .then(() => this.worker);
       }
+
+      if(dataConfig.url && !dataConfig.bamUrl){
+        dataConfig["bamUrl"] = dataConfig.url;
+      }
+      if(!dataConfig.baiUrl){
+        dataConfig["baiUrl"] = dataConfig["bamUrl"]+".bai";
+      }
+
       return tileFunctions
-        .init(this.uid, dataConfig.url, dataConfig.chromSizesUrl)
+        .init(this.uid, dataConfig.bamUrl, dataConfig.baiUrl, dataConfig.chromSizesUrl)
         .then(() => this.worker);
     });
   }

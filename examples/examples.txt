@@ -1,0 +1,16 @@
+
+Variant + Soft Clipping (left)
+example_chr9_22004085.bam
+"initialXDomain": [1558492965,1558493030]
+
+Insertions + Soft Clipping both sides
+example_chr1_105806_S_I.bam
+"initialXDomain": [105706,105906]
+
+Hard Clipping (left and both sides)
+example_chr1_145209_H.bam
+"initialXDomain": [145009,145409]
+
+Deletions
+example_chr1_128970_D.bam
+"initialXDomain": [128870,129070]
