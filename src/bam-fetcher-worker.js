@@ -729,7 +729,7 @@ const renderSegments = (
   prevRows,
   trackOptions,
 ) => {
-  const t1 = currTime();
+  //const t1 = currTime();
   const allSegments = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
@@ -744,12 +744,6 @@ const renderSegments = (
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
-  }
-
-  if (trackOptions.showCoverage) {
-    const result = getCoverage(allSegments);
-    allReadCounts = result.coverage;
-    maxReadCount = result.maxCoverage;
   }
 
   const segmentList = Object.values(allSegments);
@@ -1075,8 +1069,8 @@ const renderSegments = (
     xScaleRange: scaleRange,
   };
 
-  const t2 = currTime();
-  console.log('renderSegments time:', t2 - t1, 'ms');
+  //const t2 = currTime();
+  //console.log('renderSegments time:', t2 - t1, 'ms');
   
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
