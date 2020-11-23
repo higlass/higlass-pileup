@@ -1,3 +1,20 @@
+v1.0.0
+
+- Added small example files to check non-standard reads (deletions, soft/hard clipping)
+- Build out `es` modules when `npm run build` is executed
+- Add option `workerScriptLocation`. This is needed when the worker script is not in the same folder as the pileup script
+- The client side data fetcher now accepts `bamUrl` and `baiUrl`. `url` is still supported
+- Added options `plusStrandColor` and `minusStrandColor`. When set, the reads are colored according to their strand.
+- Added the option `showCoverage` and `coverageHeight`, which displays read coverage information on top of the track
+- Improved mouseovers for reads and coverage
+- Bumped version of GMOD/bam-js. New version allows to retrieve the read sequence
+- Variants are now correctly colored based on the read sequence.
+- Added visualization of reads that contain hard clipping
+- Fixed a bug where MD strings would not be correctly parsed, when a deletion is present, e.g., `85^A16`
+- Added vertical stripes to represent deletions.
+- When there is soft clipping at the beginning of a read, substitutions that are following are now correctly extracted
+- Reads have been shifted by one. It now lines up with the sequence track and the bam file
+
 v0.4.0
 
 - Added customizeable color scheme
