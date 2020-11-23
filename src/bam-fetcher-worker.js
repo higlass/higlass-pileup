@@ -301,7 +301,7 @@ const getCoverage = (segmentList, samplingDistance) => {
   for (let j = 0; j < segmentList.length; j++) {
     const from = segmentList[j].from;
     const to = segmentList[j].to;
-    // Find the first position that is in the samplin set
+    // Find the first position that is in the sampling set
     const firstFrom = from - from % samplingDistance + samplingDistance;
 
     for (let i = firstFrom; i < to; i=i+samplingDistance) {
