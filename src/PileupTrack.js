@@ -214,6 +214,7 @@ const PileupTrack = (HGC, ...args) => {
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
       this.prevRows = [];
       this.coverage = {};
+      // The bp distance for which the samples are chosen for the coverage.
       this.coverageSamplingDistance = 1;
 
       // graphics for highliting reads under the cursor

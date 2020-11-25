@@ -879,7 +879,7 @@ const renderSegments = (
 
   if (trackOptions.showCoverage) {
     
-    const maxCoverageSamples = 8000;
+    const maxCoverageSamples = 10000;
     coverageSamplingDistance = Math.max(Math.floor((maxPos - minPos) / maxCoverageSamples), 1);
     const result = getCoverage(segmentList, coverageSamplingDistance);
 
@@ -895,7 +895,7 @@ const renderSegments = (
     const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
 
     let xLeft, yTop, barHeight;
-    let bgColor = PILEUP_COLOR_IXS.BG;
+    let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
     const width = (xScale(1) - xScale(0))*coverageSamplingDistance;
     const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
     const scalingFactor = groupHeight / maxReadCount;
@@ -908,7 +908,10 @@ const renderSegments = (
       for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
         barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
         yTop -= barHeight;
-        addRect(xLeft, yTop, width, barHeight, PILEUP_COLOR_IXS[variant]);
+        // When the coverage is not exact, we don't color variants.
+        let variantColor =
+          coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
+        addRect(xLeft, yTop, width, barHeight, variantColor);
       }
 
       barHeight = allReadCounts[pos]['matches'] * scalingFactor;
