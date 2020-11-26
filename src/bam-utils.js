@@ -1,6 +1,7 @@
 export const PILEUP_COLORS = {
-  BG: [0.9, 0.9, 0.9, 1], // gray for the read background
+  BG: [0.89, 0.89, 0.89, 1], // gray for the read background
   BG2: [0.85, 0.85, 0.85, 1], // used as alternating color in the read counter band
+  BG_MUTED: [0.92, 0.92, 0.92, 1], // covergae background, when it is not exact
   A: [0, 0, 1, 1], // blue for A
   C: [1, 0, 0, 1], // red for c
   G: [0, 1, 0, 1], // green for g

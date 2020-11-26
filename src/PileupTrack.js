@@ -214,6 +214,8 @@ const PileupTrack = (HGC, ...args) => {
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
       this.prevRows = [];
       this.coverage = {};
+      // The bp distance for which the samples are chosen for the coverage.
+      this.coverageSamplingDistance = 1;
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
@@ -399,6 +401,7 @@ varying vec4 vColor;
 
             this.prevRows = toRender.rows;
             this.coverage = toRender.coverage;
+            this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -609,7 +612,8 @@ varying vec4 vColor;
           trackY <= bandCoverageEnd
         ) {
           const mousePos = this._xScale.invert(trackX);
-          const bpIndex = Math.floor(mousePos);
+          let bpIndex = Math.floor(mousePos);
+          bpIndex = bpIndex - bpIndex % this.coverageSamplingDistance;
           if (this.coverage[bpIndex]) {
             const readCount = this.coverage[bpIndex];
             const matchPercent = (readCount.matches / readCount.reads) * 100;

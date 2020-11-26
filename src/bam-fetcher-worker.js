@@ -294,16 +294,17 @@ const serverTilesetInfo = (uid) => {
     });
 };
 
-const getCoverage = (allSegments) => {
-  const segmentList = Object.values(allSegments);
+const getCoverage = (segmentList, samplingDistance) => {
   const coverage = {};
   let maxCoverage = 0;
 
   for (let j = 0; j < segmentList.length; j++) {
     const from = segmentList[j].from;
     const to = segmentList[j].to;
+    // Find the first position that is in the sampling set
+    const firstFrom = from - from % samplingDistance + samplingDistance;
 
-    for (let i = from; i < to; i++) {
+    for (let i = firstFrom; i < to; i=i+samplingDistance) {
       if (!coverage[i]) {
         coverage[i] = {
           reads: 0,
@@ -321,10 +322,13 @@ const getCoverage = (allSegments) => {
       coverage[i].matches++;
       maxCoverage = Math.max(maxCoverage, coverage[i].reads);
     }
-
+            
     segmentList[j].substitutions.forEach((substitution) => {
       if (substitution.variant) {
         const posSub = from + substitution.pos;
+        if(!coverage[posSub]){
+          return;
+        }
         coverage[posSub].matches--;
         if (!coverage[posSub]['variants'][substitution.variant]) {
           coverage[posSub]['variants'][substitution.variant] = 0;
@@ -725,10 +729,10 @@ const renderSegments = (
   prevRows,
   trackOptions,
 ) => {
-  const t1 = currTime();
+  //const t1 = currTime();
   const allSegments = {};
   let allReadCounts = {};
-  let maxReadCount = 0;
+  let coverageSamplingDistance;
 
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
@@ -740,12 +744,6 @@ const renderSegments = (
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
-  }
-
-  if (trackOptions.showCoverage) {
-    const result = getCoverage(allSegments);
-    allReadCounts = result.coverage;
-    maxReadCount = result.maxCoverage;
   }
 
   const segmentList = Object.values(allSegments);
@@ -880,6 +878,14 @@ const renderSegments = (
   }
 
   if (trackOptions.showCoverage) {
+    
+    const maxCoverageSamples = 10000;
+    coverageSamplingDistance = Math.max(Math.floor((maxPos - minPos) / maxCoverageSamples), 1);
+    const result = getCoverage(segmentList, coverageSamplingDistance);
+
+    allReadCounts = result.coverage;
+    const maxReadCount = result.maxCoverage;
+
     const d = range(0, trackOptions.coverageHeight);
     const groupStart = yGlobalScale(0);
     const groupEnd =
@@ -888,8 +894,9 @@ const renderSegments = (
 
     const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
 
-    let xLeft, yTop, barHeight, bgColor;
-    const width = xScale(1) - xScale(0);
+    let xLeft, yTop, barHeight;
+    let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
+    const width = (xScale(1) - xScale(0))*coverageSamplingDistance;
     const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
     const scalingFactor = groupHeight / maxReadCount;
 
@@ -901,12 +908,18 @@ const renderSegments = (
       for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
         barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
         yTop -= barHeight;
-        addRect(xLeft, yTop, width, barHeight, PILEUP_COLOR_IXS[variant]);
+        // When the coverage is not exact, we don't color variants.
+        let variantColor =
+          coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
+        addRect(xLeft, yTop, width, barHeight, variantColor);
       }
 
       barHeight = allReadCounts[pos]['matches'] * scalingFactor;
       yTop -= barHeight;
-      bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+      if(coverageSamplingDistance === 1){
+        bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+      }
+      
       addRect(xLeft, yTop, width, barHeight, bgColor);
     }
   }
@@ -1051,6 +1064,7 @@ const renderSegments = (
   const objData = {
     rows: grouped,
     coverage: allReadCounts,
+    coverageSamplingDistance,
     positionsBuffer,
     colorsBuffer,
     ixBuffer,
@@ -1058,7 +1072,7 @@ const renderSegments = (
     xScaleRange: scaleRange,
   };
 
-  const t2 = currTime();
+  //const t2 = currTime();
   //console.log('renderSegments time:', t2 - t1, 'ms');
   
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
