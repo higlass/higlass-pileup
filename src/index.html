@@ -67,57 +67,21 @@ const testViewConfig =
   "exportViewUrl": "/api/v1/viewconfs",
   "views": [
     {
-      //"initialXDomain": [1069795,1070508],
-
-      // Variant + Soft Clipping (left)
-      "initialXDomain": [1558492965,1558493030],
-
-      // Insertions + Soft Clipping both sides
-      //"initialXDomain": [105706,105906],
-
-      // Hard Clipping (left and both sides)
-      //"initialXDomain": [145009,145409],
-
-      // Deletions
-      //"initialXDomain": [128870,129070],
-
+      "initialXDomain": [
+        667380253.9100767,
+        667380560.5316414
+      ],
       "initialYDomain": [
-        180520.26598912096,
-        180863.4346387336
+        -347192370.82304215,
+        -347192336.9332903
       ],
       "tracks": {
         "top": [
-          // {
-          //   "type": "pileup",
-          //   "uid": "WBTUIwm0SB2gcas7wzwztA",
-          //   "tilesetUid": "NLxWZTCoSzei1lkH4yVJmg",
-          //   "server": "https://resgen.io/api/v1",
-          //   "options": {
-          //     "axisPositionHorizontal": "right",
-          //     "axisLabelFormatting": "normal",
-          //     "outlineReadOnHover": false,
-          //     "showMousePosition": false,
-          //     "name": "HG002 Illumina (60x)",
-          //     "labelPosition": "bottomLeft",
-          //     "groupBy": null,
-          //     "colorScale": [
-          //       "#08519c",
-          //       "#6baed6",
-          //       "#993404",
-          //       "#fe9929",
-          //       "#808080",
-          //       "#DCDCDC"
-          //     ]
-          //   },
-          //   "width": 651,
-          //   "height": 362
-          // },
           {
-            "uid": "AdlJsUYFRzuJRZyYeKDX2A",
             "type": "chromosome-labels",
-            "width": 811,
-            "height": 30,
-            "server": "//higlass.io/api/v1",
+            "uid": "UP79_3WvQry1NYq2PTWrdQ",
+            "tilesetUid": "ZpZ8c5JJRUS1J7ZkofcUrg",
+            "server": "https://resgen.io/api/v1",
             "options": {
               "color": "#808080",
               "stroke": "#ffffff",
@@ -126,23 +90,17 @@ const testViewConfig =
               "showMousePosition": false,
               "mousePositionColor": "#000000"
             },
-            "filetype": "chromsizes-tsv",
-            "tilesetUid": "NyITQvZsS_mOFNlz5C2LJg"
+            "width": 20,
+            "height": 30
           },
           {
-            "uid": "fastaex",
-            "data": {
-              "type": "fasta",
-              "faiUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.fa.fai",
-              "fastaUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.fa",
-              "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
-            },
-            "type": "horizontal-sequence",
-            "width": 768,
-            "height": 25,
+            "type": "pileup",
+            "uid": "IKgXZbNGQPKocxDzCNgl5Q",
+            "tilesetUid": "D7zO4NiMTI-tn57HJKNORA",
+            "server": "http://localhost:8000/api/v1",
             "options": {
-              "name": "hg38",
-              "barBorder": true,
+              "axisPositionHorizontal": "right",
+              "axisLabelFormatting": "normal",
               "colorScale": [
                 "#08519c",
                 "#6baed6",
@@ -151,81 +109,42 @@ const testViewConfig =
                 "#808080",
                 "#DCDCDC"
               ],
-              "labelColor": "black",
-              "valueScaling": "linear",
-              "labelPosition": "topLeft",
-              "barBorderColor": "white",
-              "backgroundColor": "white",
-              "labelTextOpacity": 0.4,
-              "sortLargestOnTop": true,
-              "trackBorderColor": "white",
-              "trackBorderWidth": 0,
-              "extendedPreloading": false,
-              "colorAggregationMode": "none",
-              "notificationText": "Zoom in to see nucleotides...",
-              "fontSize": 16,
-              "fontFamily": "Arial",
-              "fontColor": "white",
-              "textOption": {
-                "fontSize": "32px",
-                "fontFamily": "Arial",
-                "fill": 16777215,
-                "fontWeight": "bold"
-              }
-            }
+              "outlineReadOnHover": false,
+              "showMousePosition": false,
+              "showCoverage": false,
+              "coverageHeight": 10,
+              "name": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/NIST_HiSeq_HG002_Homogeneity-10953946/NHGRI_Illumina300X_AJtrio_novoalign_bams/HG002.GRCh38.60x.1.bam"
+            },
+            "width": 469,
+            "height": 262
           },
           {
-          "type": "pileup",
+            "type": "pileup",
+            "data": {
+              "type": "bam",
+              "url": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/NIST_HiSeq_HG002_Homogeneity-10953946/NHGRI_Illumina300X_AJtrio_novoalign_bams/HG002.GRCh38.60x.1.bam",
+              "bamUrl": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/NIST_HiSeq_HG002_Homogeneity-10953946/NHGRI_Illumina300X_AJtrio_novoalign_bams/HG002.GRCh38.60x.1.bam",
+              "baiUrl": "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/NIST_HiSeq_HG002_Homogeneity-10953946/NHGRI_Illumina300X_AJtrio_novoalign_bams/HG002.GRCh38.60x.1.bam.bai"
+            },
             "options": {
               "axisPositionHorizontal": "right",
               "axisLabelFormatting": "normal",
-              "outlineReadOnHover": "yes",
-              "groupBy": "strand",
-              "minusStrandColor": "#ffd1d4",
-              "plusStrandColor": "#cfd0ff",
-              "showCoverage": true,
               "colorScale": [
-                // A T G C N Other
                 "#08519c",
                 "#6baed6",
                 "#993404",
                 "#fe9929",
                 "#808080",
                 "#DCDCDC"
-              ]
+              ],
+              "outlineReadOnHover": false,
+              "showMousePosition": false,
+              "showCoverage": false,
+              "coverageHeight": 10
             },
-            "height": 500,
-            "uid": "FylkvVBTSumoJ959HT4-5B",
-            "data": {
-              "type": "bam",
-
-              // Caution: Example does not fit to the sequence track above.
-              // "url": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam",
-              // "chromSizesUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/GCF_000005845.2_ASM584v2_genomic.chrom.sizes",
-              
-              // Variant + Soft Clipping (left)
-              "bamUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr9_22004085.bam",
-              "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr9_22004085.bam.bai",
-              "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes",
-
-              // Insertions + Soft Clipping both sides
-              // "bamUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr1_105806_S_I.bam",
-              // "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr1_105806_S_I.bam.bai",
-              // "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes",
-
-              // Hard Clipping (left and both sides)
-              // "bamUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr1_145209_H.bam",
-              // "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr1_145209_H.bam.bai",
-              // "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes",
-
-              // Deletions
-              // "bamUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr1_128970_D.bam",
-              // "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_chr1_128970_D.bam.bai",
-              // "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes",
-
-
-            },
-            "width": 470
+            "width": 469,
+            "height": 277,
+            "uid": "JbH0k2NtRPmaDS-LLEOBDA"
           }
         ],
         "left": [],
@@ -241,7 +160,7 @@ const testViewConfig =
         "x": 0,
         "y": 0
       },
-      "uid": "WdlA7F8aTY2gXQzPGiBlwQ"
+      "uid": "BskxUboZT3qvih7oV_JY5A"
     }
   ],
   "zoomLocks": {

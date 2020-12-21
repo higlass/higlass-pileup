@@ -904,6 +904,19 @@ PileupTrack.config = {
         },
       },
     },
+    showCoverage: {
+      name: 'Show coverage',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
     groupBy: {
       name: 'Group by',
       inlineOptions: {

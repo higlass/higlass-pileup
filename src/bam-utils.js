@@ -94,7 +94,6 @@ export const parseMD = (mdString, useCounts) => {
    */
 export const getSubstitutions = (segment, seq) => {
   let substitutions = [];
-  let insertions = 0;
   let softClippingAtReadStart = null;
 
   if (segment.cigar) {
@@ -113,7 +112,6 @@ export const getSubstitutions = (segment, seq) => {
 
         currPos += sub.length;
       } else if (sub.type === 'I') {
-        insertions += 1;
         substitutions.push({
           pos: currPos,
           length: 0.1,
