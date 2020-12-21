@@ -9,3 +9,4 @@ es
 *.log
 *.DS_cache
 *.DS_Store
+*.bak
