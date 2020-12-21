@@ -216,9 +216,14 @@ const tabularJsonToRowJson = (tabularJson) => {
       newRow[headers[j]] = tabularJson[headers[j]][i];
     }
 
+    // server-returned positions are 0-based so we make them 1-based
     newRow.from += 1;
+    newRow.to += 1;
 
     if (newRow.variants) {
+      // server has returned information about variants in the form
+      // (queryPos, referencePos, substitution)
+      // modeled on pysam's get_aligned_pairs
       newRow.substitutions = newRow.variants.map((x) => ({
         pos: x[1] - (newRow.from - newRow.chrOffset) + 1,
         variant: x[2].toUpperCase(),
@@ -227,11 +232,15 @@ const tabularJsonToRowJson = (tabularJson) => {
     }
 
     if (newRow.cigars) {
-      for (let x of newRow.cigars) {
+      // server has returned cigar information
+      // format: x[0] : start of region
+      // x[1]: type of region (e.g. 'S', 'H', 'I', etc...)
+      // x[2]: the length of the region
+      for (const x of newRow.cigars) {
         newRow.substitutions.push({
-          pos: x[1] - (newRow.from - newRow.chrOffset) + 1,
-          type: x[2].toUpperCase(),
-          length: x[3],
+          pos: x[0] - (newRow.from - newRow.chrOffset) + 1,
+          type: x[1].toUpperCase(),
+          length: x[2],
         });
       }
     }
@@ -1001,6 +1010,7 @@ const renderSegments = (
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));
+          const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
           xRight = xLeft + width;
 
           if (substitution.variant === 'A') {
@@ -1018,7 +1028,7 @@ const renderSegments = (
           } else if (substitution.type === 'X') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
           } else if (substitution.type === 'I') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.I);
+            addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
           } else if (substitution.type === 'D') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
 
