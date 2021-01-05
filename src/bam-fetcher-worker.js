@@ -193,21 +193,56 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
     substitutions: [],
   };
 
-  segment['substitutions'] = getSubstitutions(segment, seq);
+  segment.substitutions = getSubstitutions(segment, seq);
 
   return segment;
 };
 
+/** Convert mapped read information returned from a higlass
+    server to the internal track representation. This method is
+    the counterpart to bamRecordToJson */
 const tabularJsonToRowJson = (tabularJson) => {
   const rowJson = [];
 
   const headers = Object.keys(tabularJson);
 
   for (let i = 0; i < tabularJson[headers[0]].length; i++) {
-    const newRow = {};
+    const newRow = {
+      row: null,
+      substitutions: [],
+    };
 
     for (let j = 0; j < headers.length; j++) {
       newRow[headers[j]] = tabularJson[headers[j]][i];
+    }
+
+    // server-returned positions are 0-based so we make them 1-based
+    newRow.from += 1;
+    newRow.to += 1;
+
+    if (newRow.variants) {
+      // server has returned information about variants in the form
+      // (queryPos, referencePos, substitution)
+      // modeled on pysam's get_aligned_pairs
+      newRow.substitutions = newRow.variants.map((x) => ({
+        pos: x[1] - (newRow.from - newRow.chrOffset) + 1,
+        variant: x[2].toUpperCase(),
+        length: 1,
+      }));
+    }
+
+    if (newRow.cigars) {
+      // server has returned cigar information
+      // format: x[0] : start of region
+      // x[1]: type of region (e.g. 'S', 'H', 'I', etc...)
+      // x[2]: the length of the region
+      for (const x of newRow.cigars) {
+        newRow.substitutions.push({
+          pos: x[0] - (newRow.from - newRow.chrOffset) + 1,
+          type: x[1].toUpperCase(),
+          length: x[2],
+        });
+      }
     }
 
     rowJson.push(newRow);
@@ -302,9 +337,9 @@ const getCoverage = (segmentList, samplingDistance) => {
     const from = segmentList[j].from;
     const to = segmentList[j].to;
     // Find the first position that is in the sampling set
-    const firstFrom = from - from % samplingDistance + samplingDistance;
+    const firstFrom = from - (from % samplingDistance) + samplingDistance;
 
-    for (let i = firstFrom; i < to; i=i+samplingDistance) {
+    for (let i = firstFrom; i < to; i = i + samplingDistance) {
       if (!coverage[i]) {
         coverage[i] = {
           reads: 0,
@@ -322,11 +357,11 @@ const getCoverage = (segmentList, samplingDistance) => {
       coverage[i].matches++;
       maxCoverage = Math.max(maxCoverage, coverage[i].reads);
     }
-            
+
     segmentList[j].substitutions.forEach((substitution) => {
       if (substitution.variant) {
         const posSub = from + substitution.pos;
-        if(!coverage[posSub]){
+        if (!coverage[posSub]) {
           return;
         }
         coverage[posSub].matches--;
@@ -593,7 +628,7 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
   const segmentToWithPadding = segment.to + padding;
 
   // no row has been assigned - find a suitable row and update the occupied space
-  if (segment.row === null) {
+  if (segment.row === null || segment.row === undefined) {
     // Go through each row and look if there is space for the segment
     for (let i = 0; i < occupiedSpaceInRows.length; i++) {
       if (!occupiedSpaceInRows[i]) {
@@ -704,6 +739,7 @@ function segmentsToRows(segments, optionsIn) {
   for (let i = 0; i < occupiedSpaceInRows.length; i++) {
     outputRows[i] = newSegments.filter((x) => x.row === i);
   }
+
   return outputRows;
 }
 
@@ -878,9 +914,11 @@ const renderSegments = (
   }
 
   if (trackOptions.showCoverage) {
-    
     const maxCoverageSamples = 10000;
-    coverageSamplingDistance = Math.max(Math.floor((maxPos - minPos) / maxCoverageSamples), 1);
+    coverageSamplingDistance = Math.max(
+      Math.floor((maxPos - minPos) / maxCoverageSamples),
+      1,
+    );
     const result = getCoverage(segmentList, coverageSamplingDistance);
 
     allReadCounts = result.coverage;
@@ -896,7 +934,7 @@ const renderSegments = (
 
     let xLeft, yTop, barHeight;
     let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
-    const width = (xScale(1) - xScale(0))*coverageSamplingDistance;
+    const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
     const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
     const scalingFactor = groupHeight / maxReadCount;
 
@@ -916,10 +954,10 @@ const renderSegments = (
 
       barHeight = allReadCounts[pos]['matches'] * scalingFactor;
       yTop -= barHeight;
-      if(coverageSamplingDistance === 1){
+      if (coverageSamplingDistance === 1) {
         bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
       }
-      
+
       addRect(xLeft, yTop, width, barHeight, bgColor);
     }
   }
@@ -972,6 +1010,7 @@ const renderSegments = (
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));
+          const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
           xRight = xLeft + width;
 
           if (substitution.variant === 'A') {
@@ -989,7 +1028,7 @@ const renderSegments = (
           } else if (substitution.type === 'X') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
           } else if (substitution.type === 'I') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.I);
+            addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
           } else if (substitution.type === 'D') {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
 
@@ -1074,7 +1113,7 @@ const renderSegments = (
 
   //const t2 = currTime();
   //console.log('renderSegments time:', t2 - t1, 'ms');
-  
+
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 

@@ -582,6 +582,7 @@ varying vec4 vColor;
                   }
 
                   let mouseOverHtml =
+                    `ID: ${read.id}<br>` +
                     `Position: ${read.chrName}:${
                       read.from - read.chrOffset
                     }<br>` +
@@ -613,7 +614,7 @@ varying vec4 vColor;
         ) {
           const mousePos = this._xScale.invert(trackX);
           let bpIndex = Math.floor(mousePos);
-          bpIndex = bpIndex - bpIndex % this.coverageSamplingDistance;
+          bpIndex = bpIndex - (bpIndex % this.coverageSamplingDistance);
           if (this.coverage[bpIndex]) {
             const readCount = this.coverage[bpIndex];
             const matchPercent = (readCount.matches / readCount.reads) * 100;
@@ -893,6 +894,19 @@ PileupTrack.config = {
   optionsInfo: {
     outlineReadOnHover: {
       name: 'Outline read on hover',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    showCoverage: {
+      name: 'Show coverage',
       inlineOptions: {
         yes: {
           value: true,

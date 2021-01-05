@@ -26,20 +26,20 @@ Object.keys(PILEUP_COLORS).map((x, i) => {
 });
 
 export const cigarTypeToText = (type) => {
-  if(type === "D"){
-    return "Deletion";
-  } else if(type === "S"){
-    return "Soft clipping";
-  } else if(type === "H"){
-    return "Hard clipping";
-  } else if(type === "I"){
-    return "Insertion";
-  } else if(type === "N"){
-    return "Skipped region";
-  } else {
-    return type;
+  if (type === 'D') {
+    return 'Deletion';
+  } else if (type === 'S') {
+    return 'Soft clipping';
+  } else if (type === 'H') {
+    return 'Hard clipping';
+  } else if (type === 'I') {
+    return 'Insertion';
+  } else if (type === 'N') {
+    return 'Skipped region';
   }
-}
+
+  return type;
+};
 
 export const parseMD = (mdString, useCounts) => {
   let currPos = 0;
@@ -53,19 +53,19 @@ export const parseMD = (mdString, useCounts) => {
       // a number, keep on going
       currNum = currNum * 10 + +mdString[i];
       deletionEncountered = false;
-    }else if(mdString[i] === "^"){
+    } else if (mdString[i] === '^') {
       deletionEncountered = true;
     } else {
-
       currPos += currNum;
-      
+
       if (useCounts) {
         substitutions.push({
           length: currNum,
           type: mdString[i],
         });
-      } else if(deletionEncountered){
-        // Do nothing if there is a deletion and keep on going. Note that there can be multiple deletions "^ATC"
+      } else if (deletionEncountered) {
+        // Do nothing if there is a deletion and keep on going.
+        // Note that there can be multiple deletions "^ATC"
         // Deletions are visualized using the CIGAR string
         // However, keep track of where in the bam seq we need to pull the variant.
         bamSeqShift -= 1;
@@ -74,7 +74,7 @@ export const parseMD = (mdString, useCounts) => {
           pos: currPos,
           base: mdString[i],
           length: 1,
-          bamSeqShift: bamSeqShift,
+          bamSeqShift,
         });
       }
 
@@ -82,19 +82,18 @@ export const parseMD = (mdString, useCounts) => {
       currPos += 1;
     }
   }
-  
+
   return substitutions;
 };
 
 /**
-   * Gets an array of all substitutions in the segment
-   * @param  {String} segment  Current segment
-   * @param  {String} seq   Read sequence from bam file.
-   * @return {Array}  Substitutions.
-   */
+ * Gets an array of all substitutions in the segment
+ * @param  {String} segment  Current segment
+ * @param  {String} seq   Read sequence from bam file.
+ * @return {Array}  Substitutions.
+ */
 export const getSubstitutions = (segment, seq) => {
   let substitutions = [];
-  let insertions = 0;
   let softClippingAtReadStart = null;
 
   if (segment.cigar) {
@@ -113,10 +112,9 @@ export const getSubstitutions = (segment, seq) => {
 
         currPos += sub.length;
       } else if (sub.type === 'I') {
-        insertions += 1;
         substitutions.push({
           pos: currPos,
-          length: 0.1,
+          length: sub.length,
           type: 'I',
         });
       } else if (sub.type === 'D') {
@@ -161,7 +159,7 @@ export const getSubstitutions = (segment, seq) => {
         type: 'S',
         length: firstSub.length,
       });
-    } 
+    }
     // soft clipping at the end
     if (lastSub.type === 'S') {
       substitutions.push({
@@ -179,7 +177,7 @@ export const getSubstitutions = (segment, seq) => {
         type: 'H',
         length: firstSub.length,
       });
-    } 
+    }
     if (lastSub.type === 'H') {
       substitutions.push({
         pos: segment.to - segment.from,
@@ -189,22 +187,21 @@ export const getSubstitutions = (segment, seq) => {
     }
   }
 
-
   if (segment.md) {
     const mdSubstitutions = parseMD(segment.md, false);
 
     mdSubstitutions.forEach(function (substitution) {
-      let posStart = substitution["pos"] + substitution["bamSeqShift"];
-      let posEnd = posStart + substitution["length"];
-      // When there is soft clipping at the beginning, 
+      let posStart = substitution['pos'] + substitution['bamSeqShift'];
+      let posEnd = posStart + substitution['length'];
+      // When there is soft clipping at the beginning,
       // we need to shift the position where we read the variant from the sequence
       // not necessary when there is hard clipping
-      if(softClippingAtReadStart !== null){
+      if (softClippingAtReadStart !== null) {
         posStart += softClippingAtReadStart.length;
         posEnd += softClippingAtReadStart.length;
       }
-      substitution["variant"] = seq.substring(posStart, posEnd);
-      delete substitution["bamSeqShift"];
+      substitution['variant'] = seq.substring(posStart, posEnd);
+      delete substitution['bamSeqShift'];
     });
 
     substitutions = mdSubstitutions.concat(substitutions);
