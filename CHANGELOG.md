@@ -1,3 +1,7 @@
+v1.0.1
+
+- Render BAM file tiles returned by resgen server
+
 v1.0.0
 
 - Added small example files to check non-standard reads (deletions, soft/hard clipping)
