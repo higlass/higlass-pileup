@@ -1,6 +1,8 @@
 import BAMDataFetcher from './bam-fetcher';
-import { spawn, Worker } from 'threads';
+import { spawn, BlobWorker } from 'threads';
 import { PILEUP_COLORS, cigarTypeToText } from './bam-utils';
+
+import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
 const createColorTexture = (PIXI, colors) => {
   const colorTexRes = Math.max(2, Math.ceil(Math.sqrt(colors.length)));
@@ -192,11 +194,13 @@ const PileupTrack = (HGC, ...args) => {
         baseUrl = options.workerScriptLocation;
       }
 
-      const worker = spawn(
-        new Worker('./bam-fetcher-worker.js', {
-          _baseURL: baseUrl,
-        }),
-      );
+      // const worker = spawn(
+      //   new Worker('./bam-fetcher-worker.js', {
+      //     _baseURL: baseUrl,
+      //   }),
+      // );
+
+      const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);

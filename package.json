@@ -31,6 +31,7 @@
     "babel-eslint": "^8.2.2",
     "babel-loader": "^7.1.4",
     "babel-preset-env": "^1.6.1",
+    "before-build-webpack": "^0.2.11",
     "css-loader": "^0.28.11",
     "eslint": "^4.19.1",
     "eslint-config-airbnb": "^16.1.0",
@@ -49,18 +50,18 @@
     "sass-loader": "^7.0.1",
     "string-replace-loader": "^2.2.0",
     "style-loader": "^0.20.3",
-    "threads-plugin": "^1.2.0",
+    "threads-plugin": "^1.4.0",
     "uglifyjs-webpack-plugin": "^1.2.4",
     "unminified-webpack-plugin": "^2.0.0",
     "webpack": "^4.20.2",
-    "webpack-cli": "^3.1.1",
+    "webpack-cli": "^4.0.0",
     "webpack-dev-server": "^3.1.1",
     "webpack-plugin-replace": "^1.2.0"
   },
   "scripts": {
     "build-es": "rm -rf ./es/* && npx babel ./src/ --out-dir ./es/ --env-name esm",
     "build": "npm run build-es && webpack --mode production",
-    "start": "webpack-dev-server --mode development --open",
+    "start": "webpack serve --mode development -c webpack.config.js",
     "prerelease": "rm -rf dist/*; npm run build; zip -r dist.zip dist"
   },
   "dependencies": {
@@ -74,6 +75,7 @@
     "higlass-register": "^0.1.0",
     "lru-cache": "^6.0.0",
     "prettier": "^2.1.2",
-    "threads": "v1.0.0-beta.6"
+    "raw-loader": "^4.0.2",
+    "threads": "v1.6.3"
   }
 }
