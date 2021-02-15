@@ -9,6 +9,8 @@ const ThreadsPlugin = require('threads-plugin');
 const WebpackBeforeBuildPlugin = require('before-build-webpack');
 const fs = require('fs');
 
+// the WaitPlugin is copypasta from:
+// https://www.viget.com/articles/run-multiple-webpack-configs-sequentially/
 class WaitPlugin extends WebpackBeforeBuildPlugin {
   constructor(file, interval = 100, timeout = 10000) {
     super(function (stats, callback) {
