@@ -20,7 +20,9 @@ class WaitPlugin extends WebpackBeforeBuildPlugin {
         if (fs.existsSync(file)) {
           callback();
         } else if (Date.now() - start > timeout) {
-          throw Error("Maybe it just wasn't meant to be.");
+          throw Error(
+            `Waited too long for the target file (${file}) to be generated. Exiting.`,
+          );
         } else {
           setTimeout(poll, interval);
         }
@@ -51,7 +53,6 @@ const libraryConfig = {
   devServer: {
     contentBase: [path.join(__dirname, 'node_modules/higlass/dist')],
     watchContentBase: true,
-    port: 8077,
     writeToDisk: true,
   },
   optimization: {
