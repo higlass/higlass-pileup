@@ -1,6 +1,8 @@
 import BAMDataFetcher from './bam-fetcher';
-import { spawn, Worker } from 'threads';
+import { spawn, BlobWorker } from 'threads';
 import { PILEUP_COLORS, cigarTypeToText } from './bam-utils';
+
+import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
 const createColorTexture = (PIXI, colors) => {
   const colorTexRes = Math.max(2, Math.ceil(Math.sqrt(colors.length)));
@@ -67,26 +69,6 @@ function findNearestSub(mousePos, read, nearestDistance) {
     return nearestSub;
   }
   return null;
-}
-/**
- * Get the location of this script so that we can use it to fetch
- * the worker script.
- *
- * @return {String}         The url of this script
- */
-function getThisScriptLocation() {
-  const scripts = [...document.getElementsByTagName('script')];
-  for (const script of scripts) {
-    const parts = script.src.split('/');
-
-    if (parts.length > 0) {
-      const lastPart = parts[parts.length - 1];
-
-      if (lastPart.indexOf('higlass-pileup') >= 0) {
-        return parts.slice(0, parts.length - 1).join('/');
-      }
-    }
-  }
 }
 
 const scaleScalableGraphics = (graphics, xScale, drawnAtScale) => {
@@ -187,16 +169,7 @@ const PileupTrack = (HGC, ...args) => {
 
   class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
-      let baseUrl = `${getThisScriptLocation()}/`;
-      if (options.workerScriptLocation) {
-        baseUrl = options.workerScriptLocation;
-      }
-
-      const worker = spawn(
-        new Worker('./bam-fetcher-worker.js', {
-          _baseURL: baseUrl,
-        }),
-      );
+      const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
       context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);

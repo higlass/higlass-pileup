@@ -529,7 +529,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   for (const tileId of tileIds) {
     let [zoomLevel, tileX] = tileId.split('.');
     const tilesetInfo = tilesetInfos[uid];
-    const found = false;
+    let found = false;
 
     const [xStart, xEnd] = tilesetInfoToStartEnd(tilesetInfo, zoomLevel, tileX);
 
