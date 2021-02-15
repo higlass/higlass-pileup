@@ -24,9 +24,6 @@ npm install higlass-pileup
 The live scripts can be found at:
 
 - https://unpkg.com/higlass-pileup/dist/higlass-pileup.min.js
-- https://unpkg.com/higlass-pileup/dist/0.higlass-pileup.min.worker.js
-
-Note that `higlass-pileup` currently requires a worker thread. It'll automatically try to retrieve it from the same path as the main script but it needs to be hosted on the same server. The current recommended solution is to pull the already built js files from a release and have your web server serve them from the same path. If you need the worker script to be in a different location than the main script (on the same server), you can use the option `workerScriptLocation` to specify that location.
 
 ### Client
 
