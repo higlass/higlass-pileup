@@ -178,11 +178,15 @@ function ChromosomeInfo(filepath, success) {
 
 const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
   const seq = bamRecord.get('seq');
+  const from = +bamRecord.data.start + 1 + chrOffset;
+  const to = +bamRecord.data.end + 1 + chrOffset;
 
   const segment = {
     id: bamRecord._id,
-    from: +bamRecord.data.start + 1 + chrOffset,
-    to: +bamRecord.data.end + 1 + chrOffset,
+    from: from,
+    to: to,
+    fromWithClipping: from,
+    toWithClipping: to,
     md: bamRecord.get('MD'),
     chrName,
     chrOffset,
@@ -194,6 +198,21 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
   };
 
   segment.substitutions = getSubstitutions(segment, seq);
+
+  let fromClippingAdjustment = 0;
+  let toClippingAdjustment = 0;
+
+  // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
+  segment.substitutions.forEach((sub) => {
+    // left soft clipped region
+    if((sub.type === "S" || sub.type === "H") && sub.pos < 0){
+      fromClippingAdjustment = (-1) * sub.length;
+    }else if((sub.type === "S" || sub.type === "H") && sub.pos > 0){
+      toClippingAdjustment = sub.length;
+    }
+  });
+  segment.fromWithClipping += fromClippingAdjustment;
+  segment.toWithClipping += toClippingAdjustment;
 
   return segment;
 };
@@ -624,8 +643,9 @@ const fetchTilesDebounced = async (uid, tileIds) => {
 
 // See segmentsToRows concerning the role of occupiedSpaceInRows
 function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
-  const segmentFromWithPadding = segment.from - padding;
-  const segmentToWithPadding = segment.to + padding;
+
+  const segmentFromWithPadding = segment.fromWithClipping - padding;
+  const segmentToWithPadding = segment.toWithClipping + padding;
 
   // no row has been assigned - find a suitable row and update the occupied space
   if (segment.row === null || segment.row === undefined) {
@@ -709,7 +729,7 @@ function segmentsToRows(segments, optionsIn) {
   const filteredSegments = segments.filter((x) => !prevSegmentIds.has(x.id));
 
   if (prevSegments.length === 0) {
-    filteredSegments.sort((a, b) => a.from - b.from);
+    filteredSegments.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
     filteredSegments.forEach((segment) => {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
     });
@@ -718,16 +738,16 @@ function segmentsToRows(segments, optionsIn) {
     // We subdivide the segments into those that are left/right of the existing previous segments
     // Note that prevSegments is sorted
     const cutoff =
-      (prevSegments[0].from + prevSegments[prevSegments.length - 1].to) / 2;
-    const newSegmentsLeft = filteredSegments.filter((x) => x.from <= cutoff);
+      (prevSegments[0].fromWithClipping + prevSegments[prevSegments.length - 1].to) / 2;
+    const newSegmentsLeft = filteredSegments.filter((x) => x.fromWithClipping <= cutoff);
     // The sort order for new segments that are appended left is reversed
-    newSegmentsLeft.sort((a, b) => b.from - a.from);
+    newSegmentsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
     newSegmentsLeft.forEach((segment) => {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
     });
 
-    const newSegmentsRight = filteredSegments.filter((x) => x.from > cutoff);
-    newSegmentsRight.sort((a, b) => a.from - b.from);
+    const newSegmentsRight = filteredSegments.filter((x) => x.fromWithClipping > cutoff);
+    newSegmentsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
     newSegmentsRight.forEach((segment) => {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
     });
