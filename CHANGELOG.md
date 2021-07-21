@@ -1,3 +1,10 @@
+v1.2.0
+
+- Soft and hard clipped regions are now included in the calculation of an appropriate row for a read. Without that, clipped regions would often overlap with other reads
+- New option `maxTileWidth` that controls when the "Zoom to see details" message is shown
+- New option `collapseWhenMaxTileWidthReached`. When this is set, the track height will be set to 20 when `maxTileWidth` is reached. This can be useful when there are a lot of tracks and you want to zoom out. With this option the pileup track will only take minimal space as long as you are zoomed out, so that it is easier to look at the other tracks.
+- Resolved some issues with a flickering "Zoom to see details" message.
+
 v1.0.1
 
 - Render BAM file tiles returned by resgen server
