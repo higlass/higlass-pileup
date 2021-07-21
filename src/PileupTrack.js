@@ -176,6 +176,11 @@ const PileupTrack = (HGC, ...args) => {
       super(context, options);
       context.dataFetcher.track = this;
 
+      this.trackId = this.id;
+      this.viewId = context.viewUid;
+      this.originalHeight = context.definition.height;
+      this.maxTileWidthReached = false;
+
       this.worker = worker;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
 
@@ -356,10 +361,24 @@ varying vec4 vColor;
           )
           .then((toRender) => {
             this.loadingText.visible = false;
+
             fetchedTileKeys.forEach((x) => {
               this.rendering.delete(x);
             });
             this.updateLoadingText();
+
+            if (this.maxTileWidthReached) {
+              if (
+                this.segmentGraphics &&
+                this.options.collapseWhenMaxTileWidthReached
+              ) {
+                this.pMain.removeChild(this.segmentGraphics);
+              }
+              this.loadingText.visible = false;
+              this.draw();
+              this.animate();
+              return;
+            }
 
             this.errorTextText = null;
             this.pBorder.clear();
@@ -639,12 +658,35 @@ varying vec4 vColor;
 
         if (
           tileWidth >
-          (this.tilesetInfo.max_tile_width || DEFAULT_MAX_TILE_WIDTH)
+          (this.tilesetInfo.max_tile_width ||
+            this.options.maxTileWidth ||
+            DEFAULT_MAX_TILE_WIDTH)
         ) {
+          if (this.options.collapseWhenMaxTileWidthReached) {
+            this.pubSub.publish('trackDimensionsModified', {
+              height: 20,
+              resizeParentDiv: true,
+              trackId: this.trackId,
+              viewId: this.viewId,
+            });
+          }
+
           this.errorTextText = 'Zoom in to see details';
           this.drawError();
           this.animate();
+          this.maxTileWidthReached = true;
           return;
+        } else {
+          this.maxTileWidthReached = false;
+
+          if (this.options.collapseWhenMaxTileWidthReached) {
+            this.pubSub.publish('trackDimensionsModified', {
+              height: this.originalHeight,
+              resizeParentDiv: true,
+              trackId: this.trackId,
+              viewId: this.viewId,
+            });
+          }
         }
 
         this.errorTextText = null;
@@ -844,6 +886,8 @@ PileupTrack.config = {
     'minusStrandColor',
     'showCoverage',
     'coverageHeight',
+    'maxTileWidth',
+    'collapseWhenMaxTileWidthReached',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -863,6 +907,8 @@ PileupTrack.config = {
     showMousePosition: false,
     showCoverage: false,
     coverageHeight: 10, // unit: number of rows
+    maxTileWidth: 2e5,
+    collapseWhenMaxTileWidthReached: false,
   },
   optionsInfo: {
     outlineReadOnHover: {
