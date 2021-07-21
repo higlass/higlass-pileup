@@ -206,7 +206,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
   segment.substitutions.forEach((sub) => {
     // left soft clipped region
     if((sub.type === "S" || sub.type === "H") && sub.pos < 0){
-      fromClippingAdjustment = (-1) * sub.length;
+      fromClippingAdjustment = -sub.length;
     }else if((sub.type === "S" || sub.type === "H") && sub.pos > 0){
       toClippingAdjustment = sub.length;
     }

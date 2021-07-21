@@ -367,8 +367,11 @@ varying vec4 vColor;
             });
             this.updateLoadingText();
 
-            if(this.maxTileWidthReached){
-              if (this.segmentGraphics && this.options.collapseWhenMaxTileWidthReached) {
+            if (this.maxTileWidthReached) {
+              if (
+                this.segmentGraphics &&
+                this.options.collapseWhenMaxTileWidthReached
+              ) {
                 this.pMain.removeChild(this.segmentGraphics);
               }
               this.loadingText.visible = false;
@@ -651,30 +654,33 @@ varying vec4 vColor;
           this.tilesetInfo,
         );
 
+        const DEFAULT_MAX_TILE_WIDTH = 2e5;
+
         if (
           tileWidth >
-          (this.tilesetInfo.max_tile_width || this.options.maxTileWidth)
+          (this.tilesetInfo.max_tile_width ||
+            this.options.maxTileWidth ||
+            DEFAULT_MAX_TILE_WIDTH)
         ) {
-          
-          if(this.options.collapseWhenMaxTileWidthReached){
-            this.pubSub.publish("trackDimensionsModified", {
+          if (this.options.collapseWhenMaxTileWidthReached) {
+            this.pubSub.publish('trackDimensionsModified', {
               height: 20,
               resizeParentDiv: true,
               trackId: this.trackId,
               viewId: this.viewId,
             });
           }
-          
+
           this.errorTextText = 'Zoom in to see details';
           this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
           return;
-        }else{
+        } else {
           this.maxTileWidthReached = false;
 
-          if(this.options.collapseWhenMaxTileWidthReached){
-            this.pubSub.publish("trackDimensionsModified", {
+          if (this.options.collapseWhenMaxTileWidthReached) {
+            this.pubSub.publish('trackDimensionsModified', {
               height: this.originalHeight,
               resizeParentDiv: true,
               trackId: this.trackId,
@@ -881,7 +887,7 @@ PileupTrack.config = {
     'showCoverage',
     'coverageHeight',
     'maxTileWidth',
-    'collapseWhenMaxTileWidthReached'
+    'collapseWhenMaxTileWidthReached',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -902,7 +908,7 @@ PileupTrack.config = {
     showCoverage: false,
     coverageHeight: 10, // unit: number of rows
     maxTileWidth: 2e5,
-    collapseWhenMaxTileWidthReached: false
+    collapseWhenMaxTileWidthReached: false,
   },
   optionsInfo: {
     outlineReadOnHover: {
