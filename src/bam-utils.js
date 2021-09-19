@@ -6,7 +6,7 @@ export const PILEUP_COLORS = {
   C: [1, 0, 0, 1], // red for c
   G: [0, 1, 0, 1], // green for g
   T: [1, 1, 0, 1], // yellow for T
-  S: [0, 0, 0, 0.5], // darker grey for soft clipping
+  S: [0, 0, 0, 0.4], // lighter grey for soft clipping
   H: [0, 0, 0, 0.5], // darker grey for hard clipping
   X: [0, 0, 0, 0.7], // black for unknown
   I: [1, 0, 1, 0.5], // purple for insertions
