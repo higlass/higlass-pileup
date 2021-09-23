@@ -659,6 +659,7 @@ varying vec4 vColor;
         if (
           tileWidth >
           (this.tilesetInfo.max_tile_width ||
+            (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidth) ||
             this.options.maxTileWidth ||
             DEFAULT_MAX_TILE_WIDTH)
         ) {

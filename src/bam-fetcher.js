@@ -31,7 +31,7 @@ class BAMDataFetcher {
       }
 
       return tileFunctions
-        .init(this.uid, dataConfig.bamUrl, dataConfig.baiUrl, dataConfig.chromSizesUrl)
+        .init(this.uid, dataConfig.bamUrl, dataConfig.baiUrl, dataConfig.chromSizesUrl, dataConfig.options)
         .then(() => this.worker);
     });
   }
