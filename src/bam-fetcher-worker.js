@@ -321,8 +321,6 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options) => {
     dataOptions[uid] = {...DEFAULT_DATA_OPTIONS, ...options}
   }
 
-  console.log('dataOptions', dataOptions[uid])
-
   if (!bamFiles[bamUrl]) {
     bamFiles[bamUrl] = new BamFile({
       bamUrl,
@@ -1145,9 +1143,6 @@ const renderSegments = (
     xScaleDomain: domain,
     xScaleRange: scaleRange,
   };
-
-  //const t2 = currTime();
-  //console.log('renderSegments time:', t2 - t1, 'ms');
 
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
