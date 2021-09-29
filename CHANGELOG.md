@@ -1,3 +1,7 @@
+v1.3.0
+
+- `maxTileWidth` option in the `data` section of the track that modifies the tile fetcher
+
 v1.2.0
 
 - Soft and hard clipped regions are now included in the calculation of an appropriate row for a read. Without that, clipped regions would often overlap with other reads
