@@ -273,6 +273,8 @@ const tabularJsonToRowJson = (tabularJson) => {
 // promises indexed by urls
 const bamFiles = {};
 const bamHeaders = {};
+const dataOptions = {};
+
 
 const serverInfos = {};
 
@@ -308,7 +310,17 @@ const serverInit = (uid, server, tilesetUid, authHeader) => {
   };
 };
 
-const init = (uid, bamUrl, baiUrl, chromSizesUrl) => {
+const DEFAULT_DATA_OPTIONS = {
+  maxTileWidth: 2e5,
+}
+
+const init = (uid, bamUrl, baiUrl, chromSizesUrl, options) => {
+  if (!options) {
+    dataOptions[uid] = DEFAULT_DATA_OPTIONS;
+  } else {
+    dataOptions[uid] = {...DEFAULT_DATA_OPTIONS, ...options}
+  }
+
   if (!bamFiles[bamUrl]) {
     bamFiles[bamUrl] = new BamFile({
       bamUrl,
@@ -445,7 +457,8 @@ const tilesetInfo = (uid) => {
 };
 
 const tile = async (uid, z, x) => {
-  const MAX_TILE_WIDTH = 200000;
+  const {maxTileWidth} = dataOptions[uid];
+
   const { bamUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
 
@@ -453,7 +466,7 @@ const tile = async (uid, z, x) => {
     const tileWidth = +tsInfo.max_width / 2 ** +z;
     const recordPromises = [];
 
-    if (tileWidth > MAX_TILE_WIDTH) {
+    if (tileWidth > maxTileWidth) {
       // this.errorTextText('Zoomed out too far for this track. Zoomin further to see reads');
       return new Promise((resolve) => resolve([]));
     }
@@ -1130,9 +1143,6 @@ const renderSegments = (
     xScaleDomain: domain,
     xScaleRange: scaleRange,
   };
-
-  //const t2 = currTime();
-  //console.log('renderSegments time:', t2 - t1, 'ms');
 
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };

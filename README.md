@@ -75,7 +75,12 @@ The live scripts can be found at:
             "data": {
               "type": "bam",
               "url": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam",
-              "chromSizesUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/GCF_000005845.2_ASM584v2_genomic.chrom.sizes"
+              "chromSizesUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/GCF_000005845.2_ASM584v2_genomic.chrom.sizes",
+              {
+                "options": {
+                  "maxTileWidth": 30000
+                }
+              }
             },
             "width": 470
           }
@@ -99,6 +104,15 @@ The live scripts can be found at:
 - Save the viewconf as a JSON file.
 - Navigate to higlass.io/app and drag the JSON file onto the viewer.
 - Browse away!
+
+## Options
+
+### Data config
+
+**maxTileWidth** - To limit the amount of data that is fetched from the server, HiGlass sets a
+default maximum tile width. This can be modified in the `data` section of the track config. Setting
+it to a large file will let you zoom out further while still fetching data. This is useful for
+viewing low coverage BAM files.
 
 ## Support
 
