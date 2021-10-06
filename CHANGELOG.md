@@ -1,3 +1,8 @@
+v1.3.1
+
+- Added GitHub releases workflow
+- Export PileupTrack as default
+
 v1.3.0
 
 - `maxTileWidth` option in the `data` section of the track that modifies the tile fetcher

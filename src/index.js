@@ -7,3 +7,5 @@ register({
   track: PileupTrack,
   config: PileupTrack.config,
 });
+
+export default PileupTrack;
