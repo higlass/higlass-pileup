@@ -1,12 +1,10 @@
-import { text } from 'd3-request';
-import { bisector, range } from 'd3-array';
-import { tsvParseRows } from 'd3-dsv';
+import { range } from 'd3-array';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
 import { getSubstitutions } from './bam-utils';
 import LRU from 'lru-cache';
-import { PILEUP_COLORS, PILEUP_COLOR_IXS } from './bam-utils';
+import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 
 function currTime() {
