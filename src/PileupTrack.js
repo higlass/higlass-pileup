@@ -579,7 +579,7 @@ varying vec4 vColor;
                       read.from - read.chrOffset
                     }<br>` +
                     `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mapq}<br>` +
+                    `MAPQ: ${read.mq}<br>` +
                     `Strand: ${read.strand}<br>`;
 
                   if (nearestSub && nearestSub.type) {
@@ -612,7 +612,8 @@ varying vec4 vColor;
             const matchPercent = (readCount.matches / readCount.reads) * 100;
             let mouseOverHtml =
               `Reads: ${readCount.reads}<br>` +
-              `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>`;
+              `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>` +
+              `Position: ${readCount.range}<br>`;
 
             for (let variant of Object.keys(readCount.variants)) {
               if (readCount.variants[variant] > 0) {
@@ -889,6 +890,7 @@ PileupTrack.config = {
     'coverageHeight',
     'maxTileWidth',
     'collapseWhenMaxTileWidthReached',
+    'minMappingQuality'
     // 'minZoom'
   ],
   defaultOptions: {
@@ -910,6 +912,7 @@ PileupTrack.config = {
     coverageHeight: 10, // unit: number of rows
     maxTileWidth: 2e5,
     collapseWhenMaxTileWidthReached: false,
+    minMappingQuality: 0
   },
   optionsInfo: {
     outlineReadOnHover: {

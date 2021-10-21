@@ -7,65 +7,18 @@ import { BamFile } from '@gmod/bam';
 import { getSubstitutions } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLORS, PILEUP_COLOR_IXS } from './bam-utils';
+import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 
 function currTime() {
   const d = new Date();
   return d.getTime();
 }
-/////////////////////////////////////////////////
-/// ChromInfo
-/////////////////////////////////////////////////
-
-const chromInfoBisector = bisector((d) => d.pos).left;
-const segmentFromBisector = bisector((d) => d.from).right;
 
 const groupBy = (xs, key) =>
   xs.reduce((rv, x) => {
     (rv[x[key]] = rv[x[key]] || []).push(x);
     return rv;
   }, {});
-
-const chrToAbs = (chrom, chromPos, chromInfo) =>
-  chromInfo.chrPositions[chrom].pos + chromPos;
-
-const absToChr = (absPosition, chromInfo) => {
-  if (!chromInfo || !chromInfo.cumPositions || !chromInfo.cumPositions.length) {
-    return null;
-  }
-
-  let insertPoint = chromInfoBisector(chromInfo.cumPositions, absPosition);
-  const lastChr = chromInfo.cumPositions[chromInfo.cumPositions.length - 1].chr;
-  const lastLength = chromInfo.chromLengths[lastChr];
-
-  insertPoint -= insertPoint > 0 && 1;
-
-  let chrPosition = Math.floor(
-    absPosition - chromInfo.cumPositions[insertPoint].pos,
-  );
-  let offset = 0;
-
-  if (chrPosition < 0) {
-    // before the start of the genome
-    offset = chrPosition - 1;
-    chrPosition = 1;
-  }
-
-  if (
-    insertPoint === chromInfo.cumPositions.length - 1 &&
-    chrPosition > lastLength
-  ) {
-    // beyond the last chromosome
-    offset = chrPosition - lastLength;
-    chrPosition = lastLength;
-  }
-
-  return [
-    chromInfo.cumPositions[insertPoint].chr,
-    chrPosition,
-    offset,
-    insertPoint,
-  ];
-};
 
 function natcmp(xRow, yRow) {
   const x = xRow[0];
@@ -118,64 +71,6 @@ function natcmp(xRow, yRow) {
   return 0;
 }
 
-function parseChromsizesRows(data) {
-  const cumValues = [];
-  const chromLengths = {};
-  const chrPositions = {};
-
-  let totalLength = 0;
-
-  for (let i = 0; i < data.length; i++) {
-    const length = Number(data[i][1]);
-    totalLength += length;
-
-    const newValue = {
-      id: i,
-      chr: data[i][0],
-      pos: totalLength - length,
-    };
-
-    cumValues.push(newValue);
-    chrPositions[newValue.chr] = newValue;
-    chromLengths[data[i][0]] = length;
-  }
-
-  return {
-    cumPositions: cumValues,
-    chrPositions,
-    totalLength,
-    chromLengths,
-  };
-}
-
-function ChromosomeInfo(filepath, success) {
-  const ret = {};
-
-  ret.absToChr = (absPos) => (ret.chrPositions ? absToChr(absPos, ret) : null);
-
-  ret.chrToAbs = ([chrName, chrPos] = []) =>
-    ret.chrPositions ? chrToAbs(chrName, chrPos, ret) : null;
-
-  return text(filepath, (error, chrInfoText) => {
-    if (error) {
-      // console.warn('Chromosome info not found at:', filepath);
-      if (success) success(null);
-    } else {
-      const data = tsvParseRows(chrInfoText);
-      const chromInfo = parseChromsizesRows(data);
-
-      Object.keys(chromInfo).forEach((key) => {
-        ret[key] = chromInfo[key];
-      });
-      if (success) success(ret);
-    }
-  });
-}
-
-/////////////////////////////////////////////////////
-/// End Chrominfo
-/////////////////////////////////////////////////////
-
 const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
   const seq = bamRecord.get('seq');
   const from = +bamRecord.data.start + 1 + chrOffset;
@@ -191,7 +86,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
     chrName,
     chrOffset,
     cigar: bamRecord.get('cigar'),
-    mapq: bamRecord.get('mq'),
+    mq: bamRecord.get('mq'),
     strand: bamRecord.get('strand') === 1 ? '+' : '-',
     row: null,
     substitutions: [],
@@ -360,7 +255,7 @@ const serverTilesetInfo = (uid) => {
     });
 };
 
-const getCoverage = (segmentList, samplingDistance) => {
+const getCoverage = (uid, segmentList, samplingDistance) => {
   const coverage = {};
   let maxCoverage = 0;
 
@@ -369,8 +264,8 @@ const getCoverage = (segmentList, samplingDistance) => {
     const to = segmentList[j].to;
     // Find the first position that is in the sampling set
     const firstFrom = from - (from % samplingDistance) + samplingDistance;
-
     for (let i = firstFrom; i < to; i = i + samplingDistance) {
+
       if (!coverage[i]) {
         coverage[i] = {
           reads: 0,
@@ -382,6 +277,7 @@ const getCoverage = (segmentList, samplingDistance) => {
             T: 0,
             N: 0,
           },
+          range: "" // Will be used in the mouseover of the coverage track
         };
       }
       coverage[i].reads++;
@@ -403,6 +299,23 @@ const getCoverage = (segmentList, samplingDistance) => {
       }
     });
   }
+
+  // Add thousands separators for easier reading
+  const formatNumber = (num) => String(num).replace(/(.)(?=(\d{3})+$)/g,'$1,');
+
+  const { chromSizesUrl, bamUrl } = dataConfs[uid];
+  const absToChr = chromInfos[chromSizesUrl].absToChr;
+  Object.entries(coverage).forEach(
+      ([pos, entry]) => {
+        const from = absToChr(pos);
+        let range = from[0] + ":" + formatNumber(from[1]);
+        if(samplingDistance > 1){
+          const to = absToChr(parseInt(pos,10)+samplingDistance-1);
+          range += "-" + formatNumber(to[1]);
+        }
+        entry.range = range;
+      }
+  );
 
   return {
     coverage: coverage,
@@ -815,7 +728,11 @@ const renderSegments = (
     }
   }
 
-  const segmentList = Object.values(allSegments);
+  let segmentList = Object.values(allSegments);
+
+  if(trackOptions.minMappingQuality > 0){
+    segmentList = segmentList.filter((s) => s.mq >= trackOptions.minMappingQuality)
+  }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
@@ -952,7 +869,7 @@ const renderSegments = (
       Math.floor((maxPos - minPos) / maxCoverageSamples),
       1,
     );
-    const result = getCoverage(segmentList, coverageSamplingDistance);
+    const result = getCoverage(uid, segmentList, coverageSamplingDistance);
 
     allReadCounts = result.coverage;
     const maxReadCount = result.maxCoverage;
