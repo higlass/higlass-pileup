@@ -72,6 +72,7 @@
     "d3-dsv": "^1.1.1",
     "d3-request": "^1.0.6",
     "d3-scale": "^3.0.1",
+    "d3-format": "^3.0.1",
     "higlass-register": "^0.1.0",
     "lru-cache": "^6.0.0",
     "prettier": "^2.1.2",

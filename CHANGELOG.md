@@ -1,3 +1,6 @@
+- When hovering over the coverage, the genomic range that is covered by the bar is now displayed
+- Added the option `minMappingQuality` which takes an integer. If this is set, reads with a mapping quality lower than the specified value are not displayed.
+
 v1.3.1
 
 - Added GitHub releases workflow
