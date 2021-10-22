@@ -579,7 +579,7 @@ varying vec4 vColor;
                       read.from - read.chrOffset
                     }<br>` +
                     `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mq}<br>` +
+                    `MAPQ: ${read.mapq}<br>` +
                     `Strand: ${read.strand}<br>`;
 
                   if (nearestSub && nearestSub.type) {
@@ -610,10 +610,13 @@ varying vec4 vColor;
           if (this.coverage[bpIndex]) {
             const readCount = this.coverage[bpIndex];
             const matchPercent = (readCount.matches / readCount.reads) * 100;
+            const range = readCount.range.includes('-')
+              ? `Range: ${readCount.range}<br>`
+              : `Position: ${readCount.range}<br>`;
             let mouseOverHtml =
               `Reads: ${readCount.reads}<br>` +
               `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>` +
-              `Position: ${readCount.range}<br>`;
+              range;
 
             for (let variant of Object.keys(readCount.variants)) {
               if (readCount.variants[variant] > 0) {

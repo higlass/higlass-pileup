@@ -1,5 +1,6 @@
 import { range } from 'd3-array';
 import { scaleLinear, scaleBand } from 'd3-scale';
+import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
 import { getSubstitutions } from './bam-utils';
@@ -84,7 +85,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
     chrName,
     chrOffset,
     cigar: bamRecord.get('cigar'),
-    mq: bamRecord.get('mq'),
+    mapq: bamRecord.get('mq'),
     strand: bamRecord.get('strand') === 1 ? '+' : '-',
     row: null,
     substitutions: [],
@@ -253,6 +254,8 @@ const serverTilesetInfo = (uid) => {
     });
 };
 
+// uid is required to get the correct chromInfo object in order to invoke absToChr.
+// The track can store multiple chromInfo objects
 const getCoverage = (uid, segmentList, samplingDistance) => {
   const coverage = {};
   let maxCoverage = 0;
@@ -275,7 +278,7 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
             T: 0,
             N: 0,
           },
-          range: "" // Will be used in the mouseover of the coverage track
+          range: "" // Will be used to show the bounds of this coverage bin when mousing over
         };
       }
       coverage[i].reads++;
@@ -298,18 +301,15 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     });
   }
 
-  // Add thousands separators for easier reading
-  const formatNumber = (num) => String(num).replace(/(.)(?=(\d{3})+$)/g,'$1,');
-
   const { chromSizesUrl, bamUrl } = dataConfs[uid];
   const absToChr = chromInfos[chromSizesUrl].absToChr;
   Object.entries(coverage).forEach(
       ([pos, entry]) => {
         const from = absToChr(pos);
-        let range = from[0] + ":" + formatNumber(from[1]);
+        let range = from[0] + ":" + format(',')(from[1]);
         if(samplingDistance > 1){
           const to = absToChr(parseInt(pos,10)+samplingDistance-1);
-          range += "-" + formatNumber(to[1]);
+          range += "-" + format(',')(to[1]);
         }
         entry.range = range;
       }
@@ -729,7 +729,7 @@ const renderSegments = (
   let segmentList = Object.values(allSegments);
 
   if(trackOptions.minMappingQuality > 0){
-    segmentList = segmentList.filter((s) => s.mq >= trackOptions.minMappingQuality)
+    segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
