@@ -3,7 +3,7 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions, highlightAbnormalInsertSizes, calculateInsertSize } from './bam-utils';
+import { getSubstitutions, highlightAbnormalInsertSizes, calculateInsertSize, areMatesRequired } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
@@ -120,8 +120,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   return segment;
 };
 
-const processAbnormalInsertSize = (segments, trackOptions) => {
-  
+const findMates = (segments) => {
+
   segments.sort((a, b) => {
     if (a.readName < b.readName) {
       return -1;
@@ -131,18 +131,34 @@ const processAbnormalInsertSize = (segments, trackOptions) => {
     }
     return 0;
   });
+
+  segments.forEach((segment, index) => {
+    if (index === 0) return;
+
+    const prevSegment = segments[index - 1];
+  
+    if (segment.readName === prevSegment.readName) {
+      segment.mate_id = prevSegment.id;
+      prevSegment.mate_id = segment.id;
+    }
+  });
+
+}
+
+const processAbnormalInsertSize = (segments, trackOptions) => {
+  
+  // This will sort the segments by readName, so that mates are adjacent
+  findMates(segments);
   
   segments.forEach((segment, index) => {
     if (index === 0) return;
 
     const prevSegment = segments[index - 1];
-    const segmentDistance = calculateInsertSize(segment, prevSegment);
-
+    
     if (segment.readName === prevSegment.readName) {
-      segment.mate_id = prevSegment.id;
-      prevSegment.mate_id = segment.id;
       segment.colorOverride = null;
       prevSegment.colorOverride = null;
+      const segmentDistance = calculateInsertSize(segment, prevSegment);
 
       if (
         'largeInsertSizeThreshold' in trackOptions &&
@@ -156,7 +172,6 @@ const processAbnormalInsertSize = (segments, trackOptions) => {
       ) {
         segment.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
         prevSegment.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
-      
       } 
     }
   });
@@ -293,10 +308,6 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
     chromSizesUrl,
   };
 
-  trackOptions[uid] = tOptions;
-};
-
-const updateTrackOptions = (uid, tOptions) => {
   trackOptions[uid] = tOptions;
 };
 
@@ -458,7 +469,7 @@ const tile = async (uid, z, x) => {
 
       if (chromStart <= minX && minX < chromEnd) {
         // start of the visible region is within this chromosome
-        const highlightInsertSizes = highlightAbnormalInsertSizes(trackOptions[uid]);
+        const highlightInsertSizes = areMatesRequired(trackOptions[uid]);
         const fetchOptions = {
           viewAsPairs: highlightInsertSizes,
           // maxInsertSize: 2000,
@@ -796,9 +807,10 @@ const renderSegments = (
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
-  const highlightInsertSizes = highlightAbnormalInsertSizes(trackOptions);
-  if(highlightInsertSizes){
+  if(highlightAbnormalInsertSizes(trackOptions)){
     processAbnormalInsertSize(segmentList, trackOptions);
+  }else if(trackOptions.outlineMateOnHover){
+    findMates(segmentList);
   }
   
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];

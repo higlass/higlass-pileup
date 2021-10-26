@@ -202,7 +202,7 @@ const PileupTrack = (HGC, ...args) => {
       this.readsById = {}; 
       this.previousTileIdsUsedForRendering = {};
 
-      this.prevOptions = {};
+      this.prevOptions = options;
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
@@ -348,7 +348,7 @@ varying vec4 vColor;
       }
 
       this.setUpShaderAndTextures();
-      // Reset the following so, the graphic actually updates
+      // Reset the following, so the graphic actually updates
       this.previousTileIdsUsedForRendering = {};
 
       // If one of the insertSize options changed, we need to regenerate the display.
@@ -378,7 +378,7 @@ varying vec4 vColor;
         return;
       }
 
-      // Prevent multiple renderings with the same tiles
+      // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
       if(eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)){
         return;
       }
@@ -436,7 +436,6 @@ varying vec4 vColor;
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
-            
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
@@ -636,7 +635,7 @@ varying vec4 vColor;
                   if (this.options.outlineMateOnHover) {
                     if (read.mate_id && read.mate_id in this.readsById) {
                       const mate = this.readsById[read.mate_id];
-                      // We assume mate height is the same, but width might be different
+                      // We assume the mate height is the same, but width might be different
                       const mate_width =
                         this._xScale(mate.to) - this._xScale(mate.from);
                       const mate_height =
@@ -1015,7 +1014,7 @@ PileupTrack.config = {
     axisPositionHorizontal: 'right',
     axisLabelFormatting: 'normal',
     colorScale: [
-      // A T G C N other LARGE_INSERT_SIZE SMALL_INSERT_SIZE
+      // A T G C N other
       '#08519c',
       '#6baed6',
       '#993404',
