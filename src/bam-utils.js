@@ -12,6 +12,8 @@ export const PILEUP_COLORS = {
   I: [1, 0, 1, 0.5], // purple for insertions
   D: [1, 0.5, 0.5, 0.5], // pink-ish for deletions
   N: [1, 1, 1, 1],
+  LARGE_INSERT_SIZE: [1, 0, 0, 1], // Red for read pairs with large insert size
+  SMALL_INSERT_SIZE: [0, 0.24, 0.48, 1], // Dark blue for read pairs with large insert size
   BLACK: [0, 0, 0, 1],
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
@@ -208,4 +210,33 @@ export const getSubstitutions = (segment, seq) => {
   }
 
   return substitutions;
+};
+
+/**
+ * Checks the track options and determines if mates need to be loaded
+ */
+export const areMatesRequired = (trackOptions) => {
+  return (
+    highlightAbnormalInsertSizes(trackOptions) ||
+    ('outlineMateOnHover' in trackOptions && trackOptions.outlineMateOnHover)
+  );
+};
+
+/**
+ * Checks the track options and determines insert sizes need to be examined
+ */
+ export const highlightAbnormalInsertSizes = (trackOptions) => {
+  return (
+    'smallInsertSizeThreshold' in trackOptions ||
+    'largeInsertSizeThreshold' in trackOptions 
+  );
+};
+
+/**
+ * Calculates insert size between read segements
+ */
+ export const calculateInsertSize = (segment1, segment2) => {
+  return segment1.from < segment2.from
+    ? Math.max(0, segment2.from - segment1.to)
+    : Math.max(0, segment1.from - segment2.to);
 };

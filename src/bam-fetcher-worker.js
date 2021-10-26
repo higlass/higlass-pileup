@@ -4,7 +4,7 @@ import { tsvParseRows } from 'd3-dsv';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions } from './bam-utils';
+import { getSubstitutions, highlightAbnormalInsertSizes, calculateInsertSize } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLORS, PILEUP_COLOR_IXS } from './bam-utils';
 
@@ -176,13 +176,14 @@ function ChromosomeInfo(filepath, success) {
 /// End Chrominfo
 /////////////////////////////////////////////////////
 
-const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
+const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   const seq = bamRecord.get('seq');
-  const from = +bamRecord.data.start + 1 + chrOffset;
-  const to = +bamRecord.data.end + 1 + chrOffset;
+  const from = +bamRecord.get('start') + 1 + chrOffset;
+  const to = +bamRecord.get('end') + 1 + chrOffset;
 
   const segment = {
-    id: bamRecord._id,
+    id: bamRecord.get('id'),
+    mate_id: null,
     from: from,
     to: to,
     fromWithClipping: from,
@@ -194,8 +195,16 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
     mapq: bamRecord.get('mq'),
     strand: bamRecord.get('strand') === 1 ? '+' : '-',
     row: null,
+    readName: bamRecord.get('name'),
+    color: PILEUP_COLOR_IXS.BG,
     substitutions: [],
   };
+
+  if (segment.strand === '+' && trackOptions.plusStrandColor) {
+    segment.color = PILEUP_COLOR_IXS.PLUS_STRAND;
+  } else if (segment.strand === '-' && trackOptions.minusStrandColor) {
+    segment.color = PILEUP_COLOR_IXS.MINUS_STRAND;
+  }
 
   segment.substitutions = getSubstitutions(segment, seq);
 
@@ -215,6 +224,49 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset) => {
   segment.toWithClipping += toClippingAdjustment;
 
   return segment;
+};
+
+const processAbnormalInsertSize = (segments, trackOptions) => {
+  
+  segments.sort((a, b) => {
+    if (a.readName < b.readName) {
+      return -1;
+    }
+    if (a.readName > b.readName) {
+      return 1;
+    }
+    return 0;
+  });
+  
+  segments.forEach((segment, index) => {
+    if (index === 0) return;
+
+    const prevSegment = segments[index - 1];
+    const segmentDistance = calculateInsertSize(segment, prevSegment);
+
+    if (segment.readName === prevSegment.readName) {
+      segment.mate_id = prevSegment.id;
+      prevSegment.mate_id = segment.id;
+      segment.colorOverride = null;
+      prevSegment.colorOverride = null;
+
+      if (
+        'largeInsertSizeThreshold' in trackOptions &&
+        segmentDistance > trackOptions.largeInsertSizeThreshold
+      ) {
+        segment.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
+        prevSegment.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
+      } else if (
+        'smallInsertSizeThreshold' in trackOptions &&
+        segmentDistance < trackOptions.smallInsertSizeThreshold
+      ) {
+        segment.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
+        prevSegment.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
+      
+      } 
+    }
+  });
+
 };
 
 /** Convert mapped read information returned from a higlass
@@ -288,6 +340,7 @@ const tilesetInfos = {};
 
 // indexed by uuid
 const dataConfs = {};
+const trackOptions = {};
 
 function authFetch(url, uid) {
   const { authHeader } = serverInfos[uid];
@@ -314,7 +367,7 @@ const DEFAULT_DATA_OPTIONS = {
   maxTileWidth: 2e5,
 }
 
-const init = (uid, bamUrl, baiUrl, chromSizesUrl, options) => {
+const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
   if (!options) {
     dataOptions[uid] = DEFAULT_DATA_OPTIONS;
   } else {
@@ -345,6 +398,12 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options) => {
     bamUrl,
     chromSizesUrl,
   };
+
+  trackOptions[uid] = tOptions;
+};
+
+const updateTrackOptions = (uid, tOptions) => {
+  trackOptions[uid] = tOptions;
 };
 
 const serverTilesetInfo = (uid) => {
@@ -488,8 +547,14 @@ const tile = async (uid, z, x) => {
 
       if (chromStart <= minX && minX < chromEnd) {
         // start of the visible region is within this chromosome
+        const highlightInsertSizes = highlightAbnormalInsertSizes(trackOptions[uid]);
+        const fetchOptions = {
+          viewAsPairs: highlightInsertSizes,
+          // maxInsertSize: 2000,
+        };
 
         if (maxX > chromEnd) {
+          
           // the visible region extends beyond the end of this chromosome
           // fetch from the start until the end of the chromosome
           recordPromises.push(
@@ -498,11 +563,13 @@ const tile = async (uid, z, x) => {
                 chromName,
                 minX - chromStart,
                 chromEnd - chromStart,
+                fetchOptions
               )
               .then((records) => {
                 const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos),
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
+
                 tileValues.set(
                   `${uid}.${z}.${x}`,
                   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
@@ -518,15 +585,12 @@ const tile = async (uid, z, x) => {
           // the end of the region is within this chromosome
           recordPromises.push(
             bamFile
-              .getRecordsForRange(chromName, startPos, endPos, {
-                // viewAsPairs: true,
-                // maxInsertSize: 2000,
-              })
+              .getRecordsForRange(chromName, startPos, endPos, fetchOptions)
               .then((records) => {
                 const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos),
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-
+                
                 tileValues.set(
                   `${uid}.${z}.${x}`,
                   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
@@ -817,6 +881,11 @@ const renderSegments = (
 
   const segmentList = Object.values(allSegments);
 
+  const highlightInsertSizes = highlightAbnormalInsertSizes(trackOptions);
+  if(highlightInsertSizes){
+    processAbnormalInsertSize(segmentList, trackOptions);
+  }
+  
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
   for (let i = 0; i < segmentList.length; i++) {
@@ -841,9 +910,13 @@ const renderSegments = (
 
   // calculate the the rows of reads for each group
   for (let key of Object.keys(grouped)) {
-    grouped[key].rows = segmentsToRows(grouped[key], {
+    const rows = segmentsToRows(grouped[key], {
       prevRows: (prevRows[key] && prevRows[key].rows) || [],
     });
+    // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
+    // Therefore we get rid of everything else to save memory and increase performance
+    grouped[key] = {};
+    grouped[key].rows = rows;
   }
 
   // calculate the height of each group
@@ -1020,26 +1093,8 @@ const renderSegments = (
         xLeft = from;
         xRight = to;
 
-        if (segment.strand === '+' && trackOptions.plusStrandColor) {
-          addRect(
-            xLeft,
-            yTop,
-            xRight - xLeft,
-            height,
-            PILEUP_COLOR_IXS.PLUS_STRAND,
-          );
-        } else if (segment.strand === '-' && trackOptions.minusStrandColor) {
-          addRect(
-            xLeft,
-            yTop,
-            xRight - xLeft,
-            height,
-            PILEUP_COLOR_IXS.MINUS_STRAND,
-          );
-        } else {
-          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.BG);
-        }
-
+        addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+        
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));

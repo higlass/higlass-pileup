@@ -1,6 +1,6 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, cigarTypeToText } from './bam-utils';
+import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, highlightAbnormalInsertSizes, calculateInsertSize } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -172,7 +172,8 @@ const PileupTrack = (HGC, ...args) => {
       const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
-      context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
+      // We also need to pass the track options as some of them influence how the data needs to be loaded
+      context.dataFetcher = new BAMDataFetcher(context.dataConfig, options, worker, HGC);
       super(context, options);
       context.dataFetcher.track = this;
 
@@ -194,6 +195,14 @@ const PileupTrack = (HGC, ...args) => {
       this.coverage = {};
       // The bp distance for which the samples are chosen for the coverage.
       this.coverageSamplingDistance = 1;
+
+      this.loadMates = areMatesRequired(this.options);
+      // The following will be used to quickly find the mate when hovering over a read. 
+      // It will only be populated if this.loadMates==true to save memory 
+      this.readsById = {}; 
+      this.previousTileIdsUsedForRendering = {};
+
+      this.prevOptions = {};
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
@@ -256,6 +265,18 @@ const PileupTrack = (HGC, ...args) => {
       if (this.options && this.options.minusStrandColor) {
         colorDict.MINUS_STRAND = this.colorToArray(
           this.options.minusStrandColor,
+        );
+      }
+
+      if (this.options && this.options.smallInsertSizeColor) {
+        colorDict.SMALL_INSERT_SIZE = this.colorToArray(
+          this.options.smallInsertSizeColor,
+        );
+      }
+
+      if (this.options && this.options.largeInsertSizeColor) {
+        colorDict.LARGE_INSERT_SIZE = this.colorToArray(
+          this.options.largeInsertSizeColor,
         );
       }
 
@@ -327,18 +348,41 @@ varying vec4 vColor;
       }
 
       this.setUpShaderAndTextures();
+      // Reset the following so, the graphic actually updates
+      this.previousTileIdsUsedForRendering = {};
+
+      // If one of the insertSize options changed, we need to regenerate the display.
+      // Since the segments in this.prevRows are highlighted accoring to the old options,
+      // we reset it and calculate everything from scratch. Expensive, but only happens if options change.
+      if (
+        this.prevOptions.largeInsertSizeThreshold !==
+          options.largeInsertSizeThreshold ||
+        this.prevOptions.smallInsertSizeThreshold !==
+          options.smallInsertSizeThreshold
+      ) {
+        this.prevRows = [];
+      }
+      
       this.updateExistingGraphics();
+      this.prevOptions = options;
     }
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
 
+      const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (
-        !eqSet(this.visibleTileIds, new Set(Object.keys(this.fetchedTiles)))
+        !eqSet(this.visibleTileIds, fetchedTileIds)
       ) {
         this.updateLoadingText();
         return;
       }
+
+      // Prevent multiple renderings with the same tiles
+      if(eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)){
+        return;
+      }
+      this.previousTileIdsUsedForRendering = fetchedTileIds;
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
       fetchedTileKeys.forEach((x) => {
@@ -392,8 +436,24 @@ varying vec4 vColor;
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.prevRows = toRender.rows;
+            
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
+
+            if (this.loadMates) {
+              this.readsById = {};
+              for (let key in this.prevRows) {
+                this.prevRows[key].rows.forEach((row) => {
+                  row.forEach((segment) => {
+                    if (segment.id in this.readsById) return;
+
+                    this.readsById[segment.id] = segment;
+                    // Will be needed later in the mouseover to determine the correct yPos for the mate
+                    this.readsById[segment.id]['groupKey'] = key;
+                  });
+                });
+              }
+            }
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -573,6 +633,54 @@ varying vec4 vColor;
                     this.animate();
                   }
 
+                  if (this.options.outlineMateOnHover) {
+                    if (read.mate_id && read.mate_id in this.readsById) {
+                      const mate = this.readsById[read.mate_id];
+                      // We assume mate height is the same, but width might be different
+                      const mate_width =
+                        this._xScale(mate.to) - this._xScale(mate.from);
+                      const mate_height =
+                        yScaleBand.bandwidth() * this.valueScaleTransform.k;
+                      const mate_xPos = this._xScale(mate.from);
+                      const mate_yPos = transformY(
+                        this.yScaleBands[mate.groupKey](mate.row),
+                        this.valueScaleTransform,
+                      );
+                      this.mouseOverGraphics.lineStyle({
+                        width: 1,
+                        color: 0,
+                      });
+                      this.mouseOverGraphics.drawRect(
+                        mate_xPos,
+                        mate_yPos,
+                        mate_width,
+                        mate_height,
+                      );
+                    }
+                    this.animate();
+                  }
+
+                  let insertSizeHtml = ``;
+                  if(highlightAbnormalInsertSizes(this.options)){
+                    if (read.mate_id && read.mate_id in this.readsById) {
+                      const mate = this.readsById[read.mate_id];
+                      const insertSize = calculateInsertSize(read, mate);
+                      let style = ``;
+                      if (
+                        'largeInsertSizeThreshold' in this.options &&
+                        insertSize > this.options.largeInsertSizeThreshold
+                      ) {
+                        style = `style="color:red;"`;
+                      } else if (
+                        'smallInsertSizeThreshold' in this.options &&
+                        insertSize < this.options.smallInsertSizeThreshold
+                      ) {
+                        style = `style="color:blue;"`;
+                      }
+                      insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
+                    }
+                  }
+
                   let mouseOverHtml =
                     `ID: ${read.id}<br>` +
                     `Position: ${read.chrName}:${
@@ -580,7 +688,8 @@ varying vec4 vColor;
                     }<br>` +
                     `Read length: ${read.to - read.from}<br>` +
                     `MAPQ: ${read.mapq}<br>` +
-                    `Strand: ${read.strand}<br>`;
+                    `Strand: ${read.strand}<br>` +
+                    insertSizeHtml;
 
                   if (nearestSub && nearestSub.type) {
                     mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
@@ -881,6 +990,7 @@ PileupTrack.config = {
     'labelTextOpacity',
     'labelBackgroundOpacity',
     'outlineReadOnHover',
+    'outlineMateOnHover',
     'showMousePosition',
     'workerScriptLocation',
     'plusStrandColor',
@@ -889,6 +999,10 @@ PileupTrack.config = {
     'coverageHeight',
     'maxTileWidth',
     'collapseWhenMaxTileWidthReached',
+    'smallInsertSizeThreshold',
+    'smallInsertSizeColor',
+    'largeInsertSizeThreshold',
+    'largeInsertSizeColor',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -896,7 +1010,7 @@ PileupTrack.config = {
     axisPositionHorizontal: 'right',
     axisLabelFormatting: 'normal',
     colorScale: [
-      // A T G C N other
+      // A T G C N other LARGE_INSERT_SIZE SMALL_INSERT_SIZE
       '#08519c',
       '#6baed6',
       '#993404',
@@ -905,6 +1019,7 @@ PileupTrack.config = {
       '#DCDCDC',
     ],
     outlineReadOnHover: false,
+    outlineMateOnHover: false,
     showMousePosition: false,
     showCoverage: false,
     coverageHeight: 10, // unit: number of rows
