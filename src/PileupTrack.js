@@ -1,6 +1,6 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, highlightAbnormalInsertSizes, calculateInsertSize } from './bam-utils';
+import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -173,7 +173,12 @@ const PileupTrack = (HGC, ...args) => {
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
-      context.dataFetcher = new BAMDataFetcher(context.dataConfig, options, worker, HGC);
+      context.dataFetcher = new BAMDataFetcher(
+        context.dataConfig,
+        options,
+        worker,
+        HGC,
+      );
       super(context, options);
       context.dataFetcher.track = this;
 
@@ -197,9 +202,9 @@ const PileupTrack = (HGC, ...args) => {
       this.coverageSamplingDistance = 1;
 
       this.loadMates = areMatesRequired(this.options);
-      // The following will be used to quickly find the mate when hovering over a read. 
-      // It will only be populated if this.loadMates==true to save memory 
-      this.readsById = {}; 
+      // The following will be used to quickly find the mate when hovering over a read.
+      // It will only be populated if this.loadMates==true to save memory
+      this.readsById = {};
       this.previousTileIdsUsedForRendering = {};
 
       this.prevOptions = options;
@@ -244,10 +249,19 @@ const PileupTrack = (HGC, ...args) => {
       return array;
     }
 
+    colorArrayToString(colorArray) {
+      const r = Math.round(colorArray[0] * 255);
+      const g = Math.round(colorArray[1] * 255);
+      const b = Math.round(colorArray[2] * 255);
+      const rgbaString = `rgba(${r}, ${g}, ${b}, ${colorArray[3]})`;
+      const color = HGC.libraries.d3Color.color(rgbaString);
+      return color.hex();
+    }
+
     setUpShaderAndTextures() {
       const colorDict = PILEUP_COLORS;
 
-      if (this.options && this.options.colorScale) {
+      if (this.options && this.options.colorScale && this.options.colorScale.length == 6) {
         [
           colorDict.A,
           colorDict.T,
@@ -257,6 +271,23 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.X,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
       }
+      else if (this.options && this.options.colorScale && this.options.colorScale.length == 11) {
+        [
+          colorDict.A,
+          colorDict.T,
+          colorDict.G,
+          colorDict.C,
+          colorDict.N,
+          colorDict.X,
+          colorDict.LARGE_INSERT_SIZE,
+          colorDict.SMALL_INSERT_SIZE,
+          colorDict.LL,
+          colorDict.RR,
+          colorDict.RL,
+        ] = this.options.colorScale.map((x) => this.colorToArray(x));
+      } else if(this.options && this.options.colorScale){
+        console.error("colorScale must contain 6 or 11 entries.")
+      }
 
       if (this.options && this.options.plusStrandColor) {
         colorDict.PLUS_STRAND = this.colorToArray(this.options.plusStrandColor);
@@ -265,18 +296,6 @@ const PileupTrack = (HGC, ...args) => {
       if (this.options && this.options.minusStrandColor) {
         colorDict.MINUS_STRAND = this.colorToArray(
           this.options.minusStrandColor,
-        );
-      }
-
-      if (this.options && this.options.smallInsertSizeColor) {
-        colorDict.SMALL_INSERT_SIZE = this.colorToArray(
-          this.options.smallInsertSizeColor,
-        );
-      }
-
-      if (this.options && this.options.largeInsertSizeColor) {
-        colorDict.LARGE_INSERT_SIZE = this.colorToArray(
-          this.options.largeInsertSizeColor,
         );
       }
 
@@ -351,10 +370,12 @@ varying vec4 vColor;
       // Reset the following, so the graphic actually updates
       this.previousTileIdsUsedForRendering = {};
 
-      // If one of the insertSize options changed, we need to regenerate the display.
+      // If one of the highlightReads options changed, we need to regenerate the display.
       // Since the segments in this.prevRows are highlighted accoring to the old options,
       // we reset it and calculate everything from scratch. Expensive, but only happens if options change.
       if (
+        JSON.stringify(this.prevOptions.highlightReadsBy) !==
+          JSON.stringify(options.highlightReadsBy) ||
         this.prevOptions.largeInsertSizeThreshold !==
           options.largeInsertSizeThreshold ||
         this.prevOptions.smallInsertSizeThreshold !==
@@ -362,7 +383,6 @@ varying vec4 vColor;
       ) {
         this.prevRows = [];
       }
-      
       this.updateExistingGraphics();
       this.prevOptions = options;
     }
@@ -371,15 +391,13 @@ varying vec4 vColor;
       this.loadingText.text = 'Rendering...';
 
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
-      if (
-        !eqSet(this.visibleTileIds, fetchedTileIds)
-      ) {
+      if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
         this.updateLoadingText();
         return;
       }
 
       // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
-      if(eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)){
+      if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
         return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
@@ -633,8 +651,11 @@ varying vec4 vColor;
                   }
 
                   if (this.options.outlineMateOnHover) {
-                    if (read.mate_id && read.mate_id in this.readsById) {
-                      const mate = this.readsById[read.mate_id];
+                    read.mate_ids.forEach((mate_id) => {
+                      if(!this.readsById[mate_id]){
+                        return;
+                      }
+                      const mate = this.readsById[mate_id];
                       // We assume the mate height is the same, but width might be different
                       const mate_width =
                         this._xScale(mate.to) - this._xScale(mate.from);
@@ -655,14 +676,23 @@ varying vec4 vColor;
                         mate_width,
                         mate_height,
                       );
-                    }
+                    });
                     this.animate();
                   }
 
                   let insertSizeHtml = ``;
-                  if(highlightAbnormalInsertSizes(this.options)){
-                    if (read.mate_id && read.mate_id in this.readsById) {
-                      const mate = this.readsById[read.mate_id];
+                  if (
+                    this.options.highlightReadsBy.includes('insertSize') ||
+                    this.options.highlightReadsBy.includes(
+                      'insertSizeAndPairOrientation',
+                    )
+                  ) {
+                    if (
+                      read.mate_ids.length === 1 &&
+                      read.mate_ids[0] &&
+                      read.mate_ids[0] in this.readsById
+                    ) {
+                      const mate = this.readsById[read.mate_ids[0]];
                       const insertSize = calculateInsertSize(read, mate);
                       let style = ``;
                       if (
@@ -680,6 +710,26 @@ varying vec4 vColor;
                     }
                   }
 
+                  let chimericReadHtml = ``;
+                  if (read.mate_ids.length > 1) {
+                    chimericReadHtml = `<span style="color:red;">Chimeric alignment</span><br>`;
+                  }
+
+                  let mappingOrientationHtml = ``;
+                  if (read.mappingOrientation) {
+                    let style = ``;
+                    if (read.colorOverride) {
+                      const color = Object.keys(PILEUP_COLORS)[
+                        read.colorOverride
+                      ];
+                      const htmlColor = this.colorArrayToString(
+                        PILEUP_COLORS[color],
+                      );
+                      style = `style="color:${htmlColor};"`;
+                    }
+                    mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+                  }
+
                   let mouseOverHtml =
                     `ID: ${read.id}<br>` +
                     `Position: ${read.chrName}:${
@@ -688,7 +738,9 @@ varying vec4 vColor;
                     `Read length: ${read.to - read.from}<br>` +
                     `MAPQ: ${read.mapq}<br>` +
                     `Strand: ${read.strand}<br>` +
-                    insertSizeHtml;
+                    insertSizeHtml +
+                    chimericReadHtml +
+                    mappingOrientationHtml;
 
                   if (nearestSub && nearestSub.type) {
                     mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
@@ -723,7 +775,9 @@ varying vec4 vColor;
               : `Position: ${readCount.range}<br>`;
             let mouseOverHtml =
               `Reads: ${readCount.reads}<br>` +
-              `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>` +
+              `Matches: ${readCount.matches} (${matchPercent.toFixed(
+                2,
+              )}%)<br>` +
               range;
 
             for (let variant of Object.keys(readCount.variants)) {
@@ -771,7 +825,8 @@ varying vec4 vColor;
         if (
           tileWidth >
           (this.tilesetInfo.max_tile_width ||
-            (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidth) ||
+            (this.dataFetcher.dataConfig.options &&
+              this.dataFetcher.dataConfig.options.maxTileWidth) ||
             this.options.maxTileWidth ||
             DEFAULT_MAX_TILE_WIDTH)
         ) {
@@ -1002,11 +1057,10 @@ PileupTrack.config = {
     'coverageHeight',
     'maxTileWidth',
     'collapseWhenMaxTileWidthReached',
+    'minMappingQuality',
+    'highlightReadsBy',
     'smallInsertSizeThreshold',
-    'smallInsertSizeColor',
     'largeInsertSizeThreshold',
-    'largeInsertSizeColor',
-    'minMappingQuality'
     // 'minZoom'
   ],
   defaultOptions: {
@@ -1029,7 +1083,9 @@ PileupTrack.config = {
     coverageHeight: 10, // unit: number of rows
     maxTileWidth: 2e5,
     collapseWhenMaxTileWidthReached: false,
-    minMappingQuality: 0
+    minMappingQuality: 0,
+    highlightReadsBy: [],
+    largeInsertSizeThreshold: 1000
   },
   optionsInfo: {
     outlineReadOnHover: {

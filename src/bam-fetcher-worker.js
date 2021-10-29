@@ -3,7 +3,7 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions, highlightAbnormalInsertSizes, calculateInsertSize, areMatesRequired } from './bam-utils';
+import { getSubstitutions, calculateInsertSize, areMatesRequired } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
@@ -77,12 +77,13 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
   const segment = {
     id: bamRecord.get('id'),
-    mate_id: null,
+    mate_ids: [], // split reads can have multiple mates
     from: from,
     to: to,
     fromWithClipping: from,
     toWithClipping: to,
     md: bamRecord.get('MD'),
+    sa: bamRecord.get('SA'), // Needed to determine if this is a split read
     chrName,
     chrOffset,
     cigar: bamRecord.get('cigar'),
@@ -91,6 +92,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     row: null,
     readName: bamRecord.get('name'),
     color: PILEUP_COLOR_IXS.BG,
+    colorOverride: null,
+    mappingOrientation: null,
     substitutions: [],
   };
 
@@ -120,61 +123,109 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   return segment;
 };
 
+// This will group the segments by readName and assign mates to reads
 const findMates = (segments) => {
 
-  segments.sort((a, b) => {
-    if (a.readName < b.readName) {
-      return -1;
-    }
-    if (a.readName > b.readName) {
-      return 1;
-    }
-    return 0;
-  });
+  const segmentsByReadName = groupBy(segments, "readName");
 
-  segments.forEach((segment, index) => {
-    if (index === 0) return;
+  Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
+    {
+      if(segmentGroup.length === 2){
+        const read = segmentGroup[0];
+        const mate = segmentGroup[1];
+        read.mate_ids.push(mate.id);
+        mate.mate_ids.push(read.id);
+      }
+      else if(segmentGroup.length > 2){
+        // It might be useful to distinguish reads from chimeric alignments in the future,
+        // e.g., if we want to highlight read orientations of split reads. Not doing this for now.
+        // See flags here: https://broadinstitute.github.io/picard/explain-flags.html
+        // var supplementaryAlignmentMask = 1 << 11;
+        // var firstInPairMask = 1 << 6;
+        // const isFirstInPair = segment.flags & firstInPairMask;
+        // const isSupplementaryAlignment = segment.flags & supplementaryAlignmentMask;
 
-    const prevSegment = segments[index - 1];
-  
-    if (segment.readName === prevSegment.readName) {
-      segment.mate_id = prevSegment.id;
-      prevSegment.mate_id = segment.id;
+        // For simplicity a read will be a mate of every other read in the group.
+        // it will only be used for the mouseover and it is probably useful, if the whole group is highlighted on hover
+        const ids = segmentGroup.map((segment) => segment.id);
+        segmentGroup.forEach((segment) => {
+          segment.mate_ids = ids;
+        });
+      }
     }
-  });
+  );
 
+  return segmentsByReadName
 }
 
-const processAbnormalInsertSize = (segments, trackOptions) => {
+const prepareHighlightedReads = (segments, trackOptions) => {
   
-  // This will sort the segments by readName, so that mates are adjacent
-  findMates(segments);
-  
-  segments.forEach((segment, index) => {
-    if (index === 0) return;
+  const outlineMateOnHover =  trackOptions.outlineMateOnHover;
+  const highlightIS = trackOptions.highlightReadsBy.includes('insertSize');
+  const highlightPO = trackOptions.highlightReadsBy.includes('pairOrientation');
+  const highlightISandPO = trackOptions.highlightReadsBy.includes('insertSizeAndPairOrientation');
 
-    const prevSegment = segments[index - 1];
-    
-    if (segment.readName === prevSegment.readName) {
-      segment.colorOverride = null;
-      prevSegment.colorOverride = null;
-      const segmentDistance = calculateInsertSize(segment, prevSegment);
+  let segmentsByReadName;
 
-      if (
-        'largeInsertSizeThreshold' in trackOptions &&
-        segmentDistance > trackOptions.largeInsertSizeThreshold
-      ) {
-        segment.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
-        prevSegment.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
-      } else if (
-        'smallInsertSizeThreshold' in trackOptions &&
-        segmentDistance < trackOptions.smallInsertSizeThreshold
-      ) {
-        segment.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
-        prevSegment.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
-      } 
+  if (highlightIS || highlightPO || highlightISandPO) {
+    segmentsByReadName = findMates(segments);
+  } else if (outlineMateOnHover) {
+    findMates(segments);
+    return;
+  } else {
+    return;
+  }
+
+  Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
+    {
+      // We are only highlighting insert size and pair orientation for normal (non chimeric reads)
+      if(segmentGroup.length === 2){
+
+        // Changes to read or mate will change the values in the original segments array (reference)
+        const read = segmentGroup[0];
+        const mate = segmentGroup[1];
+        read.colorOverride = null;
+        mate.colorOverride = null;
+        const segmentDistance = calculateInsertSize(read, mate);
+        const hasLargeInsertSize =
+          trackOptions.largeInsertSizeThreshold &&
+          segmentDistance > trackOptions.largeInsertSizeThreshold;
+        const hasSmallInsertSize =
+          trackOptions.smallInsertSizeThreshold &&
+          segmentDistance < trackOptions.smallInsertSizeThreshold;
+        const hasLLOrientation = read.strand === '+' && mate.strand === '+';
+        const hasRROrientation = read.strand === '-' && mate.strand === '-';
+        const hasRLOrientation = read.from < mate.from && read.strand === '-';
+
+        if (highlightIS) {
+          if (hasLargeInsertSize) {
+            read.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
+          } else if (hasSmallInsertSize) {
+            read.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
+          }
+        }
+
+        if (
+          highlightPO ||
+          (highlightISandPO && (hasLargeInsertSize || hasSmallInsertSize))
+        ) {
+          if (hasLLOrientation) {
+            read.colorOverride = PILEUP_COLOR_IXS.LL;
+            read.mappingOrientation = '++';
+          } else if (hasRROrientation) {
+            read.colorOverride = PILEUP_COLOR_IXS.RR;
+            read.mappingOrientation = '--';
+          } else if (hasRLOrientation) {
+            read.colorOverride = PILEUP_COLOR_IXS.RL;
+            read.mappingOrientation = '-+';
+          }
+        }
+
+        mate.colorOverride = read.colorOverride;
+        mate.mappingOrientation = read.mappingOrientation;
+      }
     }
-  });
+  );
 
 };
 
@@ -469,9 +520,8 @@ const tile = async (uid, z, x) => {
 
       if (chromStart <= minX && minX < chromEnd) {
         // start of the visible region is within this chromosome
-        const highlightInsertSizes = areMatesRequired(trackOptions[uid]);
         const fetchOptions = {
-          viewAsPairs: highlightInsertSizes,
+          viewAsPairs: areMatesRequired(trackOptions[uid]),
           // maxInsertSize: 2000,
         };
 
@@ -807,11 +857,7 @@ const renderSegments = (
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
-  if(highlightAbnormalInsertSizes(trackOptions)){
-    processAbnormalInsertSize(segmentList, trackOptions);
-  }else if(trackOptions.outlineMateOnHover){
-    findMates(segmentList);
-  }
+  prepareHighlightedReads(segmentList, trackOptions);
   
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
@@ -1114,6 +1160,9 @@ const renderSegments = (
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
   const ixBuffer = allIndexes.slice(0, currIdx).buffer;
+
+  // const t2 = currTime();
+  // console.log(t2-t1);
 
   const objData = {
     rows: grouped,

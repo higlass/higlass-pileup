@@ -13,7 +13,10 @@ export const PILEUP_COLORS = {
   D: [1, 0.5, 0.5, 0.5], // pink-ish for deletions
   N: [1, 1, 1, 1],
   LARGE_INSERT_SIZE: [1, 0, 0, 1], // Red for read pairs with large insert size
-  SMALL_INSERT_SIZE: [0, 0.24, 0.48, 1], // Dark blue for read pairs with large insert size
+  SMALL_INSERT_SIZE: [0, 0.24, 0.48, 1], // Dark blue for read pairs with small insert size
+  LL: [0.15, 0.75, 0.75, 1], // cyan for Left-Left reads (see https://software.broadinstitute.org/software/igv/interpreting_pair_orientations)
+  RR: [0.18, 0.24, 0.8, 1], // darker blue for Right-Right reads
+  RL: [0, 0.5, 0.02, 1], // darker green for Right-Left reads
   BLACK: [0, 0, 0, 1],
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
@@ -217,18 +220,8 @@ export const getSubstitutions = (segment, seq) => {
  */
 export const areMatesRequired = (trackOptions) => {
   return (
-    highlightAbnormalInsertSizes(trackOptions) ||
+    trackOptions.highlightReadsBy.length > 0 ||
     ('outlineMateOnHover' in trackOptions && trackOptions.outlineMateOnHover)
-  );
-};
-
-/**
- * Checks the track options and determines insert sizes need to be examined
- */
- export const highlightAbnormalInsertSizes = (trackOptions) => {
-  return (
-    'smallInsertSizeThreshold' in trackOptions ||
-    'largeInsertSizeThreshold' in trackOptions 
   );
 };
 
