@@ -116,19 +116,19 @@ viewing low coverage BAM files.
 
 ### Track options
 
-**outlineReadOnHover** Highlights the current read on hover.
+**outlineReadOnHover** - Highlights the current read on hover.
 
-**outlineMateOnHover** Highlights the mate of the current read on hover. If the mate is a split read, 
+**outlineMateOnHover** - Highlights the mate of the current read on hover. If the mate is a split read, 
 both alignments will be highlighted.
 
-**highlightReadsBy** Array that can take the values `insertSize`, `pairOrientation` or `insertSizeAndPairOrientation`:
+**highlightReadsBy** - Array that can take the values `insertSize`, `pairOrientation` or `insertSizeAndPairOrientation`:
 - if `insertSize` is set, reads that have a large or small insert size will be highlighted. The thresholds are controlled by the `largeInsertSizeThreshold` and `smallInsertSizeThreshold` track options. `largeInsertSizeThreshold` defaults to `1000`, i.e., 1000 bp.
 - if `pairOrientation` is set, reads with an abnormal mapping orientation are highlighted (e.g. ++,--,-+).
 - if `insertSizeAndPairOrientation` is set, reads with an abnormal mapping orientation that also have abnormal insert sizes are highlighted.
 - if multiple values are set, reads that fulfill any of the conditions are highlighed in the corresponding color.
 - highlight colors can be controlled by extending the `colorScale` track option to 11 values. The additional 5 values will control the large insert size color, small insert size color and the ++, --, -+ mapping orientations (in that order).
 
-**minMappingQuality** Integer. If this is set, reads with a mapping quality lower than the specified value are not displayed.
+**minMappingQuality** - If this is set (integer), reads with a mapping quality lower than the specified value are not displayed.
 
 ## Support
 
