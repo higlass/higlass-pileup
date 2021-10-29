@@ -696,16 +696,13 @@ varying vec4 vColor;
                       const insertSize = calculateInsertSize(read, mate);
                       let style = ``;
                       if (
-                        'largeInsertSizeThreshold' in this.options &&
-                        insertSize > this.options.largeInsertSizeThreshold
+                        ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
+                        ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
                       ) {
-                        style = `style="color:red;"`;
-                      } else if (
-                        'smallInsertSizeThreshold' in this.options &&
-                        insertSize < this.options.smallInsertSizeThreshold
-                      ) {
-                        style = `style="color:blue;"`;
-                      }
+                        const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
+                        const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
+                        style = `style="color:${htmlColor};"`;
+                      } 
                       insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
                     }
                   }
@@ -719,12 +716,8 @@ varying vec4 vColor;
                   if (read.mappingOrientation) {
                     let style = ``;
                     if (read.colorOverride) {
-                      const color = Object.keys(PILEUP_COLORS)[
-                        read.colorOverride
-                      ];
-                      const htmlColor = this.colorArrayToString(
-                        PILEUP_COLORS[color],
-                      );
+                      const color = Object.keys(PILEUP_COLORS)[read.colorOverride];
+                      const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
                       style = `style="color:${htmlColor};"`;
                     }
                     mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;

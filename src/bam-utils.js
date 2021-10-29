@@ -221,7 +221,7 @@ export const getSubstitutions = (segment, seq) => {
 export const areMatesRequired = (trackOptions) => {
   return (
     trackOptions.highlightReadsBy.length > 0 ||
-    ('outlineMateOnHover' in trackOptions && trackOptions.outlineMateOnHover)
+    trackOptions.outlineMateOnHover
   );
 };
 

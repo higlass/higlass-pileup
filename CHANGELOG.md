@@ -1,5 +1,7 @@
 - When hovering over the coverage, the genomic range that is covered by the bar is now displayed
 - Added the option `minMappingQuality` which takes an integer. If this is set, reads with a mapping quality lower than the specified value are not displayed.
+- Added the option `outlineMateOnHover`
+- Added the option `highlightReadsBy` which is an array can contain one or more of the value `insertSize`, `pairOrientation`, `insertSizeAndPairOrientation`. Details in the docs.
 
 v1.3.1
 
