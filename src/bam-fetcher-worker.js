@@ -133,8 +133,8 @@ const findMates = (segments) => {
       if(segmentGroup.length === 2){
         const read = segmentGroup[0];
         const mate = segmentGroup[1];
-        read.mate_ids.push(mate.id);
-        mate.mate_ids.push(read.id);
+        read.mate_ids = [mate.id];
+        mate.mate_ids = [read.id];
       }
       else if(segmentGroup.length > 2){
         // It might be useful to distinguish reads from chimeric alignments in the future,
@@ -834,7 +834,7 @@ const renderSegments = (
   prevRows,
   trackOptions,
 ) => {
-  //const t1 = currTime();
+
   const allSegments = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
@@ -1160,9 +1160,6 @@ const renderSegments = (
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
   const ixBuffer = allIndexes.slice(0, currIdx).buffer;
-
-  // const t2 = currTime();
-  // console.log(t2-t1);
 
   const objData = {
     rows: grouped,

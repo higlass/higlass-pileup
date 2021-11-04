@@ -286,7 +286,7 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.RL,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
       } else if(this.options && this.options.colorScale){
-        console.error("colorScale must contain 6 or 11 entries.")
+        console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -651,66 +651,11 @@ varying vec4 vColor;
                   }
 
                   if (this.options.outlineMateOnHover) {
-                    read.mate_ids.forEach((mate_id) => {
-                      if(!this.readsById[mate_id]){
-                        return;
-                      }
-                      const mate = this.readsById[mate_id];
-                      // We assume the mate height is the same, but width might be different
-                      const mate_width =
-                        this._xScale(mate.to) - this._xScale(mate.from);
-                      const mate_height =
-                        yScaleBand.bandwidth() * this.valueScaleTransform.k;
-                      const mate_xPos = this._xScale(mate.from);
-                      const mate_yPos = transformY(
-                        this.yScaleBands[mate.groupKey](mate.row),
-                        this.valueScaleTransform,
-                      );
-                      this.mouseOverGraphics.lineStyle({
-                        width: 1,
-                        color: 0,
-                      });
-                      this.mouseOverGraphics.drawRect(
-                        mate_xPos,
-                        mate_yPos,
-                        mate_width,
-                        mate_height,
-                      );
-                    });
-                    this.animate();
+                    this.outlineMate(read, yScaleBand);
                   }
 
-                  let insertSizeHtml = ``;
-                  if (
-                    this.options.highlightReadsBy.includes('insertSize') ||
-                    this.options.highlightReadsBy.includes(
-                      'insertSizeAndPairOrientation',
-                    )
-                  ) {
-                    if (
-                      read.mate_ids.length === 1 &&
-                      read.mate_ids[0] &&
-                      read.mate_ids[0] in this.readsById
-                    ) {
-                      const mate = this.readsById[read.mate_ids[0]];
-                      const insertSize = calculateInsertSize(read, mate);
-                      let style = ``;
-                      if (
-                        ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
-                        ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
-                      ) {
-                        const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
-                        const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
-                        style = `style="color:${htmlColor};"`;
-                      } 
-                      insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
-                    }
-                  }
-
-                  let chimericReadHtml = ``;
-                  if (read.mate_ids.length > 1) {
-                    chimericReadHtml = `<span style="color:red;">Chimeric alignment</span><br>`;
-                  }
+                  const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
+                  const chimericReadHtml = read.mate_ids.length > 1 ? `<span style="color:red;">Chimeric alignment</span><br>`: ``;
 
                   let mappingOrientationHtml = ``;
                   if (read.mappingOrientation) {
@@ -789,6 +734,67 @@ varying vec4 vColor;
       }
 
       return '';
+    }
+
+    getInsertSizeMouseoverHtml(read){
+      let insertSizeHtml = ``;
+      if (
+        this.options.highlightReadsBy.includes('insertSize') ||
+        this.options.highlightReadsBy.includes(
+          'insertSizeAndPairOrientation',
+        )
+      ) {
+        if (
+          read.mate_ids.length === 1 &&
+          read.mate_ids[0] &&
+          read.mate_ids[0] in this.readsById
+        ) {
+          const mate = this.readsById[read.mate_ids[0]];
+          const insertSize = calculateInsertSize(read, mate);
+          let style = ``;
+          if (
+            ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
+            ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
+          ) {
+            const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
+            const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
+            style = `style="color:${htmlColor};"`;
+          } 
+          insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
+        }
+      }
+      return insertSizeHtml;
+    }
+
+    outlineMate(read, yScaleBand){
+      read.mate_ids.forEach((mate_id) => {
+        if(!this.readsById[mate_id]){
+          return;
+        }
+        const mate = this.readsById[mate_id];
+        // We assume the mate height is the same, but width might be different
+        const mate_width =
+          this._xScale(mate.to) - this._xScale(mate.from);
+        const mate_height =
+          yScaleBand.bandwidth() * this.valueScaleTransform.k;
+        const mate_xPos = this._xScale(mate.from);
+        const mate_yPos = transformY(
+          this.yScaleBands[mate.groupKey](mate.row),
+          this.valueScaleTransform,
+        );
+        this.mouseOverGraphics.lineStyle({
+          width: 1,
+          color: 0,
+        });
+        this.mouseOverGraphics.drawRect(
+          mate_xPos,
+          mate_yPos,
+          mate_width,
+          mate_height,
+        );
+      });
+      this.animate();
+
     }
 
     calculateZoomLevel() {
