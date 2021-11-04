@@ -116,7 +116,7 @@ viewing low coverage BAM files.
 
 ### Track options
 
-**colorScale** - Array that controls the color of substitutions and highlighed reads. It can take 6 or 11 values. 11 values are required if you want to control highlighted read colors (see the `highlightReadsBy` option). Example:
+**colorScale** - Array that controls the color of substitutions and highlighted reads. It can take 6 or 11 values. 11 values are required if you want to control highlighted read colors (see the `highlightReadsBy` option). Example:
 ```
 "colorScale": [
   "#2c7bb6", //color of A substitutions
