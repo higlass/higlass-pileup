@@ -185,32 +185,12 @@ const PileupTrack = (HGC, ...args) => {
       this.trackId = this.id;
       this.viewId = context.viewUid;
       this.originalHeight = context.definition.height;
-      this.maxTileWidthReached = false;
-
       this.worker = worker;
+      this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
 
-      // we scale the entire view up until a certain point
-      // at which point we redraw everything to get rid of
-      // artifacts
-      // this.drawnAtScale keeps track of the scale at which
-      // we last rendered everything
-      this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
-      this.prevRows = [];
-      this.coverage = {};
-      // The bp distance for which the samples are chosen for the coverage.
-      this.coverageSamplingDistance = 1;
+      this.maxTileWidthReached = false;
 
-      this.loadMates = areMatesRequired(this.options);
-      // The following will be used to quickly find the mate when hovering over a read.
-      // It will only be populated if this.loadMates==true to save memory
-      this.readsById = {};
-      this.previousTileIdsUsedForRendering = {};
-
-      this.prevOptions = options;
-
-      // graphics for highliting reads under the cursor
-      this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
       this.loadingText = new HGC.libraries.PIXI.Text('Loading', {
         fontSize: '12px',
         fontFamily: 'Arial',
@@ -223,10 +203,43 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.anchor.x = 0;
       this.loadingText.anchor.y = 0;
 
+      this.pLabel.addChild(this.loadingText);
+
+      this.externalInit(options);
+      
+    }
+
+    // Some of the initialization code is factored out, so that we can 
+    // reset/reinitialize if an option change requires it
+    externalInit(options){
+
+      // we scale the entire view up until a certain point
+      // at which point we redraw everything to get rid of
+      // artifacts
+      // this.drawnAtScale keeps track of the scale at which
+      // we last rendered everything
+      this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
+      this.prevRows = [];
+      this.coverage = {};
+      this.yScaleBands = {};
+
+      // The bp distance for which the samples are chosen for the coverage.
+      this.coverageSamplingDistance = 1;
+
+      this.loadMates = areMatesRequired(this.options);
+      // The following will be used to quickly find the mate when hovering over a read.
+      // It will only be populated if this.loadMates==true to save memory
+      this.readsById = {};
+      this.previousTileIdsUsedForRendering = {};
+
+      this.prevOptions = Object.assign({}, options);
+
+      // graphics for highliting reads under the cursor
+      this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
+      
+
       this.fetching = new Set();
       this.rendering = new Set();
-
-      this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
 
       if (this.options.showMousePosition && !this.hideMousePosition) {
         this.hideMousePosition = HGC.utils.showMousePosition(
@@ -236,8 +249,8 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      this.pLabel.addChild(this.loadingText);
       this.setUpShaderAndTextures();
+
     }
 
     initTile() {}
@@ -370,21 +383,35 @@ varying vec4 vColor;
       // Reset the following, so the graphic actually updates
       this.previousTileIdsUsedForRendering = {};
 
-      // If one of the highlightReads options changed, we need to regenerate the display.
-      // Since the segments in this.prevRows are highlighted accoring to the old options,
-      // we reset it and calculate everything from scratch. Expensive, but only happens if options change.
+      // Reset everything and overwrite the datafetcher if the data needs to be loaded differently,
+      // we need to realign or we need to recolor. Expensive, but only happens if options change.
       if (
+        areMatesRequired(options) !== this.loadMates ||
         JSON.stringify(this.prevOptions.highlightReadsBy) !==
           JSON.stringify(options.highlightReadsBy) ||
         this.prevOptions.largeInsertSizeThreshold !==
           options.largeInsertSizeThreshold ||
         this.prevOptions.smallInsertSizeThreshold !==
-          options.smallInsertSizeThreshold
+          options.smallInsertSizeThreshold ||
+        this.prevOptions.minMappingQuality !== options.minMappingQuality
       ) {
+        this.dataFetcher = new BAMDataFetcher(
+          this.dataFetcher.dataConfig,
+          options,
+          this.worker,
+          HGC,
+        );
+        this.dataFetcher.track = this;
+
         this.prevRows = [];
+        this.removeTiles(Object.keys(this.fetchedTiles));
+        this.fetching.clear();
+        this.refreshTiles();
+        this.externalInit(options);
       }
+
       this.updateExistingGraphics();
-      this.prevOptions = options;
+      this.prevOptions = Object.assign({}, options);
     }
 
     updateExistingGraphics() {
@@ -1097,6 +1124,82 @@ PileupTrack.config = {
         no: {
           value: false,
           name: 'No',
+        },
+      },
+    },
+    outlineMateOnHover: {
+      name: 'Outline read mate on hover',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    highlightReadsBy: {
+      name: 'Highlight reads by',
+      inlineOptions: {
+        none: {
+          value: [],
+          name: 'None',
+        },
+        insertSize: {
+          value: [
+            "insertSize"
+          ],
+          name: 'Insert size',
+        },
+        pairOrientation: {
+          value: [
+            "pairOrientation"
+          ],
+          name: 'Pair orientation',
+        },
+        insertSizeAndPairOrientation: {
+          value: [
+            "insertSizeAndPairOrientation"
+          ],
+          name: 'Insert size and pair orientation',
+        },
+        insertSizeOrPairOrientation: {
+          value: [
+            "insertSize",
+            "pairOrientation"
+          ],
+          name: 'Insert size or pair orientation',
+        },
+      },
+    },
+    minMappingQuality: {
+      name: 'Minimal read mapping quality',
+      inlineOptions: {
+        zero: {
+          value: 0,
+          name: '0',
+        },
+        one: {
+          value: 1,
+          name: '1',
+        },
+        five: {
+          value: 5,
+          name: '5',
+        },
+        ten: {
+          value: 10,
+          name: '10',
+        },
+        twentyfive: {
+          value: 25,
+          name: '25',
+        },
+        fifty: {
+          value: 50,
+          name: '50',
         },
       },
     },
