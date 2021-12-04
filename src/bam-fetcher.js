@@ -1,7 +1,7 @@
 const DEBOUNCE_TIME = 200;
 
 class BAMDataFetcher {
-  constructor(dataConfig, worker, HGC) {
+  constructor(dataConfig, trackOptions, worker, HGC) {
     this.dataConfig = dataConfig;
     this.uid = HGC.libraries.slugid.nice();
     this.worker = worker;
@@ -31,7 +31,7 @@ class BAMDataFetcher {
       }
 
       return tileFunctions
-        .init(this.uid, dataConfig.bamUrl, dataConfig.baiUrl, dataConfig.chromSizesUrl, dataConfig.options)
+        .init(this.uid, dataConfig.bamUrl, dataConfig.baiUrl, dataConfig.chromSizesUrl, dataConfig.options, trackOptions)
         .then(() => this.worker);
     });
   }

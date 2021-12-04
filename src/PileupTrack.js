@@ -1,6 +1,6 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, cigarTypeToText } from './bam-utils';
+import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -172,31 +172,25 @@ const PileupTrack = (HGC, ...args) => {
       const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
-      context.dataFetcher = new BAMDataFetcher(context.dataConfig, worker, HGC);
+      // We also need to pass the track options as some of them influence how the data needs to be loaded
+      context.dataFetcher = new BAMDataFetcher(
+        context.dataConfig,
+        options,
+        worker,
+        HGC,
+      );
       super(context, options);
       context.dataFetcher.track = this;
 
       this.trackId = this.id;
       this.viewId = context.viewUid;
       this.originalHeight = context.definition.height;
-      this.maxTileWidthReached = false;
-
       this.worker = worker;
+      this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
 
-      // we scale the entire view up until a certain point
-      // at which point we redraw everything to get rid of
-      // artifacts
-      // this.drawnAtScale keeps track of the scale at which
-      // we last rendered everything
-      this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
-      this.prevRows = [];
-      this.coverage = {};
-      // The bp distance for which the samples are chosen for the coverage.
-      this.coverageSamplingDistance = 1;
+      this.maxTileWidthReached = false;
 
-      // graphics for highliting reads under the cursor
-      this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
       this.loadingText = new HGC.libraries.PIXI.Text('Loading', {
         fontSize: '12px',
         fontFamily: 'Arial',
@@ -209,10 +203,43 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.anchor.x = 0;
       this.loadingText.anchor.y = 0;
 
+      this.pLabel.addChild(this.loadingText);
+
+      this.externalInit(options);
+      
+    }
+
+    // Some of the initialization code is factored out, so that we can 
+    // reset/reinitialize if an option change requires it
+    externalInit(options){
+
+      // we scale the entire view up until a certain point
+      // at which point we redraw everything to get rid of
+      // artifacts
+      // this.drawnAtScale keeps track of the scale at which
+      // we last rendered everything
+      this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
+      this.prevRows = [];
+      this.coverage = {};
+      this.yScaleBands = {};
+
+      // The bp distance for which the samples are chosen for the coverage.
+      this.coverageSamplingDistance = 1;
+
+      this.loadMates = areMatesRequired(this.options);
+      // The following will be used to quickly find the mate when hovering over a read.
+      // It will only be populated if this.loadMates==true to save memory
+      this.readsById = {};
+      this.previousTileIdsUsedForRendering = {};
+
+      this.prevOptions = Object.assign({}, options);
+
+      // graphics for highliting reads under the cursor
+      this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
+      
+
       this.fetching = new Set();
       this.rendering = new Set();
-
-      this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
 
       if (this.options.showMousePosition && !this.hideMousePosition) {
         this.hideMousePosition = HGC.utils.showMousePosition(
@@ -222,8 +249,8 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      this.pLabel.addChild(this.loadingText);
       this.setUpShaderAndTextures();
+
     }
 
     initTile() {}
@@ -235,10 +262,19 @@ const PileupTrack = (HGC, ...args) => {
       return array;
     }
 
+    colorArrayToString(colorArray) {
+      const r = Math.round(colorArray[0] * 255);
+      const g = Math.round(colorArray[1] * 255);
+      const b = Math.round(colorArray[2] * 255);
+      const rgbaString = `rgba(${r}, ${g}, ${b}, ${colorArray[3]})`;
+      const color = HGC.libraries.d3Color.color(rgbaString);
+      return color.hex();
+    }
+
     setUpShaderAndTextures() {
       const colorDict = PILEUP_COLORS;
 
-      if (this.options && this.options.colorScale) {
+      if (this.options && this.options.colorScale && this.options.colorScale.length == 6) {
         [
           colorDict.A,
           colorDict.T,
@@ -247,6 +283,23 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.N,
           colorDict.X,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
+      }
+      else if (this.options && this.options.colorScale && this.options.colorScale.length == 11) {
+        [
+          colorDict.A,
+          colorDict.T,
+          colorDict.G,
+          colorDict.C,
+          colorDict.N,
+          colorDict.X,
+          colorDict.LARGE_INSERT_SIZE,
+          colorDict.SMALL_INSERT_SIZE,
+          colorDict.LL,
+          colorDict.RR,
+          colorDict.RL,
+        ] = this.options.colorScale.map((x) => this.colorToArray(x));
+      } else if(this.options && this.options.colorScale){
+        console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -327,18 +380,54 @@ varying vec4 vColor;
       }
 
       this.setUpShaderAndTextures();
+      // Reset the following, so the graphic actually updates
+      this.previousTileIdsUsedForRendering = {};
+
+      // Reset everything and overwrite the datafetcher if the data needs to be loaded differently,
+      // we need to realign or we need to recolor. Expensive, but only happens if options change.
+      if (
+        areMatesRequired(options) !== this.loadMates ||
+        JSON.stringify(this.prevOptions.highlightReadsBy) !==
+          JSON.stringify(options.highlightReadsBy) ||
+        this.prevOptions.largeInsertSizeThreshold !==
+          options.largeInsertSizeThreshold ||
+        this.prevOptions.smallInsertSizeThreshold !==
+          options.smallInsertSizeThreshold ||
+        this.prevOptions.minMappingQuality !== options.minMappingQuality
+      ) {
+        this.dataFetcher = new BAMDataFetcher(
+          this.dataFetcher.dataConfig,
+          options,
+          this.worker,
+          HGC,
+        );
+        this.dataFetcher.track = this;
+
+        this.prevRows = [];
+        this.removeTiles(Object.keys(this.fetchedTiles));
+        this.fetching.clear();
+        this.refreshTiles();
+        this.externalInit(options);
+      }
+
       this.updateExistingGraphics();
+      this.prevOptions = Object.assign({}, options);
     }
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
 
-      if (
-        !eqSet(this.visibleTileIds, new Set(Object.keys(this.fetchedTiles)))
-      ) {
+      const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
+      if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
         this.updateLoadingText();
         return;
       }
+
+      // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
+      if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
+        return;
+      }
+      this.previousTileIdsUsedForRendering = fetchedTileIds;
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
       fetchedTileKeys.forEach((x) => {
@@ -394,6 +483,21 @@ varying vec4 vColor;
             this.prevRows = toRender.rows;
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
+
+            if (this.loadMates) {
+              this.readsById = {};
+              for (let key in this.prevRows) {
+                this.prevRows[key].rows.forEach((row) => {
+                  row.forEach((segment) => {
+                    if (segment.id in this.readsById) return;
+
+                    this.readsById[segment.id] = segment;
+                    // Will be needed later in the mouseover to determine the correct yPos for the mate
+                    this.readsById[segment.id]['groupKey'] = key;
+                  });
+                });
+              }
+            }
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -573,6 +677,24 @@ varying vec4 vColor;
                     this.animate();
                   }
 
+                  if (this.options.outlineMateOnHover) {
+                    this.outlineMate(read, yScaleBand);
+                  }
+
+                  const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
+                  const chimericReadHtml = read.mate_ids.length > 1 ? `<span style="color:red;">Chimeric alignment</span><br>`: ``;
+
+                  let mappingOrientationHtml = ``;
+                  if (read.mappingOrientation) {
+                    let style = ``;
+                    if (read.colorOverride) {
+                      const color = Object.keys(PILEUP_COLORS)[read.colorOverride];
+                      const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
+                      style = `style="color:${htmlColor};"`;
+                    }
+                    mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+                  }
+
                   let mouseOverHtml =
                     `ID: ${read.id}<br>` +
                     `Position: ${read.chrName}:${
@@ -580,7 +702,10 @@ varying vec4 vColor;
                     }<br>` +
                     `Read length: ${read.to - read.from}<br>` +
                     `MAPQ: ${read.mapq}<br>` +
-                    `Strand: ${read.strand}<br>`;
+                    `Strand: ${read.strand}<br>` +
+                    insertSizeHtml +
+                    chimericReadHtml +
+                    mappingOrientationHtml;
 
                   if (nearestSub && nearestSub.type) {
                     mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
@@ -615,7 +740,9 @@ varying vec4 vColor;
               : `Position: ${readCount.range}<br>`;
             let mouseOverHtml =
               `Reads: ${readCount.reads}<br>` +
-              `Matches: ${readCount.matches} (${matchPercent.toFixed(2)}%)<br>` +
+              `Matches: ${readCount.matches} (${matchPercent.toFixed(
+                2,
+              )}%)<br>` +
               range;
 
             for (let variant of Object.keys(readCount.variants)) {
@@ -634,6 +761,67 @@ varying vec4 vColor;
       }
 
       return '';
+    }
+
+    getInsertSizeMouseoverHtml(read){
+      let insertSizeHtml = ``;
+      if (
+        this.options.highlightReadsBy.includes('insertSize') ||
+        this.options.highlightReadsBy.includes(
+          'insertSizeAndPairOrientation',
+        )
+      ) {
+        if (
+          read.mate_ids.length === 1 &&
+          read.mate_ids[0] &&
+          read.mate_ids[0] in this.readsById
+        ) {
+          const mate = this.readsById[read.mate_ids[0]];
+          const insertSize = calculateInsertSize(read, mate);
+          let style = ``;
+          if (
+            ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
+            ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
+          ) {
+            const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
+            const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
+            style = `style="color:${htmlColor};"`;
+          } 
+          insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
+        }
+      }
+      return insertSizeHtml;
+    }
+
+    outlineMate(read, yScaleBand){
+      read.mate_ids.forEach((mate_id) => {
+        if(!this.readsById[mate_id]){
+          return;
+        }
+        const mate = this.readsById[mate_id];
+        // We assume the mate height is the same, but width might be different
+        const mate_width =
+          this._xScale(mate.to) - this._xScale(mate.from);
+        const mate_height =
+          yScaleBand.bandwidth() * this.valueScaleTransform.k;
+        const mate_xPos = this._xScale(mate.from);
+        const mate_yPos = transformY(
+          this.yScaleBands[mate.groupKey](mate.row),
+          this.valueScaleTransform,
+        );
+        this.mouseOverGraphics.lineStyle({
+          width: 1,
+          color: 0,
+        });
+        this.mouseOverGraphics.drawRect(
+          mate_xPos,
+          mate_yPos,
+          mate_width,
+          mate_height,
+        );
+      });
+      this.animate();
+
     }
 
     calculateZoomLevel() {
@@ -663,7 +851,8 @@ varying vec4 vColor;
         if (
           tileWidth >
           (this.tilesetInfo.max_tile_width ||
-            (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidth) ||
+            (this.dataFetcher.dataConfig.options &&
+              this.dataFetcher.dataConfig.options.maxTileWidth) ||
             this.options.maxTileWidth ||
             DEFAULT_MAX_TILE_WIDTH)
         ) {
@@ -885,6 +1074,7 @@ PileupTrack.config = {
     'labelTextOpacity',
     'labelBackgroundOpacity',
     'outlineReadOnHover',
+    'outlineMateOnHover',
     'showMousePosition',
     'workerScriptLocation',
     'plusStrandColor',
@@ -893,7 +1083,10 @@ PileupTrack.config = {
     'coverageHeight',
     'maxTileWidth',
     'collapseWhenMaxTileWidthReached',
-    'minMappingQuality'
+    'minMappingQuality',
+    'highlightReadsBy',
+    'smallInsertSizeThreshold',
+    'largeInsertSizeThreshold',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -910,12 +1103,15 @@ PileupTrack.config = {
       '#DCDCDC',
     ],
     outlineReadOnHover: false,
+    outlineMateOnHover: false,
     showMousePosition: false,
     showCoverage: false,
     coverageHeight: 10, // unit: number of rows
     maxTileWidth: 2e5,
     collapseWhenMaxTileWidthReached: false,
-    minMappingQuality: 0
+    minMappingQuality: 0,
+    highlightReadsBy: [],
+    largeInsertSizeThreshold: 1000
   },
   optionsInfo: {
     outlineReadOnHover: {
@@ -928,6 +1124,82 @@ PileupTrack.config = {
         no: {
           value: false,
           name: 'No',
+        },
+      },
+    },
+    outlineMateOnHover: {
+      name: 'Outline read mate on hover',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    highlightReadsBy: {
+      name: 'Highlight reads by',
+      inlineOptions: {
+        none: {
+          value: [],
+          name: 'None',
+        },
+        insertSize: {
+          value: [
+            "insertSize"
+          ],
+          name: 'Insert size',
+        },
+        pairOrientation: {
+          value: [
+            "pairOrientation"
+          ],
+          name: 'Pair orientation',
+        },
+        insertSizeAndPairOrientation: {
+          value: [
+            "insertSizeAndPairOrientation"
+          ],
+          name: 'Insert size and pair orientation',
+        },
+        insertSizeOrPairOrientation: {
+          value: [
+            "insertSize",
+            "pairOrientation"
+          ],
+          name: 'Insert size or pair orientation',
+        },
+      },
+    },
+    minMappingQuality: {
+      name: 'Minimal read mapping quality',
+      inlineOptions: {
+        zero: {
+          value: 0,
+          name: '0',
+        },
+        one: {
+          value: 1,
+          name: '1',
+        },
+        five: {
+          value: 5,
+          name: '5',
+        },
+        ten: {
+          value: 10,
+          name: '10',
+        },
+        twentyfive: {
+          value: 25,
+          name: '25',
+        },
+        fifty: {
+          value: 50,
+          name: '50',
         },
       },
     },
