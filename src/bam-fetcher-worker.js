@@ -383,6 +383,8 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
 
   const { chromSizesUrl, bamUrl } = dataConfs[uid];
 
+  // getCoverage potentiall get calles before the chromInfos finished loading
+  // Exit the function in this case
   if(!chromInfos[chromSizesUrl]){
     return {
       coverage: coverage,
