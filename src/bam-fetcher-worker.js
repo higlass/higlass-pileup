@@ -381,6 +381,17 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
   const coverage = {};
   let maxCoverage = 0;
 
+  const { chromSizesUrl, bamUrl } = dataConfs[uid];
+
+  // getCoverage potentiall get calles before the chromInfos finished loading
+  // Exit the function in this case
+  if(!chromInfos[chromSizesUrl]){
+    return {
+      coverage: coverage,
+      maxCoverage: maxCoverage,
+    };
+  }
+
   for (let j = 0; j < segmentList.length; j++) {
     const from = segmentList[j].from;
     const to = segmentList[j].to;
@@ -422,7 +433,6 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     });
   }
 
-  const { chromSizesUrl, bamUrl } = dataConfs[uid];
   const absToChr = chromInfos[chromSizesUrl].absToChr;
   Object.entries(coverage).forEach(
       ([pos, entry]) => {
@@ -858,6 +868,25 @@ const renderSegments = (
   }
 
   prepareHighlightedReads(segmentList, trackOptions);
+
+  if (areMatesRequired(trackOptions)) {
+    // At this point reads are colored correctly, but we only want to align those reads that
+    // are within the visible tiles - not mates that are far away, as this can mess up the alignment
+    let tileMinPos = Number.MAX_VALUE;
+    let tileMaxPos = -Number.MAX_VALUE;
+    const tsInfo = tilesetInfos[uid];
+    tileIds.forEach((id) => {
+      const z = id.split('.')[0];
+      const x = id.split('.')[1];
+      const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+      tileMinPos = Math.min(tileMinPos, startEnd[0]);
+      tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+    });
+
+    segmentList = segmentList.filter(
+      (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
+    );
+  }
   
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 

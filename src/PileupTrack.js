@@ -975,13 +975,6 @@ varying vec4 vColor;
       );
 
       const gSegment = document.createElement('g');
-
-      gSegment.setAttribute(
-        'transform',
-        `translate(${this.segmentGraphics.position.x},${this.segmentGraphics.position.y})` +
-          `scale(${this.segmentGraphics.scale.x},${this.segmentGraphics.scale.y})`,
-      );
-
       output.appendChild(gSegment);
 
       if (this.segmentGraphics) {
