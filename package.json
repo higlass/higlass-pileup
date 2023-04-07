@@ -26,7 +26,9 @@
     "es"
   ],
   "devDependencies": {
-    "babel-core": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-cli": "^6.26.0",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-eslint": "^8.2.2",
     "babel-loader": "^7.1.4",
     "babel-preset-env": "^1.6.1",
@@ -58,8 +60,6 @@
   },
   "dependencies": {
     "@gmod/bam": "^1.1.8",
-    "babel-cli": "^6.26.0",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "d3-array": "^2.3.1",
     "d3-dsv": "^1.1.1",
     "d3-request": "^1.0.6",
