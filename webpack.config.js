@@ -1,9 +1,7 @@
 const path = require('path');
 
-const autoprefixer = require('autoprefixer');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
-const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 const UnminifiedWebpackPlugin = require('unminified-webpack-plugin');
 const ThreadsPlugin = require('threads-plugin');
 const WebpackBeforeBuildPlugin = require('before-build-webpack');
@@ -57,12 +55,7 @@ const libraryConfig = {
   },
   optimization: {
     minimizer: [
-      new UglifyJsPlugin({
-        cache: true,
-        parallel: true,
-        sourceMap: false,
-      }),
-      new OptimizeCssAssetsPlugin({}),
+      new TerserPlugin()
     ],
     splitChunks: {
       cacheGroups: {
@@ -95,39 +88,6 @@ const libraryConfig = {
         use: {
           loader: 'babel-loader',
         },
-      },
-      // Convert SASS to CSS, postprocess it, and bundle it
-      {
-        test: /\.s?css$/,
-        use: [
-          'style-loader',
-          {
-            loader: 'css-loader',
-            options: {
-              importLoaders: 1,
-              minimize: { safe: true },
-              url: false,
-            },
-          },
-          {
-            loader: 'postcss-loader',
-            options: {
-              plugins: () => [
-                require('postcss-flexbugs-fixes'),
-                autoprefixer({
-                  browsers: [
-                    '>1%',
-                    'last 4 versions',
-                    'Firefox ESR',
-                    'not ie < 9',
-                  ],
-                  flexbox: 'no-2009',
-                }),
-              ],
-            },
-          },
-          'sass-loader', // compiles Sass to CSS
-        ],
       },
       // Extract them HTML files
       {

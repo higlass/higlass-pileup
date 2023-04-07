@@ -1,3 +1,11 @@
+v1.5.0
+
+- Update dependencies
+
+v1.4.1
+
+- Fix alignment issue
+
 v1.4.0
 
 - When hovering over the coverage, the genomic range that is covered by the bar is now displayed
