@@ -76,10 +76,8 @@ The live scripts can be found at:
               "type": "bam",
               "url": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam",
               "chromSizesUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/GCF_000005845.2_ASM584v2_genomic.chrom.sizes",
-              {
-                "options": {
-                  "maxTileWidth": 30000
-                }
+              "options": {
+                "maxTileWidth": 30000
               }
             },
             "width": 470
