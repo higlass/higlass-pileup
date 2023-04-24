@@ -74,7 +74,8 @@ The live scripts can be found at:
             "uid": "FylkvVBTSumoJ959HT4-5A",
             "data": {
               "type": "bam",
-              "url": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam",
+              "bamUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam",
+              "baiUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/SRR1770413.sorted.bam.bai",
               "chromSizesUrl": "https://pkerp.s3.amazonaws.com/public/bamfile_test/GCF_000005845.2_ASM584v2_genomic.chrom.sizes",
               {
                 "options": {
