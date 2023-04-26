@@ -21,6 +21,7 @@ export const PILEUP_COLORS = {
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
   MINUS_STRAND: [1, 0.75, 0.75, 1],
+  MM: [0.4, 0.2, 0.6, 1], // purple for methylation events
 };
 
 export const PILEUP_COLOR_IXS = {};
@@ -90,6 +91,84 @@ export const parseMD = (mdString, useCounts) => {
 
   return substitutions;
 };
+
+/**
+ * Builds an array of all methylations in the segment, represented
+ * as offsets from the 5' end of the sequence, using data available
+ * in the read's MM tag
+ * 
+ * ref. https://samtools.github.io/hts-specs/SAMtags.pdf
+ * 
+ * @param  {String} segment  Current segment
+ * @param  {String} seq   Read sequence from bam file.
+ * @return {Array}  Methylation offsets.
+ */
+export const getMethylationOffsets = (segment, seq) => {
+  let methylationOffsets = [];
+  const moSkeleton = {
+    "unmodifiedBase" : "",
+    "code" : "",
+    "strand" : "",
+    "offsets" : [],
+  };
+  
+  const getAllIndexes = (arr, val) => {
+    let indexes = [], i;
+    for (let i = 0; i < arr.length; ++i) {
+      if (arr[i] === val) {
+        indexes.push(i);
+      }
+    }
+    return indexes;
+  }
+
+  // include IUPAC degeneracies, to follow SAM specification
+  const complementOf = {
+    'A' : 'T',
+    'C' : 'G', 
+    'G' : 'C', 
+    'T' : 'A',
+    'U' : 'A',
+    'Y' : 'R',
+    'R' : 'Y',
+    'S' : 'S',
+    'W' : 'W', 
+    'K' : 'M',
+    'M' : 'K',
+    'B' : 'V',
+    'V' : 'B',
+    'D' : 'H',
+    'H' : 'D',
+    'N' : 'N',
+  };
+  const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
+
+  if (segment.mm) {
+    const baseModifications = segment.mm.split(';');
+    baseModifications.forEach((bm) => {
+      if (bm.length === 0) return;
+      const mo = Object.assign({}, moSkeleton);
+      const elems = bm.split(',');
+      mo.unmodifiedBase = elems[0].charAt(0);
+      mo.strand = elems[0].charAt(1);
+      mo.code = elems[0].charAt(2);
+      const offsets = new Array(elems.length - 1);
+      const baseIndices = (mo.strand === "+") ? getAllIndexes(seq, mo.unmodifiedBase) : getAllIndexes(reverseString(seq), complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
+      let previousBaseIndex = 0;
+      for (let i = 1; i < elems.length; ++i) {
+        const rawBaseIndex = parseInt(elems[i]);
+        const baseIndex = rawBaseIndex + previousBaseIndex;
+        const baseOffset = baseIndices[baseIndex];
+        previousBaseIndex = baseIndex + 1;
+        offsets[i - 1] = baseOffset;
+      }
+      mo.offsets = offsets;
+      methylationOffsets.push(mo);
+    });
+  }
+
+  return methylationOffsets;
+}
 
 /**
  * Gets an array of all substitutions in the segment

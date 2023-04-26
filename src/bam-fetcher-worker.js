@@ -3,7 +3,7 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions, calculateInsertSize, areMatesRequired } from './bam-utils';
+import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylationOffsets } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
@@ -95,6 +95,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
+    mm: bamRecord.get('MM'),
+    methylationOffsets: [],
   };
 
   if (segment.strand === '+' && trackOptions.plusStrandColor) {
@@ -104,6 +106,9 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   }
 
   segment.substitutions = getSubstitutions(segment, seq);
+  segment.methylationOffsets = getMethylationOffsets(segment, seq);
+
+  // console.log(`segment.methylationOffsets ${JSON.stringify(segment.methylationOffsets)}`);
 
   let fromClippingAdjustment = 0;
   let toClippingAdjustment = 0;
@@ -1096,6 +1101,17 @@ const renderSegments = (
         xRight = to;
 
         addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+
+        for (const mo of segment.methylationOffsets) {
+          const offsets = mo.offsets;
+          const offsetLength = 1;
+          for (const offset of offsets) {
+            xLeft = xScale(segment.from + offset);
+            const width = Math.max(1, xScale(offsetLength) - xScale(0));
+            xRight = xLeft + width;
+            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.MM);
+          }
+        }
         
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
