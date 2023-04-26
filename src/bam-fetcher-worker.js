@@ -1105,11 +1105,20 @@ const renderSegments = (
         for (const mo of segment.methylationOffsets) {
           const offsets = mo.offsets;
           const offsetLength = 1;
-          for (const offset of offsets) {
-            xLeft = xScale(segment.from + offset);
-            const width = Math.max(1, xScale(offsetLength) - xScale(0));
-            xRight = xLeft + width;
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.MM);
+          switch (mo.unmodifiedBase) {
+            case 'C':
+              break;
+            case 'A':
+            case 'T':
+              for (const offset of offsets) {
+                xLeft = xScale(segment.from + offset);
+                const width = Math.max(1, xScale(offsetLength) - xScale(0));
+                xRight = xLeft + width;
+                addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.MM);
+              }
+              break;
+            default:
+              break;
           }
         }
         
