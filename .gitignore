@@ -3,7 +3,6 @@ test_html
 *.swp
 *.swo
 node_modules
-dist
 es
 *.zip
 *.log
