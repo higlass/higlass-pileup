@@ -1107,6 +1107,7 @@ const renderSegments = (
           const offsetLength = 1;
           switch (mo.unmodifiedBase) {
             case 'C':
+            case 'G':
               break;
             case 'A':
             case 'T':

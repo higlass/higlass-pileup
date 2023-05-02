@@ -203,10 +203,14 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.anchor.x = 0;
       this.loadingText.anchor.y = 0;
 
-      this.pLabel.addChild(this.loadingText);
+      if (this.options.showLoadingText) {
+        this.pLabel.addChild(this.loadingText);
+      }
 
       this.externalInit(options);
-      
+
+      this.bc = new BroadcastChannel("pileup-track-status");
+      this.bc.postMessage({state: 'loading', msg: this.loadingText.text});
     }
 
     // Some of the initialization code is factored out, so that we can 
@@ -416,6 +420,7 @@ varying vec4 vColor;
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
+      this.bc.postMessage({state: 'update_start', msg: this.loadingText.text});
 
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
@@ -466,6 +471,7 @@ varying vec4 vColor;
               this.loadingText.visible = false;
               this.draw();
               this.animate();
+              this.bc.postMessage({state: 'update_end', msg: 'Completed'});
               return;
             }
 
@@ -563,6 +569,7 @@ varying vec4 vColor;
 
             this.draw();
             this.animate();
+            this.bc.postMessage({state: 'update_end', msg: 'Completed'});
           });
         // .catch(err => {
         //   // console.log('err:', err);
@@ -586,6 +593,7 @@ varying vec4 vColor;
 
       if (!this.tilesetInfo) {
         this.loadingText.text = 'Fetching tileset info...';
+        this.bc.postMessage({state: 'fetching_tileset_info', msg: this.loadingText.text});
         return;
       }
 
@@ -593,14 +601,17 @@ varying vec4 vColor;
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map((x) => x.split('|')[0])
           .join(' ')}`;
+        this.bc.postMessage({state: 'fetching', msg: this.loadingText.text});
       }
 
       if (this.rendering.size) {
         this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
+        this.bc.postMessage({state: 'rendering', msg: this.loadingText.text});
       }
 
       if (!this.fetching.size && !this.rendering.size) {
         this.loadingText.visible = false;
+        this.bc.postMessage({state: 'update_end', msg: 'Completed'});
       }
     }
 
@@ -1080,7 +1091,8 @@ PileupTrack.config = {
     'highlightReadsBy',
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
-    // 'minZoom'
+    // 'minZoom',
+    'showLoadingText',
   ],
   defaultOptions: {
     // minZoom: null,
@@ -1104,7 +1116,8 @@ PileupTrack.config = {
     collapseWhenMaxTileWidthReached: false,
     minMappingQuality: 0,
     highlightReadsBy: [],
-    largeInsertSizeThreshold: 1000
+    largeInsertSizeThreshold: 1000,
+    showLoadingText: false,
   },
   optionsInfo: {
     outlineReadOnHover: {
