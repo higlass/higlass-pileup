@@ -276,6 +276,8 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     setUpShaderAndTextures() {
+      console.log(`setUpShaderAndTextures`);
+
       const colorDict = PILEUP_COLORS;
 
       if (this.options && this.options.colorScale && this.options.colorScale.length == 6) {
@@ -304,6 +306,11 @@ const PileupTrack = (HGC, ...args) => {
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
       } else if(this.options && this.options.colorScale){
         console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
+      }
+
+      console.log(`this.options.methylationTagColor ${this.options.methylationTagColor}`);
+      if (this.options && this.options.methylationTagColor) {
+        colorDict.MM = this.colorToArray(this.options.methylationTagColor);
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -1083,6 +1090,7 @@ PileupTrack.config = {
     'workerScriptLocation',
     'plusStrandColor',
     'minusStrandColor',
+    'methylationTagColor',
     'showCoverage',
     'coverageHeight',
     'maxTileWidth',
@@ -1107,6 +1115,7 @@ PileupTrack.config = {
       '#808080',
       '#DCDCDC',
     ],
+    methylationTagColor: '#663399',
     outlineReadOnHover: false,
     outlineMateOnHover: false,
     showMousePosition: false,
