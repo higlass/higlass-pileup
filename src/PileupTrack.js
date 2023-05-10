@@ -276,7 +276,7 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     setUpShaderAndTextures() {
-      console.log(`setUpShaderAndTextures`);
+      // console.log(`setUpShaderAndTextures`);
 
       const colorDict = PILEUP_COLORS;
 
@@ -308,7 +308,7 @@ const PileupTrack = (HGC, ...args) => {
         console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
       }
 
-      console.log(`this.options.methylationTagColor ${this.options.methylationTagColor}`);
+      // console.log(`this.options.methylationTagColor ${this.options.methylationTagColor}`);
       if (this.options && this.options.methylationTagColor) {
         colorDict.MM = this.colorToArray(this.options.methylationTagColor);
       }
