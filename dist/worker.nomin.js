@@ -31759,7 +31759,9 @@ const getMethylationOffsets = (segment, seq) => {
       mo.strand = elems[0].charAt(1);
       mo.code = elems[0].charAt(2);
       const offsets = new Array(elems.length - 1);
-      const baseIndices = (mo.strand === "+") ? getAllIndexes(seq, mo.unmodifiedBase) : getAllIndexes(reverseString(seq), complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
+      const baseIndices = (mo.strand === "+") 
+        ? getAllIndexes(seq, mo.unmodifiedBase) 
+        : getAllIndexes(reverseString(seq), complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
       let previousBaseIndex = 0;
       for (let i = 1; i < elems.length; ++i) {
         const rawBaseIndex = parseInt(elems[i]);
@@ -33878,6 +33880,16 @@ const renderSegments = (
             case 'A':
             case 'T':
               for (const offset of offsets) {
+                if (parseInt(segment.id) === 10549340) {
+                  console.log(`segment.id ${segment.id}`);
+                  console.log(`segment.from ${segment.from}`);
+                  console.log(`segment.to ${segment.to}`);
+                  console.log(`offset ${offset}`);
+                  console.log(`offsetLength ${offsetLength}`);
+                  console.log(`xLeft [or: xScale(segment.from + offset)] ${xScale(segment.from + offset)}`);
+                  console.log(`width ${width}`);
+                  console.log(`xRight ${xRight}`);
+                }
                 xLeft = xScale(segment.from + offset);
                 const width = Math.max(1, xScale(offsetLength) - xScale(0));
                 xRight = xLeft + width;

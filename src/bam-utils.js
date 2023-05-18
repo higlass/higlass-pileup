@@ -153,7 +153,9 @@ export const getMethylationOffsets = (segment, seq) => {
       mo.strand = elems[0].charAt(1);
       mo.code = elems[0].charAt(2);
       const offsets = new Array(elems.length - 1);
-      const baseIndices = (mo.strand === "+") ? getAllIndexes(seq, mo.unmodifiedBase) : getAllIndexes(reverseString(seq), complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
+      const baseIndices = (mo.strand === "+") 
+        ? getAllIndexes(seq, mo.unmodifiedBase) 
+        : getAllIndexes(reverseString(seq), complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
       let previousBaseIndex = 0;
       for (let i = 1; i < elems.length; ++i) {
         const rawBaseIndex = parseInt(elems[i]);
