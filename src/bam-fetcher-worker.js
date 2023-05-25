@@ -1104,13 +1104,13 @@ const renderSegments = (
 
         for (const mo of segment.methylationOffsets) {
           const offsets = mo.offsets;
-          if (parseInt(segment.id) === 10797825) {
-            console.log(`------`);
-            console.log(`segment.id ${segment.id}`);
-            console.log(`mo.unmodifiedBase ${JSON.stringify(mo.unmodifiedBase)}`);
-            console.log(`offsets ${JSON.stringify(offsets)}`);
-            console.log(`------`);
-          }
+          // if (parseInt(segment.id) === 10797825) {
+          //   console.log(`------`);
+          //   console.log(`segment.id ${segment.id}`);
+          //   console.log(`mo.unmodifiedBase ${JSON.stringify(mo.unmodifiedBase)}`);
+          //   console.log(`offsets ${JSON.stringify(offsets)}`);
+          //   console.log(`------`);
+          // }
           const offsetLength = 1;
           switch (mo.unmodifiedBase) {
             case 'C':
