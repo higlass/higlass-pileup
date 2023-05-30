@@ -21,7 +21,10 @@ export const PILEUP_COLORS = {
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
   MINUS_STRAND: [1, 0.75, 0.75, 1],
-  MM: [0.4, 0.2, 0.6, 1], // purple for methylation events
+  MM_M6A_FOR: [0.4, 0.2, 0.6, 1], // purple for m6A methylation events
+  MM_M6A_REV: [0.4, 0.2, 0.6, 1], // purple for m6A methylation events
+  MM_M5C_FOR: [1, 0, 0, 1], // red for CpG events
+  MM_M5C_REV: [1, 0, 0, 1], // red for CpG events
 };
 
 export const PILEUP_COLOR_IXS = {};
@@ -110,6 +113,7 @@ export const getMethylationOffsets = (segment, seq) => {
     "code" : "",
     "strand" : "",
     "offsets" : [],
+    "probabilities" : [],
   };
   
   const getAllIndexes = (arr, val) => {
@@ -141,13 +145,15 @@ export const getMethylationOffsets = (segment, seq) => {
     'H' : 'D',
     'N' : 'N',
   };
-  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
   const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
+  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
 
   seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
 
-  if (segment.mm) {
+  if (segment.mm && segment.ml) {
+    let currentOffsetCount = 0;
     const baseModifications = segment.mm.split(';');
+    const baseProbabilities = segment.ml.split(',');
     baseModifications.forEach((bm) => {
       if (bm.length === 0) return;
       const mo = Object.assign({}, moSkeleton);
@@ -155,18 +161,24 @@ export const getMethylationOffsets = (segment, seq) => {
       mo.unmodifiedBase = elems[0].charAt(0);
       mo.strand = elems[0].charAt(1);
       mo.code = elems[0].charAt(2);
-      const offsets = new Array(elems.length - 1);
+      const nOffsets = elems.length - 1;
+      const offsets = new Array(nOffsets);
+      const probabilities = new Array(nOffsets);
       const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
       let offset = 0;
       for (let i = 1; i < elems.length; ++i) {
         const d = parseInt(elems[i]);
         offset += d;
         const baseOffset = baseIndices[offset];
+        const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
         offsets[i - 1] = baseOffset;
+        probabilities[i - 1] = baseProbability;
         offset += 1;
       }
       mo.offsets = offsets;
+      mo.probabilities = probabilities;
       methylationOffsets.push(mo);
+      currentOffsetCount += nOffsets;
     });
   }
 

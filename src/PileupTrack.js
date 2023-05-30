@@ -309,8 +309,24 @@ const PileupTrack = (HGC, ...args) => {
       }
 
       // console.log(`this.options.methylationTagColor ${this.options.methylationTagColor}`);
-      if (this.options && this.options.methylationTagColor) {
-        colorDict.MM = this.colorToArray(this.options.methylationTagColor);
+      // if (this.options && this.options.methylationTagColor) {
+      //   colorDict.MM = this.colorToArray(this.options.methylationTagColor);
+      // }
+      if (this.options && this.options.methylation && this.options.methylation.categories && this.options.methylation.colors) {
+        this.options.methylation.categories.forEach((category, index) => {
+          if (category.unmodifiedBase === 'A' && category.code === 'a' && category.strand === '+') {
+            colorDict.MM_M6A_FOR = this.colorToArray(this.options.methylation.colors[index]);
+          }
+          else if (category.unmodifiedBase === 'T' && category.code === 'a' && category.strand === '-') {
+            colorDict.MM_M6A_REV = this.colorToArray(this.options.methylation.colors[index]);
+          }
+          else if (category.unmodifiedBase === 'C' && category.code === 'm' && category.strand === '+') {
+            colorDict.MM_M5C_FOR = this.colorToArray(this.options.methylation.colors[index]);
+          }
+          else if (category.unmodifiedBase === 'G' && category.code === 'm' && category.strand === '-') {
+            colorDict.MM_M5C_REV = this.colorToArray(this.options.methylation.colors[index]);
+          }
+        });
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -1090,7 +1106,6 @@ PileupTrack.config = {
     'workerScriptLocation',
     'plusStrandColor',
     'minusStrandColor',
-    'methylationTagColor',
     'showCoverage',
     'coverageHeight',
     'maxTileWidth',
@@ -1115,7 +1130,6 @@ PileupTrack.config = {
       '#808080',
       '#DCDCDC',
     ],
-    methylationTagColor: '#663399',
     outlineReadOnHover: false,
     outlineMateOnHover: false,
     showMousePosition: false,

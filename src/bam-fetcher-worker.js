@@ -96,6 +96,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     mappingOrientation: null,
     substitutions: [],
     mm: bamRecord.get('MM'),
+    ml: bamRecord.get('ML'),
     methylationOffsets: [],
   };
 
@@ -1100,25 +1101,58 @@ const renderSegments = (
 
         addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
 
+        const showM5CEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC');
+        const showM6AEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A');
+
+        const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
+        const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] : 255;
+
         for (const mo of segment.methylationOffsets) {
           const offsets = mo.offsets;
+          const probabilities = mo.probabilities;
           const offsetLength = 1;
+          let mmSegmentColor = null;
           switch (mo.unmodifiedBase) {
             case 'C':
+              if ((mo.code === 'm') && (mo.strand === '+') && showM5CEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
+              }
+              break;
             case 'G':
+              if ((mo.code === 'm') && (mo.strand === '-') && showM5CEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
+              }
               break;
             case 'A':
+              if ((mo.code === 'a') && (mo.strand === '+') && showM6AEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+              }
+              break
             case 'T':
-              for (const offset of offsets) {
-                xLeft = xScale(segment.from + offset - 1); // 0-based index
-                const width = Math.max(0.5, xScale(offsetLength) - xScale(0));
-                xRight = xLeft + width;
-                addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.MM);
+              if ((mo.code === 'a') && (mo.strand === '-') && showM6AEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
               }
               break;
             default:
               break;
           }
+          if (mmSegmentColor) {
+            let offsetIdx = 0;
+            for (const offset of offsets) {
+              const probability = probabilities[offsetIdx];
+              if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
+                xLeft = xScale(segment.from + offset - 1); // 0-based index
+                const width = Math.max(0.5, xScale(offsetLength) - xScale(0));
+                xRight = xLeft + width;
+                addRect(xLeft, yTop, width, height, mmSegmentColor);
+              }
+              offsetIdx += 1;
+            }
+          }
+        }
+
+        if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
+          return;
         }
         
         for (const substitution of segment.substitutions) {

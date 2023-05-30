@@ -31627,7 +31627,10 @@ const PILEUP_COLORS = {
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
   MINUS_STRAND: [1, 0.75, 0.75, 1],
-  MM: [0.4, 0.2, 0.6, 1], // purple for methylation events
+  MM_M6A_FOR: [0.4, 0.2, 0.6, 1], // purple for m6A methylation events
+  MM_M6A_REV: [0.4, 0.2, 0.6, 1], // purple for m6A methylation events
+  MM_M5C_FOR: [1, 0, 0, 1], // red for CpG events
+  MM_M5C_REV: [1, 0, 0, 1], // red for CpG events
 };
 
 const PILEUP_COLOR_IXS = {};
@@ -31716,6 +31719,7 @@ const getMethylationOffsets = (segment, seq) => {
     "code" : "",
     "strand" : "",
     "offsets" : [],
+    "probabilities" : [],
   };
   
   const getAllIndexes = (arr, val) => {
@@ -31747,13 +31751,15 @@ const getMethylationOffsets = (segment, seq) => {
     'H' : 'D',
     'N' : 'N',
   };
-  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
   const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
+  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
 
   seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
 
-  if (segment.mm) {
+  if (segment.mm && segment.ml) {
+    let currentOffsetCount = 0;
     const baseModifications = segment.mm.split(';');
+    const baseProbabilities = segment.ml.split(',');
     baseModifications.forEach((bm) => {
       if (bm.length === 0) return;
       const mo = Object.assign({}, moSkeleton);
@@ -31761,18 +31767,24 @@ const getMethylationOffsets = (segment, seq) => {
       mo.unmodifiedBase = elems[0].charAt(0);
       mo.strand = elems[0].charAt(1);
       mo.code = elems[0].charAt(2);
-      const offsets = new Array(elems.length - 1);
+      const nOffsets = elems.length - 1;
+      const offsets = new Array(nOffsets);
+      const probabilities = new Array(nOffsets);
       const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
       let offset = 0;
       for (let i = 1; i < elems.length; ++i) {
         const d = parseInt(elems[i]);
         offset += d;
         const baseOffset = baseIndices[offset];
+        const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
         offsets[i - 1] = baseOffset;
+        probabilities[i - 1] = baseProbability;
         offset += 1;
       }
       mo.offsets = offsets;
+      mo.probabilities = probabilities;
       methylationOffsets.push(mo);
+      currentOffsetCount += nOffsets;
     });
   }
 
@@ -32865,6 +32877,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     mappingOrientation: null,
     substitutions: [],
     mm: bamRecord.get('MM'),
+    ml: bamRecord.get('ML'),
     methylationOffsets: [],
   };
 
@@ -33869,25 +33882,58 @@ const renderSegments = (
 
         addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
 
+        const showM5CEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC');
+        const showM6AEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A');
+
+        const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
+        const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] : 255;
+
         for (const mo of segment.methylationOffsets) {
           const offsets = mo.offsets;
+          const probabilities = mo.probabilities;
           const offsetLength = 1;
+          let mmSegmentColor = null;
           switch (mo.unmodifiedBase) {
             case 'C':
+              if ((mo.code === 'm') && (mo.strand === '+') && showM5CEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
+              }
+              break;
             case 'G':
+              if ((mo.code === 'm') && (mo.strand === '-') && showM5CEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
+              }
               break;
             case 'A':
+              if ((mo.code === 'a') && (mo.strand === '+') && showM6AEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+              }
+              break
             case 'T':
-              for (const offset of offsets) {
-                xLeft = xScale(segment.from + offset - 1); // 0-based index
-                const width = Math.max(0.5, xScale(offsetLength) - xScale(0));
-                xRight = xLeft + width;
-                addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.MM);
+              if ((mo.code === 'a') && (mo.strand === '-') && showM6AEvents) {
+                mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
               }
               break;
             default:
               break;
           }
+          if (mmSegmentColor) {
+            let offsetIdx = 0;
+            for (const offset of offsets) {
+              const probability = probabilities[offsetIdx];
+              if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
+                xLeft = xScale(segment.from + offset - 1); // 0-based index
+                const width = Math.max(0.5, xScale(offsetLength) - xScale(0));
+                xRight = xLeft + width;
+                addRect(xLeft, yTop, width, height, mmSegmentColor);
+              }
+              offsetIdx += 1;
+            }
+          }
+        }
+
+        if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
+          return;
         }
         
         for (const substitution of segment.substitutions) {
