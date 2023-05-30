@@ -141,7 +141,10 @@ export const getMethylationOffsets = (segment, seq) => {
     'H' : 'D',
     'N' : 'N',
   };
-  const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
+  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
+  const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
+
+  seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
 
   if (segment.mm) {
     const baseModifications = segment.mm.split(';');
@@ -153,17 +156,14 @@ export const getMethylationOffsets = (segment, seq) => {
       mo.strand = elems[0].charAt(1);
       mo.code = elems[0].charAt(2);
       const offsets = new Array(elems.length - 1);
-      const baseIndices = (mo.strand === "+") 
-        ? getAllIndexes(seq, mo.unmodifiedBase) 
-        // : getAllIndexes(reverseString(seq), complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
-        : getAllIndexes(seq, complementOf[mo.unmodifiedBase]).map(d => seq.length - 1 - d);
-      let previousBaseIndex = 0;
+      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
+      let offset = 0;
       for (let i = 1; i < elems.length; ++i) {
-        const rawBaseIndex = parseInt(elems[i]);
-        const baseIndex = rawBaseIndex + previousBaseIndex;
-        const baseOffset = baseIndices[baseIndex];
-        previousBaseIndex = baseIndex + 1;
+        const d = parseInt(elems[i]);
+        offset += d;
+        const baseOffset = baseIndices[offset];
         offsets[i - 1] = baseOffset;
+        offset += 1;
       }
       mo.offsets = offsets;
       methylationOffsets.push(mo);

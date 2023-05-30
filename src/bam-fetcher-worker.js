@@ -108,8 +108,6 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   segment.substitutions = getSubstitutions(segment, seq);
   segment.methylationOffsets = getMethylationOffsets(segment, seq);
 
-  // console.log(`segment.methylationOffsets ${JSON.stringify(segment.methylationOffsets)}`);
-
   let fromClippingAdjustment = 0;
   let toClippingAdjustment = 0;
 
@@ -1104,13 +1102,6 @@ const renderSegments = (
 
         for (const mo of segment.methylationOffsets) {
           const offsets = mo.offsets;
-          // if (parseInt(segment.id) === 10797825) {
-          //   console.log(`------`);
-          //   console.log(`segment.id ${segment.id}`);
-          //   console.log(`mo.unmodifiedBase ${JSON.stringify(mo.unmodifiedBase)}`);
-          //   console.log(`offsets ${JSON.stringify(offsets)}`);
-          //   console.log(`------`);
-          // }
           const offsetLength = 1;
           switch (mo.unmodifiedBase) {
             case 'C':
@@ -1119,8 +1110,8 @@ const renderSegments = (
             case 'A':
             case 'T':
               for (const offset of offsets) {
-                xLeft = xScale(segment.from + offset);
-                const width = Math.max(1, xScale(offsetLength) - xScale(0));
+                xLeft = xScale(segment.from + offset - 1); // 0-based index
+                const width = Math.max(0.5, xScale(offsetLength) - xScale(0));
                 xRight = xLeft + width;
                 addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.MM);
               }
