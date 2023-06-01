@@ -33922,8 +33922,8 @@ const renderSegments = (
             for (const offset of offsets) {
               const probability = probabilities[offsetIdx];
               if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
-                xLeft = xScale(segment.from + offset - 1); // 0-based index
-                const width = Math.max(0.5, xScale(offsetLength) - xScale(0));
+                xLeft = xScale(segment.from + offset); // 0-based index
+                const width = Math.max(1, xScale(offsetLength) - xScale(0));
                 xRight = xLeft + width;
                 addRect(xLeft, yTop, width, height, mmSegmentColor);
               }

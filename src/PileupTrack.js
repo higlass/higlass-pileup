@@ -209,8 +209,10 @@ const PileupTrack = (HGC, ...args) => {
 
       this.externalInit(options);
 
-      this.bc = new BroadcastChannel("pileup-track-status");
-      this.bc.postMessage({state: 'loading', msg: this.loadingText.text});
+      // console.log(`setting up pileup-track: ${this.id}`);
+
+      this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
+      this.bc.postMessage({state: 'loading', msg: this.loadingText.text, uid: this.id});
     }
 
     // Some of the initialization code is factored out, so that we can 
@@ -443,7 +445,7 @@ varying vec4 vColor;
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
-      this.bc.postMessage({state: 'update_start', msg: this.loadingText.text});
+      this.bc.postMessage({state: 'update_start', msg: this.loadingText.text,  uid: this.id});
 
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
@@ -494,7 +496,7 @@ varying vec4 vColor;
               this.loadingText.visible = false;
               this.draw();
               this.animate();
-              this.bc.postMessage({state: 'update_end', msg: 'Completed'});
+              this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
               return;
             }
 
@@ -592,7 +594,7 @@ varying vec4 vColor;
 
             this.draw();
             this.animate();
-            this.bc.postMessage({state: 'update_end', msg: 'Completed'});
+            this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
           });
         // .catch(err => {
         //   // console.log('err:', err);
@@ -616,7 +618,7 @@ varying vec4 vColor;
 
       if (!this.tilesetInfo) {
         this.loadingText.text = 'Fetching tileset info...';
-        this.bc.postMessage({state: 'fetching_tileset_info', msg: this.loadingText.text});
+        this.bc.postMessage({state: 'fetching_tileset_info', msg: this.loadingText.text,  uid: this.id});
         return;
       }
 
@@ -624,17 +626,17 @@ varying vec4 vColor;
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map((x) => x.split('|')[0])
           .join(' ')}`;
-        this.bc.postMessage({state: 'fetching', msg: this.loadingText.text});
+        this.bc.postMessage({state: 'fetching', msg: this.loadingText.text,  uid: this.id});
       }
 
       if (this.rendering.size) {
         this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
-        this.bc.postMessage({state: 'rendering', msg: this.loadingText.text});
+        this.bc.postMessage({state: 'rendering', msg: this.loadingText.text,  uid: this.id});
       }
 
-      if (!this.fetching.size && !this.rendering.size) {
+      if (!this.fetching.size && !this.rendering.size && this.tilesetInfo) {
         this.loadingText.visible = false;
-        this.bc.postMessage({state: 'update_end', msg: 'Completed'});
+        // this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
       }
     }
 
