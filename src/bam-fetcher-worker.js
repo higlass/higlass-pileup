@@ -107,7 +107,9 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   }
 
   segment.substitutions = getSubstitutions(segment, seq);
-  segment.methylationOffsets = getMethylationOffsets(segment, seq);
+  segment.methylationOffsets = getMethylationOffsets(segment, seq, segment.substitutions);
+
+  // console.log(`segment.substitutions ${JSON.stringify(segment.substitutions)}`);
 
   let fromClippingAdjustment = 0;
   let toClippingAdjustment = 0;
@@ -1101,8 +1103,10 @@ const renderSegments = (
 
         addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
 
-        const showM5CEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC');
-        const showM6AEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A');
+        const showM5CForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC+');
+        const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
+        const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
+        const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
 
         const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
         const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] : 255;
@@ -1114,22 +1118,22 @@ const renderSegments = (
           let mmSegmentColor = null;
           switch (mo.unmodifiedBase) {
             case 'C':
-              if ((mo.code === 'm') && (mo.strand === '+') && showM5CEvents) {
+              if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
               }
               break;
             case 'G':
-              if ((mo.code === 'm') && (mo.strand === '-') && showM5CEvents) {
+              if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
               }
               break;
             case 'A':
-              if ((mo.code === 'a') && (mo.strand === '+') && showM6AEvents) {
+              if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
               }
               break
             case 'T':
-              if ((mo.code === 'a') && (mo.strand === '-') && showM6AEvents) {
+              if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
               }
               break;
@@ -1141,12 +1145,12 @@ const renderSegments = (
             for (const offset of offsets) {
               const probability = probabilities[offsetIdx];
               if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
-                xLeft = xScale(segment.from + offset); // 0-based index
+                xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
                 const width = Math.max(1, xScale(offsetLength) - xScale(0));
                 xRight = xLeft + width;
                 addRect(xLeft, yTop, width, height, mmSegmentColor);
               }
-              offsetIdx += 1;
+              offsetIdx++;
             }
           }
         }

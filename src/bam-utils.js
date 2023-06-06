@@ -98,7 +98,7 @@ export const parseMD = (mdString, useCounts) => {
 /**
  * Builds an array of all methylations in the segment, represented
  * as offsets from the 5' end of the sequence, using data available
- * in the read's MM tag
+ * in the read's MM and ML tags
  * 
  * ref. https://samtools.github.io/hts-specs/SAMtags.pdf
  * 
@@ -106,7 +106,7 @@ export const parseMD = (mdString, useCounts) => {
  * @param  {String} seq   Read sequence from bam file.
  * @return {Array}  Methylation offsets.
  */
-export const getMethylationOffsets = (segment, seq) => {
+export const getMethylationOffsets = (segment, seq, substitutions) => {
   let methylationOffsets = [];
   const moSkeleton = {
     "unmodifiedBase" : "",
@@ -145,10 +145,12 @@ export const getMethylationOffsets = (segment, seq) => {
     'H' : 'D',
     'N' : 'N',
   };
-  const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
+  // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
   // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
 
-  seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
+  // seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
+
+  // console.log(`segment.cigar | ${segment.cigar}`);
 
   if (segment.mm && segment.ml) {
     let currentOffsetCount = 0;
@@ -164,7 +166,10 @@ export const getMethylationOffsets = (segment, seq) => {
       const nOffsets = elems.length - 1;
       const offsets = new Array(nOffsets);
       const probabilities = new Array(nOffsets);
-      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
+      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase); // getAllIndexes(seq, (segment.strand === "+") ? mo.unmodifiedBase : complementOf[mo.unmodifiedBase]);
+      //
+      // build initial list of raw offsets
+      //
       let offset = 0;
       for (let i = 1; i < elems.length; ++i) {
         const d = parseInt(elems[i]);
@@ -175,8 +180,44 @@ export const getMethylationOffsets = (segment, seq) => {
         probabilities[i - 1] = baseProbability;
         offset += 1;
       }
-      mo.offsets = offsets;
-      mo.probabilities = probabilities;
+
+      // console.log(`mo.unmodifiedBase ${mo.unmodifiedBase} | offsets ${rawOffsets}`);
+
+      //
+      // modify raw offsets with CIGAR/substitution data
+      //
+      let offsetIdx = 0;
+      let offsetModifier = 0;
+      const modifiedOffsets = new Array();
+      const modifiedProbabilities = new Array();
+      substitutions.forEach((sub) => {
+        while ((offsets[offsetIdx] + offsetModifier) < sub.pos) {
+          // console.log(`${mo.unmodifiedBase} | sub ${JSON.stringify(sub)} -vs- offset ${offsets[offsetIdx] + offsetModifier}`);
+          // console.log(`${mo.unmodifiedBase} | pushing offset ${offsets[offsetIdx] + offsetModifier}`);
+          modifiedOffsets.push(offsets[offsetIdx] + offsetModifier);
+          modifiedProbabilities.push(probabilities[offsetIdx]);
+          offsetIdx++;
+        }
+        if ((sub.type === 'X') && ((offsets[offsetIdx] + offsetModifier) === sub.pos)) {
+          // console.log(`${mo.unmodifiedBase} | filtering X at pos ${sub.pos}`);
+          offsetIdx++;
+          return;
+        }
+        else if (sub.type === 'D') {
+          offsetModifier += sub.length;
+          return;
+        }
+        else if (sub.type === 'I') {
+          offsetModifier -= sub.length;
+          offsetIdx++;
+          return;
+        }
+      }); 
+      mo.offsets = modifiedOffsets;
+      mo.probabilities = modifiedProbabilities;
+      
+      // console.log(`${mo.unmodifiedBase} | ${mo.offsets} | ${mo.probabilities}`);
+      
       methylationOffsets.push(mo);
       currentOffsetCount += nOffsets;
     });

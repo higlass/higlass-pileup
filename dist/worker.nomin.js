@@ -31704,7 +31704,7 @@ const parseMD = (mdString, useCounts) => {
 /**
  * Builds an array of all methylations in the segment, represented
  * as offsets from the 5' end of the sequence, using data available
- * in the read's MM tag
+ * in the read's MM and ML tags
  * 
  * ref. https://samtools.github.io/hts-specs/SAMtags.pdf
  * 
@@ -31712,7 +31712,7 @@ const parseMD = (mdString, useCounts) => {
  * @param  {String} seq   Read sequence from bam file.
  * @return {Array}  Methylation offsets.
  */
-const getMethylationOffsets = (segment, seq) => {
+const getMethylationOffsets = (segment, seq, substitutions) => {
   let methylationOffsets = [];
   const moSkeleton = {
     "unmodifiedBase" : "",
@@ -31751,10 +31751,12 @@ const getMethylationOffsets = (segment, seq) => {
     'H' : 'D',
     'N' : 'N',
   };
-  const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
+  // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
   // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
 
-  seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
+  // seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
+
+  // console.log(`segment.cigar | ${segment.cigar}`);
 
   if (segment.mm && segment.ml) {
     let currentOffsetCount = 0;
@@ -31770,7 +31772,10 @@ const getMethylationOffsets = (segment, seq) => {
       const nOffsets = elems.length - 1;
       const offsets = new Array(nOffsets);
       const probabilities = new Array(nOffsets);
-      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
+      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase); // getAllIndexes(seq, (segment.strand === "+") ? mo.unmodifiedBase : complementOf[mo.unmodifiedBase]);
+      //
+      // build initial list of raw offsets
+      //
       let offset = 0;
       for (let i = 1; i < elems.length; ++i) {
         const d = parseInt(elems[i]);
@@ -31781,8 +31786,44 @@ const getMethylationOffsets = (segment, seq) => {
         probabilities[i - 1] = baseProbability;
         offset += 1;
       }
-      mo.offsets = offsets;
-      mo.probabilities = probabilities;
+
+      // console.log(`mo.unmodifiedBase ${mo.unmodifiedBase} | offsets ${rawOffsets}`);
+
+      //
+      // modify raw offsets with CIGAR/substitution data
+      //
+      let offsetIdx = 0;
+      let offsetModifier = 0;
+      const modifiedOffsets = new Array();
+      const modifiedProbabilities = new Array();
+      substitutions.forEach((sub) => {
+        while ((offsets[offsetIdx] + offsetModifier) < sub.pos) {
+          // console.log(`${mo.unmodifiedBase} | sub ${JSON.stringify(sub)} -vs- offset ${offsets[offsetIdx] + offsetModifier}`);
+          // console.log(`${mo.unmodifiedBase} | pushing offset ${offsets[offsetIdx] + offsetModifier}`);
+          modifiedOffsets.push(offsets[offsetIdx] + offsetModifier);
+          modifiedProbabilities.push(probabilities[offsetIdx]);
+          offsetIdx++;
+        }
+        if ((sub.type === 'X') && ((offsets[offsetIdx] + offsetModifier) === sub.pos)) {
+          // console.log(`${mo.unmodifiedBase} | filtering X at pos ${sub.pos}`);
+          offsetIdx++;
+          return;
+        }
+        else if (sub.type === 'D') {
+          offsetModifier += sub.length;
+          return;
+        }
+        else if (sub.type === 'I') {
+          offsetModifier -= sub.length;
+          offsetIdx++;
+          return;
+        }
+      }); 
+      mo.offsets = modifiedOffsets;
+      mo.probabilities = modifiedProbabilities;
+      
+      // console.log(`${mo.unmodifiedBase} | ${mo.offsets} | ${mo.probabilities}`);
+      
       methylationOffsets.push(mo);
       currentOffsetCount += nOffsets;
     });
@@ -32888,7 +32929,9 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   }
 
   segment.substitutions = getSubstitutions(segment, seq);
-  segment.methylationOffsets = getMethylationOffsets(segment, seq);
+  segment.methylationOffsets = getMethylationOffsets(segment, seq, segment.substitutions);
+
+  // console.log(`segment.substitutions ${JSON.stringify(segment.substitutions)}`);
 
   let fromClippingAdjustment = 0;
   let toClippingAdjustment = 0;
@@ -33882,8 +33925,10 @@ const renderSegments = (
 
         addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
 
-        const showM5CEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC');
-        const showM6AEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A');
+        const showM5CForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC+');
+        const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
+        const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
+        const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
 
         const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
         const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] : 255;
@@ -33895,22 +33940,22 @@ const renderSegments = (
           let mmSegmentColor = null;
           switch (mo.unmodifiedBase) {
             case 'C':
-              if ((mo.code === 'm') && (mo.strand === '+') && showM5CEvents) {
+              if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
               }
               break;
             case 'G':
-              if ((mo.code === 'm') && (mo.strand === '-') && showM5CEvents) {
+              if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
               }
               break;
             case 'A':
-              if ((mo.code === 'a') && (mo.strand === '+') && showM6AEvents) {
+              if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
               }
               break
             case 'T':
-              if ((mo.code === 'a') && (mo.strand === '-') && showM6AEvents) {
+              if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
                 mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
               }
               break;
@@ -33922,12 +33967,12 @@ const renderSegments = (
             for (const offset of offsets) {
               const probability = probabilities[offsetIdx];
               if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
-                xLeft = xScale(segment.from + offset); // 0-based index
+                xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
                 const width = Math.max(1, xScale(offsetLength) - xScale(0));
                 xRight = xLeft + width;
                 addRect(xLeft, yTop, width, height, mmSegmentColor);
               }
-              offsetIdx += 1;
+              offsetIdx++;
             }
           }
         }
