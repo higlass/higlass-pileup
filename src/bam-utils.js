@@ -106,7 +106,7 @@ export const parseMD = (mdString, useCounts) => {
  * @param  {String} seq   Read sequence from bam file.
  * @return {Array}  Methylation offsets.
  */
-export const getMethylationOffsets = (segment, seq, substitutions) => {
+export const getMethylationOffsets = (segment, seq) => {
   let methylationOffsets = [];
   const moSkeleton = {
     "unmodifiedBase" : "",
@@ -151,6 +151,7 @@ export const getMethylationOffsets = (segment, seq, substitutions) => {
   // seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
 
   // console.log(`segment.cigar | ${segment.cigar}`);
+  // const cigarSubs = parseMD(segment.cigar, true);
 
   if (segment.mm && segment.ml) {
     let currentOffsetCount = 0;
@@ -181,7 +182,7 @@ export const getMethylationOffsets = (segment, seq, substitutions) => {
         offset += 1;
       }
 
-      // console.log(`mo.unmodifiedBase ${mo.unmodifiedBase} | offsets ${rawOffsets}`);
+      // console.log(`mo.unmodifiedBase ${mo.unmodifiedBase} | offsets ${offsets}`);
 
       //
       // modify raw offsets with CIGAR/substitution data
@@ -190,7 +191,18 @@ export const getMethylationOffsets = (segment, seq, substitutions) => {
       let offsetModifier = 0;
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
-      substitutions.forEach((sub) => {
+      for (const sub of segment.substitutions) {
+        // console.log(`sub ${JSON.stringify(sub)}`);
+        //
+        // if the read starts with soft or hard clipping
+        //
+        if ((sub.type === 'S') || (sub.type === 'H')) {
+          offsetModifier -= sub.length;
+          continue;
+        }
+        //
+        // walk through offsets and include those less than the current substitution position
+        //
         while ((offsets[offsetIdx] + offsetModifier) < sub.pos) {
           // console.log(`${mo.unmodifiedBase} | sub ${JSON.stringify(sub)} -vs- offset ${offsets[offsetIdx] + offsetModifier}`);
           // console.log(`${mo.unmodifiedBase} | pushing offset ${offsets[offsetIdx] + offsetModifier}`);
@@ -198,21 +210,32 @@ export const getMethylationOffsets = (segment, seq, substitutions) => {
           modifiedProbabilities.push(probabilities[offsetIdx]);
           offsetIdx++;
         }
+        //
+        // filter out mismatches, else modify the offset padding
+        //
         if ((sub.type === 'X') && ((offsets[offsetIdx] + offsetModifier) === sub.pos)) {
           // console.log(`${mo.unmodifiedBase} | filtering X at pos ${sub.pos}`);
           offsetIdx++;
-          return;
+          continue;
         }
         else if (sub.type === 'D') {
           offsetModifier += sub.length;
-          return;
+          continue;
         }
         else if (sub.type === 'I') {
           offsetModifier -= sub.length;
           offsetIdx++;
-          return;
+          continue;
         }
-      }); 
+        else if (sub.type === 'N') {
+          offsetModifier += sub.length;
+          continue;
+        }
+        else if ((sub.type === 'S') || (sub.type === 'H')) {
+          offsetModifier += sub.length;
+          continue;
+        }
+      }; 
       mo.offsets = modifiedOffsets;
       mo.probabilities = modifiedProbabilities;
       
@@ -230,9 +253,9 @@ export const getMethylationOffsets = (segment, seq, substitutions) => {
  * Gets an array of all substitutions in the segment
  * @param  {String} segment  Current segment
  * @param  {String} seq   Read sequence from bam file.
- * @return {Array}  Substitutions.
+ * @return {Boolean} includeClippingOps  Include soft or hard clipping operations in substitutions output.
  */
-export const getSubstitutions = (segment, seq) => {
+export const getSubstitutions = (segment, seq, includeClippingOps) => {
   let substitutions = [];
   let softClippingAtReadStart = null;
 
@@ -242,7 +265,14 @@ export const getSubstitutions = (segment, seq) => {
     let currPos = 0;
 
     for (const sub of cigarSubs) {
-      if (sub.type === 'X') {
+      if (includeClippingOps && ((sub.type === 'S') || (sub.type === 'H'))) {
+        substitutions.push({
+          pos: currPos,
+          length: sub.length,
+          type: sub.type,
+        });
+      }
+      else if (sub.type === 'X') {
         // sequence mismatch, no need to do anything
         substitutions.push({
           pos: currPos,
@@ -251,29 +281,34 @@ export const getSubstitutions = (segment, seq) => {
         });
 
         currPos += sub.length;
-      } else if (sub.type === 'I') {
+      } 
+      else if (sub.type === 'I') {
         substitutions.push({
           pos: currPos,
           length: sub.length,
           type: 'I',
         });
-      } else if (sub.type === 'D') {
+      } 
+      else if (sub.type === 'D') {
         substitutions.push({
           pos: currPos,
           length: sub.length,
           type: 'D',
         });
         currPos += sub.length;
-      } else if (sub.type === 'N') {
+      } 
+      else if (sub.type === 'N') {
         substitutions.push({
           pos: currPos,
           length: sub.length,
           type: 'N',
         });
         currPos += sub.length;
-      } else if (sub.type === '=' || sub.type === 'M') {
+      } 
+      else if (sub.type === '=' || sub.type === 'M') {
         currPos += sub.length;
-      } else {
+      } 
+      else {
         // console.log('skipping:', sub.type);
       }
       // if (referenceConsuming.has(sub.base)) {

@@ -106,8 +106,10 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     segment.color = PILEUP_COLOR_IXS.MINUS_STRAND;
   }
 
-  segment.substitutions = getSubstitutions(segment, seq);
-  segment.methylationOffsets = getMethylationOffsets(segment, seq, segment.substitutions);
+  const includeClippingOps = true;
+
+  segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
+  segment.methylationOffsets = getMethylationOffsets(segment, seq);
 
   // console.log(`segment.substitutions ${JSON.stringify(segment.substitutions)}`);
 
