@@ -148,11 +148,6 @@ export const getMethylationOffsets = (segment, seq) => {
   // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
   // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
 
-  // seq = (segment.strand === "+") ? seq : reverseComplementString(seq);
-
-  // console.log(`segment.cigar | ${segment.cigar}`);
-  // const cigarSubs = parseMD(segment.cigar, true);
-
   if (segment.mm && segment.ml) {
     let currentOffsetCount = 0;
     const baseModifications = segment.mm.split(';');
@@ -167,7 +162,8 @@ export const getMethylationOffsets = (segment, seq) => {
       const nOffsets = elems.length - 1;
       const offsets = new Array(nOffsets);
       const probabilities = new Array(nOffsets);
-      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase); // getAllIndexes(seq, (segment.strand === "+") ? mo.unmodifiedBase : complementOf[mo.unmodifiedBase]);
+      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
+
       //
       // build initial list of raw offsets
       //
@@ -182,8 +178,6 @@ export const getMethylationOffsets = (segment, seq) => {
         offset += 1;
       }
 
-      // console.log(`mo.unmodifiedBase ${mo.unmodifiedBase} | offsets ${offsets}`);
-
       //
       // modify raw offsets with CIGAR/substitution data
       //
@@ -192,7 +186,6 @@ export const getMethylationOffsets = (segment, seq) => {
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
       for (const sub of segment.substitutions) {
-        // console.log(`sub ${JSON.stringify(sub)}`);
         //
         // if the read starts with soft or hard clipping
         //
@@ -204,8 +197,6 @@ export const getMethylationOffsets = (segment, seq) => {
         // walk through offsets and include those less than the current substitution position
         //
         while ((offsets[offsetIdx] + offsetModifier) < sub.pos) {
-          // console.log(`${mo.unmodifiedBase} | sub ${JSON.stringify(sub)} -vs- offset ${offsets[offsetIdx] + offsetModifier}`);
-          // console.log(`${mo.unmodifiedBase} | pushing offset ${offsets[offsetIdx] + offsetModifier}`);
           modifiedOffsets.push(offsets[offsetIdx] + offsetModifier);
           modifiedProbabilities.push(probabilities[offsetIdx]);
           offsetIdx++;
@@ -214,10 +205,12 @@ export const getMethylationOffsets = (segment, seq) => {
         // filter out mismatches, else modify the offset padding
         //
         if ((sub.type === 'X') && ((offsets[offsetIdx] + offsetModifier) === sub.pos)) {
-          // console.log(`${mo.unmodifiedBase} | filtering X at pos ${sub.pos}`);
           offsetIdx++;
           continue;
         }
+        //
+        // handle substitution operations
+        //
         else if (sub.type === 'D') {
           offsetModifier += sub.length;
           continue;
@@ -231,6 +224,9 @@ export const getMethylationOffsets = (segment, seq) => {
           offsetModifier += sub.length;
           continue;
         }
+        //
+        // if the read ends with soft or hard clipping
+        //
         else if ((sub.type === 'S') || (sub.type === 'H')) {
           offsetModifier += sub.length;
           continue;
@@ -238,8 +234,6 @@ export const getMethylationOffsets = (segment, seq) => {
       }; 
       mo.offsets = modifiedOffsets;
       mo.probabilities = modifiedProbabilities;
-      
-      // console.log(`${mo.unmodifiedBase} | ${mo.offsets} | ${mo.probabilities}`);
       
       methylationOffsets.push(mo);
       currentOffsetCount += nOffsets;
@@ -279,7 +273,6 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
           length: sub.length,
           type: 'X',
         });
-
         currPos += sub.length;
       } 
       else if (sub.type === 'I') {

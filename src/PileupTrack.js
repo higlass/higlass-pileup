@@ -213,6 +213,9 @@ const PileupTrack = (HGC, ...args) => {
 
       this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
       this.bc.postMessage({state: 'loading', msg: this.loadingText.text, uid: this.id});
+
+      const monitor = new BroadcastChannel(`pileup-track-viewer`);
+      monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
     }
 
     // Some of the initialization code is factored out, so that we can 
@@ -388,6 +391,32 @@ varying vec4 vColor;
 `,
         uniforms,
       );
+    }
+
+    handlePileupTrackViewerMessage(data) {
+      // console.log(`data ${JSON.stringify(data)} | ${JSON.stringify(this.options)}`);
+      if (data.state === 'request') {
+        switch (data.msg) {
+          case "refresh-layout":
+            this.dataFetcher = new BAMDataFetcher(
+              this.dataFetcher.dataConfig,
+              this.options,
+              this.worker,
+              HGC,
+            );
+            this.dataFetcher.track = this;
+            this.prevRows = [];
+            this.removeTiles(Object.keys(this.fetchedTiles));
+            this.fetching.clear();
+            this.refreshTiles();
+            this.externalInit(this.options);
+            this.updateExistingGraphics();
+            this.prevOptions = Object.assign({}, this.options);
+            break;
+          default:
+            break;
+        }
+      }
     }
 
     rerender(options) {
