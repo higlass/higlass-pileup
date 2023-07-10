@@ -78,6 +78,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   const segment = {
     id: bamRecord.get('id'),
     mate_ids: [], // split reads can have multiple mates
+    start: +bamRecord.get('start') + 1,
     from: from,
     to: to,
     fromWithClipping: from,

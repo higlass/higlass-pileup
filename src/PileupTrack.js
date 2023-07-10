@@ -761,7 +761,7 @@ varying vec4 vColor;
                   }
 
                   let mouseOverHtml =
-                    `ID: ${read.id}<br>` +
+                    `Name: ${read.readName}<br>` +
                     `Position: ${read.chrName}:${
                       read.from - read.chrOffset
                     }<br>` +

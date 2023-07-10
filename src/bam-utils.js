@@ -162,7 +162,7 @@ export const getMethylationOffsets = (segment, seq) => {
       const nOffsets = elems.length - 1;
       const offsets = new Array(nOffsets);
       const probabilities = new Array(nOffsets);
-      const baseIndices = getAllIndexes(seq, mo.unmodifiedBase);
+      const baseIndices = (segment.strand === '+') ? getAllIndexes(seq, mo.unmodifiedBase) : getAllIndexes(seq, complementOf[mo.unmodifiedBase]);
 
       //
       // build initial list of raw offsets
@@ -171,7 +171,8 @@ export const getMethylationOffsets = (segment, seq) => {
       for (let i = 1; i < elems.length; ++i) {
         const d = parseInt(elems[i]);
         offset += d;
-        const baseOffset = baseIndices[offset];
+        const strandedOffset = (segment.strand === '+') ? offset : baseIndices.length - offset - 1;
+        const baseOffset = baseIndices[strandedOffset];
         const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
         offsets[i - 1] = baseOffset;
         probabilities[i - 1] = baseProbability;
@@ -179,61 +180,141 @@ export const getMethylationOffsets = (segment, seq) => {
       }
 
       //
+      // if reverse-stranded, offsets[] is in descending order, so we order it ascending
+      //
+      if (segment.strand === '-') {
+        offsets.reverse();
+      }
+
+      if (mo.unmodifiedBase === 'A') {
+        console.log(`elems ${JSON.stringify(elems.slice(1, elems.length))}`);
+        console.log(`baseIndices ${JSON.stringify(baseIndices)}`);
+        console.log(`offsets ${JSON.stringify(offsets)}`);
+      }
+
+      //
       // modify raw offsets with CIGAR/substitution data
       //
       let offsetIdx = 0;
       let offsetModifier = 0;
+      let clipLength = 0;
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
+
+      const actions = [];
+
       for (const sub of segment.substitutions) {
         //
-        // if the read starts with soft or hard clipping
+        // if the read starts or ends with soft or hard clipping
         //
         if ((sub.type === 'S') || (sub.type === 'H')) {
           offsetModifier -= sub.length;
-          continue;
+          clipLength = sub.length;
+          // continue;
         }
         //
         // walk through offsets and include those less than the current substitution position
         //
-        while ((offsets[offsetIdx] + offsetModifier) < sub.pos) {
-          modifiedOffsets.push(offsets[offsetIdx] + offsetModifier);
-          modifiedProbabilities.push(probabilities[offsetIdx]);
-          offsetIdx++;
+        else if ((sub.type === 'M') || (sub.type === '=')) {
+          const relposns = [];
+          const offsetIdxs = [];
+          const unmodifiedOffsetIdxs = [];
+          const startingOffsetIdx = offsetIdx;
+          while ((offsets[offsetIdx] + offsetModifier) < (sub.pos + sub.length)) {
+            if ((offsets[offsetIdx] + offsetModifier) >= sub.pos) {
+              modifiedOffsets.push(offsets[offsetIdx] + offsetModifier - clipLength);
+              modifiedProbabilities.push(probabilities[offsetIdx]);
+              relposns.push(segment.start + offsets[offsetIdx] + offsetModifier);
+              offsetIdxs.push({[offsetIdx]:segment.start + offsets[offsetIdx] + offsetModifier});
+              unmodifiedOffsetIdxs.push({[offsetIdx]:segment.start + offsets[offsetIdx]});
+            }
+            offsetIdx++;
+          }
+          actions.push({
+            relposns: relposns,
+            offsetIdxs: offsetIdxs,
+            unmodifiedOffsetIdxs: unmodifiedOffsetIdxs,
+            offsetModifier: offsetModifier,
+            type: `${sub.type} ${sub.length}`,
+            sub: sub,
+            startingOffsetIdx: startingOffsetIdx,
+          });
+          // continue;
         }
         //
         // filter out mismatches, else modify the offset padding
         //
-        if ((sub.type === 'X') && ((offsets[offsetIdx] + offsetModifier) === sub.pos)) {
-          offsetIdx++;
-          continue;
+        if (sub.type === 'X') {
+          // actions.push({
+          //   relposns: [segment.start + sub.pos],
+          //   offsetIdxs: [offsetIdx],
+          //   offsetAtIdxs: [{[offsets[offsetIdx]]:segment.start + sub.pos}],
+          //   offsetModifier: offsetModifier,
+          //   pos: sub.pos,
+          //   type: `${sub.type} ${sub.length}`,
+          // });
+          if ((offsets[offsetIdx] + offsetModifier) === sub.pos) {
+            offsetIdx++;
+          }
+          // continue;
         }
         //
         // handle substitution operations
         //
-        else if (sub.type === 'D') {
+        if (sub.type === 'D') {
+          // actions.push({
+          //   relposns: [],
+          //   offsetIdxs: [],
+          //   newOffsetModifier: offsetModifier + sub.length,
+          //   type: `${sub.type} ${sub.length}`,
+          // });
           offsetModifier += sub.length;
-          continue;
+          // continue;
         }
-        else if (sub.type === 'I') {
+        if (sub.type === 'I') {
+          actions.push({
+            relposns: [],
+            offsetIdxs: [],
+            newOffsetModifier: offsetModifier - sub.length,
+            type: `${sub.type} ${sub.length}`,
+          });
           offsetModifier -= sub.length;
-          offsetIdx++;
-          continue;
+          // offsetModifier = (offsetModifier - sub.length > 0) ? offsetModifier - sub.length : offsetModifier;
+          // offsetIdx++;
+          // continue;
         }
-        else if (sub.type === 'N') {
+        if (sub.type === 'N') {
+          // actions.push({
+          //   relposns: [],
+          //   offsetIdxs: [],
+          //   newOffsetModifier: offsetModifier + sub.length,
+          //   type: `${sub.type} ${sub.length}`,
+          // });
           offsetModifier += sub.length;
-          continue;
+          // continue;
         }
         //
         // if the read ends with soft or hard clipping
         //
-        else if ((sub.type === 'S') || (sub.type === 'H')) {
+        if ((sub.type === 'S') || (sub.type === 'H')) {
+          // actions.push({
+          //   relposns: [],
+          //   offsetIdxs: [],
+          //   newOffsetModifier: offsetModifier + sub.length,
+          //   type: `${sub.type} ${sub.length}`,
+          // });
           offsetModifier += sub.length;
-          continue;
+          // continue;
         }
-      }; 
+      };
+
       mo.offsets = modifiedOffsets;
       mo.probabilities = modifiedProbabilities;
+
+      if (mo.unmodifiedBase === 'A') {
+        console.log(`segment.substitutions ${JSON.stringify(segment.substitutions, null, 2)}`); 
+        console.log(`${JSON.stringify(actions)}`);
+      }
       
       methylationOffsets.push(mo);
       currentOffsetCount += nOffsets;
@@ -263,14 +344,17 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
         substitutions.push({
           pos: currPos,
           length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
           type: sub.type,
         });
+        currPos += sub.length;
       }
       else if (sub.type === 'X') {
         // sequence mismatch, no need to do anything
         substitutions.push({
           pos: currPos,
           length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
           type: 'X',
         });
         currPos += sub.length;
@@ -279,13 +363,16 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
         substitutions.push({
           pos: currPos,
           length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
           type: 'I',
         });
+        // currPos -= sub.length;
       } 
       else if (sub.type === 'D') {
         substitutions.push({
           pos: currPos,
           length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
           type: 'D',
         });
         currPos += sub.length;
@@ -294,24 +381,32 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
         substitutions.push({
           pos: currPos,
           length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
           type: 'N',
         });
         currPos += sub.length;
       } 
-      else if (sub.type === '=' || sub.type === 'M') {
+      else if (sub.type === '=') { 
+        substitutions.push({
+          pos: currPos,
+          length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
+          type: '=',
+        });
         currPos += sub.length;
       } 
+      else if (sub.type === 'M') {
+        substitutions.push({
+          pos: currPos,
+          length: sub.length,
+          range: [currPos + segment.start, currPos + segment.start + sub.length],
+          type: 'M',
+        });
+        currPos += sub.length;
+      }
       else {
         // console.log('skipping:', sub.type);
       }
-      // if (referenceConsuming.has(sub.base)) {
-      //   if (queryConsuming.has(sub.base)) {
-      //     substitutions.push(
-      //     {
-      //       pos:
-      //     })
-      //   }
-      // }
     }
 
     const firstSub = cigarSubs[0];
