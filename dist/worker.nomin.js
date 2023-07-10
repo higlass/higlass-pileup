@@ -31792,11 +31792,11 @@ const getMethylationOffsets = (segment, seq) => {
         offsets.reverse();
       }
 
-      if (mo.unmodifiedBase === 'A') {
-        console.log(`elems ${JSON.stringify(elems.slice(1, elems.length))}`);
-        console.log(`baseIndices ${JSON.stringify(baseIndices)}`);
-        console.log(`offsets ${JSON.stringify(offsets)}`);
-      }
+      // if (mo.unmodifiedBase === 'A') {
+      //   console.log(`elems ${JSON.stringify(elems.slice(1, elems.length))}`);
+      //   console.log(`baseIndices ${JSON.stringify(baseIndices)}`);
+      //   console.log(`offsets ${JSON.stringify(offsets)}`);
+      // }
 
       //
       // modify raw offsets with CIGAR/substitution data
@@ -31917,10 +31917,10 @@ const getMethylationOffsets = (segment, seq) => {
       mo.offsets = modifiedOffsets;
       mo.probabilities = modifiedProbabilities;
 
-      if (mo.unmodifiedBase === 'A') {
-        console.log(`segment.substitutions ${JSON.stringify(segment.substitutions, null, 2)}`); 
-        console.log(`${JSON.stringify(actions)}`);
-      }
+      // if (mo.unmodifiedBase === 'A') {
+      //   console.log(`segment.substitutions ${JSON.stringify(segment.substitutions, null, 2)}`); 
+      //   console.log(`${JSON.stringify(actions)}`);
+      // }
       
       methylationOffsets.push(mo);
       currentOffsetCount += nOffsets;
