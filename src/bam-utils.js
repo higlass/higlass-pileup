@@ -168,29 +168,30 @@ export const getMethylationOffsets = (segment, seq) => {
       // build initial list of raw offsets
       //
       let offset = 0;
-      for (let i = 1; i < elems.length; ++i) {
-        const d = parseInt(elems[i]);
-        offset += d;
-        const strandedOffset = (segment.strand === '+') ? offset : baseIndices.length - offset - 1;
-        const baseOffset = baseIndices[strandedOffset];
-        const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
-        offsets[i - 1] = baseOffset;
-        probabilities[i - 1] = baseProbability;
-        offset += 1;
+      if (segment.strand === '+') {
+        for (let i = 1; i < elems.length; ++i) {
+          const d = parseInt(elems[i]);
+          offset += d;
+          const strandedOffset = offset;
+          const baseOffset = baseIndices[strandedOffset];
+          const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
+          offsets[i - 1] = baseOffset;
+          probabilities[i - 1] = baseProbability;
+          offset += 1;
+        }
       }
-
-      //
-      // if reverse-stranded, offsets[] is in descending order, so we order it ascending
-      //
-      if (segment.strand === '-') {
-        offsets.reverse();
+      else {
+        for (let i = 1; i < elems.length; ++i) {
+          const d = parseInt(elems[i]);
+          offset += d;
+          const strandedOffset = baseIndices.length - offset - 1;
+          const baseOffset = baseIndices[strandedOffset];
+          const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
+          offsets[nOffsets - i] = baseOffset; // reverse
+          probabilities[nOffsets - i] = baseProbability;
+          offset += 1;
+        }
       }
-
-      // if (mo.unmodifiedBase === 'A') {
-      //   console.log(`elems ${JSON.stringify(elems.slice(1, elems.length))}`);
-      //   console.log(`baseIndices ${JSON.stringify(baseIndices)}`);
-      //   console.log(`offsets ${JSON.stringify(offsets)}`);
-      // }
 
       //
       // modify raw offsets with CIGAR/substitution data
@@ -201,8 +202,6 @@ export const getMethylationOffsets = (segment, seq) => {
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
 
-      const actions = [];
-
       for (const sub of segment.substitutions) {
         //
         // if the read starts or ends with soft or hard clipping
@@ -210,101 +209,44 @@ export const getMethylationOffsets = (segment, seq) => {
         if ((sub.type === 'S') || (sub.type === 'H')) {
           offsetModifier -= sub.length;
           clipLength = sub.length;
-          // continue;
         }
         //
         // walk through offsets and include those less than the current substitution position
         //
         else if ((sub.type === 'M') || (sub.type === '=')) {
-          const relposns = [];
-          const offsetIdxs = [];
-          const unmodifiedOffsetIdxs = [];
-          const startingOffsetIdx = offsetIdx;
           while ((offsets[offsetIdx] + offsetModifier) < (sub.pos + sub.length)) {
             if ((offsets[offsetIdx] + offsetModifier) >= sub.pos) {
               modifiedOffsets.push(offsets[offsetIdx] + offsetModifier - clipLength);
               modifiedProbabilities.push(probabilities[offsetIdx]);
-              relposns.push(segment.start + offsets[offsetIdx] + offsetModifier);
-              offsetIdxs.push({[offsetIdx]:segment.start + offsets[offsetIdx] + offsetModifier});
-              unmodifiedOffsetIdxs.push({[offsetIdx]:segment.start + offsets[offsetIdx]});
             }
             offsetIdx++;
           }
-          actions.push({
-            relposns: relposns,
-            offsetIdxs: offsetIdxs,
-            unmodifiedOffsetIdxs: unmodifiedOffsetIdxs,
-            offsetModifier: offsetModifier,
-            type: `${sub.type} ${sub.length}`,
-            sub: sub,
-            startingOffsetIdx: startingOffsetIdx,
-          });
-          // continue;
         }
         //
         // filter out mismatches, else modify the offset padding
         //
-        if (sub.type === 'X') {
-          // actions.push({
-          //   relposns: [segment.start + sub.pos],
-          //   offsetIdxs: [offsetIdx],
-          //   offsetAtIdxs: [{[offsets[offsetIdx]]:segment.start + sub.pos}],
-          //   offsetModifier: offsetModifier,
-          //   pos: sub.pos,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
+        else if (sub.type === 'X') {
           if ((offsets[offsetIdx] + offsetModifier) === sub.pos) {
             offsetIdx++;
           }
-          // continue;
         }
         //
         // handle substitution operations
         //
-        if (sub.type === 'D') {
-          // actions.push({
-          //   relposns: [],
-          //   offsetIdxs: [],
-          //   newOffsetModifier: offsetModifier + sub.length,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
+        else if (sub.type === 'D') {
           offsetModifier += sub.length;
-          // continue;
         }
-        if (sub.type === 'I') {
-          actions.push({
-            relposns: [],
-            offsetIdxs: [],
-            newOffsetModifier: offsetModifier - sub.length,
-            type: `${sub.type} ${sub.length}`,
-          });
+        else if (sub.type === 'I') {
           offsetModifier -= sub.length;
-          // offsetModifier = (offsetModifier - sub.length > 0) ? offsetModifier - sub.length : offsetModifier;
-          // offsetIdx++;
-          // continue;
         }
-        if (sub.type === 'N') {
-          // actions.push({
-          //   relposns: [],
-          //   offsetIdxs: [],
-          //   newOffsetModifier: offsetModifier + sub.length,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
+        else if (sub.type === 'N') {
           offsetModifier += sub.length;
-          // continue;
         }
         //
         // if the read ends with soft or hard clipping
         //
         if ((sub.type === 'S') || (sub.type === 'H')) {
-          // actions.push({
-          //   relposns: [],
-          //   offsetIdxs: [],
-          //   newOffsetModifier: offsetModifier + sub.length,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
           offsetModifier += sub.length;
-          // continue;
         }
       };
 

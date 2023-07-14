@@ -7,6 +7,7 @@ import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylation
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
+import BAMDataFetcher from './bam-fetcher';
 
 function currTime() {
   const d = new Date();
@@ -872,7 +873,7 @@ const renderSegments = (
 
   let segmentList = Object.values(allSegments);
 
-  if(trackOptions.minMappingQuality > 0){
+  if (trackOptions.minMappingQuality > 0){
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
@@ -1269,6 +1270,57 @@ const renderSegments = (
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
+const clusterSegments = (
+  uid,
+  tileIds,
+  domain,
+  scaleRange,
+  position,
+  dimensions,
+  prevRows,
+  trackOptions,
+  range,
+) => {
+
+  const { bamUrl, chromSizesUrl } = dataConfs[uid];
+  const bamFile = bamFiles[bamUrl];
+
+  const recordPromises = [];
+  const chromName = range.left.chrom;
+  const chromStart = range.left.start;
+  const chromEnd = range.right.stop + 1; // 0-based
+
+  const fetchOptions = {
+    viewAsPairs: false, // areMatesRequired(trackOptions[uid]),
+  };
+
+  console.log(`trackOptions[${uid}] ${JSON.stringify(trackOptions[uid])}`);
+
+  recordPromises.push(
+    bamFile
+      .getRecordsForRange(
+        chromName,
+        chromStart,
+        chromEnd,
+        fetchOptions
+      )
+      .then((records) => {
+        const mappedRecords = records.map((rec) =>
+          bamRecordToJson(rec, chromName, 0, trackOptions[uid]),
+        );
+        console.log(`mappedRecords ${JSON.stringify(mappedRecords)}`);
+      })
+  )
+
+  // const objData = {
+  //   rows: [uid]
+  // };
+
+  // return Transfer(objData, []);
+
+  return Promise.all(recordPromises).then((values) => values.flat());
+}
+
 const tileFunctions = {
   init,
   serverInit,
@@ -1278,6 +1330,7 @@ const tileFunctions = {
   fetchTilesDebounced,
   tile,
   renderSegments,
+  clusterSegments,
 };
 
 expose(tileFunctions);

@@ -31774,29 +31774,30 @@ const getMethylationOffsets = (segment, seq) => {
       // build initial list of raw offsets
       //
       let offset = 0;
-      for (let i = 1; i < elems.length; ++i) {
-        const d = parseInt(elems[i]);
-        offset += d;
-        const strandedOffset = (segment.strand === '+') ? offset : baseIndices.length - offset - 1;
-        const baseOffset = baseIndices[strandedOffset];
-        const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
-        offsets[i - 1] = baseOffset;
-        probabilities[i - 1] = baseProbability;
-        offset += 1;
+      if (segment.strand === '+') {
+        for (let i = 1; i < elems.length; ++i) {
+          const d = parseInt(elems[i]);
+          offset += d;
+          const strandedOffset = offset;
+          const baseOffset = baseIndices[strandedOffset];
+          const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
+          offsets[i - 1] = baseOffset;
+          probabilities[i - 1] = baseProbability;
+          offset += 1;
+        }
       }
-
-      //
-      // if reverse-stranded, offsets[] is in descending order, so we order it ascending
-      //
-      if (segment.strand === '-') {
-        offsets.reverse();
+      else {
+        for (let i = 1; i < elems.length; ++i) {
+          const d = parseInt(elems[i]);
+          offset += d;
+          const strandedOffset = baseIndices.length - offset - 1;
+          const baseOffset = baseIndices[strandedOffset];
+          const baseProbability = baseProbabilities[i - 1 + currentOffsetCount];
+          offsets[nOffsets - i] = baseOffset; // reverse
+          probabilities[nOffsets - i] = baseProbability;
+          offset += 1;
+        }
       }
-
-      // if (mo.unmodifiedBase === 'A') {
-      //   console.log(`elems ${JSON.stringify(elems.slice(1, elems.length))}`);
-      //   console.log(`baseIndices ${JSON.stringify(baseIndices)}`);
-      //   console.log(`offsets ${JSON.stringify(offsets)}`);
-      // }
 
       //
       // modify raw offsets with CIGAR/substitution data
@@ -31807,8 +31808,6 @@ const getMethylationOffsets = (segment, seq) => {
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
 
-      const actions = [];
-
       for (const sub of segment.substitutions) {
         //
         // if the read starts or ends with soft or hard clipping
@@ -31816,101 +31815,44 @@ const getMethylationOffsets = (segment, seq) => {
         if ((sub.type === 'S') || (sub.type === 'H')) {
           offsetModifier -= sub.length;
           clipLength = sub.length;
-          // continue;
         }
         //
         // walk through offsets and include those less than the current substitution position
         //
         else if ((sub.type === 'M') || (sub.type === '=')) {
-          const relposns = [];
-          const offsetIdxs = [];
-          const unmodifiedOffsetIdxs = [];
-          const startingOffsetIdx = offsetIdx;
           while ((offsets[offsetIdx] + offsetModifier) < (sub.pos + sub.length)) {
             if ((offsets[offsetIdx] + offsetModifier) >= sub.pos) {
               modifiedOffsets.push(offsets[offsetIdx] + offsetModifier - clipLength);
               modifiedProbabilities.push(probabilities[offsetIdx]);
-              relposns.push(segment.start + offsets[offsetIdx] + offsetModifier);
-              offsetIdxs.push({[offsetIdx]:segment.start + offsets[offsetIdx] + offsetModifier});
-              unmodifiedOffsetIdxs.push({[offsetIdx]:segment.start + offsets[offsetIdx]});
             }
             offsetIdx++;
           }
-          actions.push({
-            relposns: relposns,
-            offsetIdxs: offsetIdxs,
-            unmodifiedOffsetIdxs: unmodifiedOffsetIdxs,
-            offsetModifier: offsetModifier,
-            type: `${sub.type} ${sub.length}`,
-            sub: sub,
-            startingOffsetIdx: startingOffsetIdx,
-          });
-          // continue;
         }
         //
         // filter out mismatches, else modify the offset padding
         //
-        if (sub.type === 'X') {
-          // actions.push({
-          //   relposns: [segment.start + sub.pos],
-          //   offsetIdxs: [offsetIdx],
-          //   offsetAtIdxs: [{[offsets[offsetIdx]]:segment.start + sub.pos}],
-          //   offsetModifier: offsetModifier,
-          //   pos: sub.pos,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
+        else if (sub.type === 'X') {
           if ((offsets[offsetIdx] + offsetModifier) === sub.pos) {
             offsetIdx++;
           }
-          // continue;
         }
         //
         // handle substitution operations
         //
-        if (sub.type === 'D') {
-          // actions.push({
-          //   relposns: [],
-          //   offsetIdxs: [],
-          //   newOffsetModifier: offsetModifier + sub.length,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
+        else if (sub.type === 'D') {
           offsetModifier += sub.length;
-          // continue;
         }
-        if (sub.type === 'I') {
-          actions.push({
-            relposns: [],
-            offsetIdxs: [],
-            newOffsetModifier: offsetModifier - sub.length,
-            type: `${sub.type} ${sub.length}`,
-          });
+        else if (sub.type === 'I') {
           offsetModifier -= sub.length;
-          // offsetModifier = (offsetModifier - sub.length > 0) ? offsetModifier - sub.length : offsetModifier;
-          // offsetIdx++;
-          // continue;
         }
-        if (sub.type === 'N') {
-          // actions.push({
-          //   relposns: [],
-          //   offsetIdxs: [],
-          //   newOffsetModifier: offsetModifier + sub.length,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
+        else if (sub.type === 'N') {
           offsetModifier += sub.length;
-          // continue;
         }
         //
         // if the read ends with soft or hard clipping
         //
         if ((sub.type === 'S') || (sub.type === 'H')) {
-          // actions.push({
-          //   relposns: [],
-          //   offsetIdxs: [],
-          //   newOffsetModifier: offsetModifier + sub.length,
-          //   type: `${sub.type} ${sub.length}`,
-          // });
           offsetModifier += sub.length;
-          // continue;
         }
       };
 
@@ -32942,7 +32884,101 @@ function ChromosomeInfo(filepath, success) {
     }
   });
 }
+// CONCATENATED MODULE: ./src/bam-fetcher.js
+const DEBOUNCE_TIME = 200;
+
+class BAMDataFetcher {
+  constructor(dataConfig, trackOptions, worker, HGC) {
+    this.dataConfig = dataConfig;
+    this.uid = HGC.libraries.slugid.nice();
+    this.worker = worker;
+    this.isServerFetcher = !(dataConfig.type && dataConfig.type === 'bam');
+    this.prevRequestTime = 0;
+
+    this.toFetch = new Set();
+    this.fetchTimeout = null;
+
+    this.initPromise = this.worker.then(tileFunctions => {
+      if (this.isServerFetcher) {
+        return tileFunctions
+          .serverInit(
+            this.uid,
+            dataConfig.server,
+            dataConfig.tilesetUid,
+            HGC.services.authHeader
+          )
+          .then(() => this.worker);
+      }
+
+      if(dataConfig.url && !dataConfig.bamUrl){
+        dataConfig["bamUrl"] = dataConfig.url;
+      }
+      if(!dataConfig.baiUrl){
+        dataConfig["baiUrl"] = dataConfig["bamUrl"]+".bai";
+      }
+
+      return tileFunctions
+        .init(this.uid, dataConfig.bamUrl, dataConfig.baiUrl, dataConfig.chromSizesUrl, dataConfig.options, trackOptions)
+        .then(() => this.worker);
+    });
+  }
+
+  tilesetInfo(callback) {
+    this.worker.then(tileFunctions => {
+      if (this.isServerFetcher) {
+        tileFunctions.serverTilesetInfo(this.uid).then(callback);
+      } else {
+        tileFunctions.tilesetInfo(this.uid).then(callback);
+      }
+    });
+  }
+
+  fetchTilesDebounced(receivedTiles, tileIds) {
+    const { toFetch  } = this;
+
+    const thisZoomLevel = tileIds[0].split('.')[0];
+    const toFetchZoomLevel = toFetch.size ? [...toFetch][0].split('.')[0] : null;
+
+    if (thisZoomLevel !== toFetchZoomLevel) {
+      for (const tileId of this.toFetch) {
+        this.track.fetching.delete(tileId);
+      }
+      this.toFetch.clear();
+    }
+
+    tileIds.forEach(x => this.toFetch.add(x)) ;
+
+    if (this.fetchTimeout) {
+      clearTimeout(this.fetchTimeout)
+    }
+
+    this.fetchTimeout = setTimeout(() => {
+      this.sendFetch(receivedTiles, [...this.toFetch])
+      this.toFetch.clear()
+    }, DEBOUNCE_TIME)
+  }
+
+  sendFetch(receivedTiles, tileIds) {
+    this.track.updateLoadingText();
+
+    this.worker.then(tileFunctions => {
+      if (this.isServerFetcher) {
+        tileFunctions
+          .serverFetchTilesDebounced(this.uid, tileIds)
+          .then(receivedTiles);
+      } else {
+        tileFunctions
+          .fetchTilesDebounced(this.uid, tileIds)
+          .then(receivedTiles);
+      }
+    });
+  }
+}
+
+/* harmony default export */ var bam_fetcher = (BAMDataFetcher);
+
 // CONCATENATED MODULE: ./src/bam-fetcher-worker.js
+
 
 
 
@@ -33817,7 +33853,7 @@ const renderSegments = (
 
   let segmentList = Object.values(allSegments);
 
-  if(trackOptions.minMappingQuality > 0){
+  if (trackOptions.minMappingQuality > 0){
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
@@ -34214,6 +34250,57 @@ const renderSegments = (
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
+const clusterSegments = (
+  uid,
+  tileIds,
+  domain,
+  scaleRange,
+  position,
+  dimensions,
+  prevRows,
+  trackOptions,
+  range,
+) => {
+
+  const { bamUrl, chromSizesUrl } = dataConfs[uid];
+  const bamFile = bamFiles[bamUrl];
+
+  const recordPromises = [];
+  const chromName = range.left.chrom;
+  const chromStart = range.left.start;
+  const chromEnd = range.right.stop + 1; // 0-based
+
+  const fetchOptions = {
+    viewAsPairs: false, // areMatesRequired(trackOptions[uid]),
+  };
+
+  console.log(`trackOptions[${uid}] ${JSON.stringify(trackOptions[uid])}`);
+
+  recordPromises.push(
+    bamFile
+      .getRecordsForRange(
+        chromName,
+        chromStart,
+        chromEnd,
+        fetchOptions
+      )
+      .then((records) => {
+        const mappedRecords = records.map((rec) =>
+          bamRecordToJson(rec, chromName, 0, trackOptions[uid]),
+        );
+        console.log(`mappedRecords ${JSON.stringify(mappedRecords)}`);
+      })
+  )
+
+  // const objData = {
+  //   rows: [uid]
+  // };
+
+  // return Transfer(objData, []);
+
+  return Promise.all(recordPromises).then((values) => values.flat());
+}
+
 const tileFunctions = {
   init,
   serverInit,
@@ -34223,6 +34310,7 @@ const tileFunctions = {
   fetchTilesDebounced,
   tile,
   renderSegments,
+  clusterSegments,
 };
 
 expose(tileFunctions);

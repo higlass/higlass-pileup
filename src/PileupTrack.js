@@ -413,6 +413,9 @@ varying vec4 vColor;
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
+          case "cluster-layout":
+            this.clusterExistingRange(data.range);
+            break
           default:
             break;
         }
@@ -470,6 +473,28 @@ varying vec4 vColor;
 
       this.updateExistingGraphics();
       this.prevOptions = Object.assign({}, options);
+    }
+
+    clusterExistingRange(range) {
+      console.log(`clusering ${this.id} | ${JSON.stringify(range)} | ${JSON.stringify(this.options)}`);
+
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .clusterSegments(
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            range,
+          )
+          .then((toRender) => {
+            console.log(`toRender ${JSON.stringify(toRender)}`);
+          });
+      });
     }
 
     updateExistingGraphics() {
@@ -773,11 +798,11 @@ varying vec4 vColor;
                     mappingOrientationHtml;
 
                   if (nearestSub && nearestSub.type) {
-                    mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
+                    mouseOverHtml += `Nearest operation: ${cigarTypeToText(
                       nearestSub.type,
                     )} (${nearestSub.length})`;
                   } else if (nearestSub && nearestSub.variant) {
-                    mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+                    mouseOverHtml += `Nearest operation: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
                   }
 
                   return mouseOverHtml;
