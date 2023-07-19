@@ -1,4 +1,4 @@
-import { range } from 'd3-array';
+import { group, range } from 'd3-array';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
@@ -8,6 +8,7 @@ import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 import BAMDataFetcher from './bam-fetcher';
+import { clusterData, euclideanDistance, avgDistance } from '@greenelab/hclust';
 
 function currTime() {
   const d = new Date();
@@ -102,9 +103,9 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     methylationOffsets: [],
   };
 
-  if (segment.strand === '+' && trackOptions.plusStrandColor) {
+  if (segment.strand === '+' && trackOptions && trackOptions.plusStrandColor) {
     segment.color = PILEUP_COLOR_IXS.PLUS_STRAND;
-  } else if (segment.strand === '-' && trackOptions.minusStrandColor) {
+  } else if (segment.strand === '-' && trackOptions && trackOptions.minusStrandColor) {
     segment.color = PILEUP_COLOR_IXS.MINUS_STRAND;
   }
 
@@ -853,6 +854,8 @@ const renderSegments = (
   dimensions,
   prevRows,
   trackOptions,
+  clusterSegments,
+  clusterSegmentsRange,
 ) => {
 
   const allSegments = {};
@@ -879,7 +882,7 @@ const renderSegments = (
 
   prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions)) {
+  if (areMatesRequired(trackOptions) && !clusterSegments) {
     // At this point reads are colored correctly, but we only want to align those reads that
     // are within the visible tiles - not mates that are far away, as this can mess up the alignment
     let tileMinPos = Number.MAX_VALUE;
@@ -920,15 +923,71 @@ const renderSegments = (
     grouped = { null: segmentList };
   }
 
+  // console.log(`clusterSegments ${clusterSegments} | ${typeof clusterSegments}`);
+  // console.log(`clusterSegmentsRange ${clusterSegmentsRange} | ${typeof clusterSegmentsRange}`);
+
   // calculate the the rows of reads for each group
-  for (let key of Object.keys(grouped)) {
-    const rows = segmentsToRows(grouped[key], {
-      prevRows: (prevRows[key] && prevRows[key].rows) || [],
+  if (clusterSegments && clusterSegmentsRange) {
+    // const chromName = clusterSegmentsRange.left.chrom;
+    const chromStart = clusterSegmentsRange.left.start - 1; // 0-based
+    const chromEnd = clusterSegmentsRange.right.stop;
+    const eventVecLen = chromEnd - chromStart;
+    const nReads = segmentList.length;
+    const data = new Array();
+    let allowedRowIdx = 0;
+    for (let i = 0; i < nReads; ++i) {
+      const segment = segmentList[i];
+      const segmentLength = segment.to - segment.from;
+      const eventVec = new Array(eventVecLen).fill(-1);
+      const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+      // clean up clustering
+      for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
+        if (coverIdx >= chromEnd) break;
+        eventVec[coverIdx] = 0;
+      }
+      const mos = segment.methylationOffsets;
+      // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
+      let eventVecNotModified = true; 
+      mos.forEach((mo) => {
+        if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T') {
+          mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset) => {
+            if (modOffset >= 0 && modOffset < eventVecLen) {
+              eventVec[modOffset] = 1;
+              eventVecNotModified = false;
+            }
+          })
+        }
+      })
+      if (!eventVecNotModified) {
+        data[allowedRowIdx++] = eventVec;
+      }
+    }
+    const { clusters, distances, order, clustersGivenK } = clusterData({
+      data: data,
+      distance: euclideanDistance,
+      linkage: avgDistance,
     });
-    // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
-    // Therefore we get rid of everything else to save memory and increase performance
-    grouped[key] = {};
-    grouped[key].rows = rows;
+    const orderedSegments = order.map(i => {
+      const segment = segmentList[i];
+      return [segment];
+    })
+    for (let key of Object.keys(grouped)) {
+      const rows = orderedSegments;
+      grouped[key] = {};
+      grouped[key].rows = rows;
+    }
+  }
+  else {
+    for (let key of Object.keys(grouped)) {
+      const rows = segmentsToRows(grouped[key], {
+        prevRows: (prevRows[key] && prevRows[key].rows) || [],
+      });
+      // console.log(`uid ${uid} | rows ${JSON.stringify(rows)}`);
+      // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
+      // Therefore we get rid of everything else to save memory and increase performance
+      grouped[key] = {};
+      grouped[key].rows = rows;
+    }
   }
 
   // calculate the height of each group
@@ -1270,56 +1329,93 @@ const renderSegments = (
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
-const clusterSegments = (
-  uid,
-  tileIds,
-  domain,
-  scaleRange,
-  position,
-  dimensions,
-  prevRows,
-  trackOptions,
-  range,
-) => {
+// const clusterSegments = (
+//   uid,
+//   tileIds,
+//   domain,
+//   scaleRange,
+//   position,
+//   dimensions,
+//   prevRows,
+//   trackOptions,
+//   range,
+// ) => {
 
-  const { bamUrl, chromSizesUrl } = dataConfs[uid];
-  const bamFile = bamFiles[bamUrl];
+//   const { bamUrl, chromSizesUrl } = dataConfs[uid];
+//   const bamFile = bamFiles[bamUrl];
 
-  const recordPromises = [];
-  const chromName = range.left.chrom;
-  const chromStart = range.left.start;
-  const chromEnd = range.right.stop + 1; // 0-based
+//   const recordPromises = [];
+//   const chromName = range.left.chrom;
+//   const chromStart = range.left.start - 1; // 0-based
+//   const chromEnd = range.right.stop;
+//   const eventVecLen = chromEnd - chromStart;
 
-  const fetchOptions = {
-    viewAsPairs: false, // areMatesRequired(trackOptions[uid]),
-  };
+//   const fetchOptions = {
+//     viewAsPairs: false, // areMatesRequired(trackOptions[uid]),
+//   };
 
-  console.log(`trackOptions[${uid}] ${JSON.stringify(trackOptions[uid])}`);
+//   console.log(`uid ${uid} | trackOptions ${JSON.stringify(trackOptions)}`);
 
-  recordPromises.push(
-    bamFile
-      .getRecordsForRange(
-        chromName,
-        chromStart,
-        chromEnd,
-        fetchOptions
-      )
-      .then((records) => {
-        const mappedRecords = records.map((rec) =>
-          bamRecordToJson(rec, chromName, 0, trackOptions[uid]),
-        );
-        console.log(`mappedRecords ${JSON.stringify(mappedRecords)}`);
-      })
-  )
+//   recordPromises.push(
+//     bamFile
+//       .getRecordsForRange(
+//         chromName,
+//         chromStart,
+//         chromEnd,
+//         fetchOptions
+//       )
+//       .then((records) => {
+//         const mappedRecords = records.map((rec) =>
+//           bamRecordToJson(rec, chromName, 0, trackOptions),
+//         );
+//         // console.log(`mappedRecords ${JSON.stringify(mappedRecords)}`);
+//         const nReads = mappedRecords.length;
+//         const data = new Array(nReads);
+//         const rowIdxToKey = new Array(nReads);
+//         for (let i = 0; i < nReads; ++i) {
+//           const segment = mappedRecords[i];
+//           const key = segment.readName;
+//           rowIdxToKey[i] = key;
+//           const eventVec = new Array(eventVecLen).fill(0);
+//           const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+//           const mos = segment.methylationOffsets;
+//           mos.forEach((mo) => {
+//             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T') {
+//               mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset) => {
+//                 if (modOffset >= 0 && modOffset < eventVecLen) {
+//                   eventVec[modOffset] = 1;
+//                 }
+//               })
+//             }
+//           })
+//           data[i] = eventVec;
+//         }
+//         // console.log(`data ${JSON.stringify(data)}`);
+//         // console.log(`rowIdxToKey ${JSON.stringify(rowIdxToKey)}`);
+//         const { clusters, distances, order, clustersGivenK } = clusterData({
+//           data: data,
+//           distance: euclideanDistance,
+//           linkage: avgDistance,
+//         });
+//         // console.log(`clusters ${JSON.stringify(clusters)}`);
+//         // console.log(`uid ${uid} | order ${JSON.stringify(order)}`);
+//         const orderedSegments = order.map(i => {
+//           const segment = mappedRecords[i];
+//           return [segment];
+//         })
+//         // console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
+//         return orderedSegments;
+//       })
+//   )
 
-  // const objData = {
-  //   rows: [uid]
-  // };
+//   // const objData = {
+//   //   rows: [uid]
+//   // };
 
-  // return Transfer(objData, []);
+//   // return Transfer(objData, []);
 
-  return Promise.all(recordPromises).then((values) => values.flat());
-}
+//   return Promise.all(recordPromises).then((values) => values.flat());
+// }
 
 const tileFunctions = {
   init,
@@ -1330,7 +1426,7 @@ const tileFunctions = {
   fetchTilesDebounced,
   tile,
   renderSegments,
-  clusterSegments,
+  // clusterSegments,
 };
 
 expose(tileFunctions);

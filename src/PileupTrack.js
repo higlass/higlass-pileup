@@ -258,6 +258,9 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
+      this.clusterSegments = false;
+      this.clusterSegmentsRange = null;
+
       this.setUpShaderAndTextures();
 
     }
@@ -334,14 +337,12 @@ const PileupTrack = (HGC, ...args) => {
         });
       }
 
-      if (this.options && this.options.plusStrandColor) {
+      if (this.options && typeof this.options.plusStrandColor !== 'undefined') {
         colorDict.PLUS_STRAND = this.colorToArray(this.options.plusStrandColor);
       }
 
-      if (this.options && this.options.minusStrandColor) {
-        colorDict.MINUS_STRAND = this.colorToArray(
-          this.options.minusStrandColor,
-        );
+      if (this.options && typeof this.options.minusStrandColor !== 'undefined') {
+        colorDict.MINUS_STRAND = this.colorToArray(this.options.minusStrandColor);
       }
 
       const colors = Object.values(colorDict);
@@ -414,7 +415,23 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
-            this.clusterExistingRange(data.range);
+            // this.clusterExistingRange(data.range);
+            this.dataFetcher = new BAMDataFetcher(
+              this.dataFetcher.dataConfig,
+              this.options,
+              this.worker,
+              HGC,
+            );
+            this.dataFetcher.track = this;
+            this.prevRows = [];
+            this.removeTiles(Object.keys(this.fetchedTiles));
+            this.fetching.clear();
+            this.refreshTiles();
+            this.externalInit(this.options);
+            this.clusterSegments = true;
+            this.clusterSegmentsRange = data.range;
+            this.updateExistingGraphics();
+            this.prevOptions = Object.assign({}, this.options);
             break
           default:
             break;
@@ -475,27 +492,27 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
-    clusterExistingRange(range) {
-      console.log(`clusering ${this.id} | ${JSON.stringify(range)} | ${JSON.stringify(this.options)}`);
+    // clusterExistingRange(range) {
+    //   console.log(`clustering ${this.id} | ${JSON.stringify(range)} | ${JSON.stringify(this.options)}`);
 
-      this.worker.then((tileFunctions) => {
-        tileFunctions
-          .clusterSegments(
-            this.dataFetcher.uid,
-            Object.values(this.fetchedTiles).map((x) => x.remoteId),
-            this._xScale.domain(),
-            this._xScale.range(),
-            this.position,
-            this.dimensions,
-            this.prevRows,
-            this.options,
-            range,
-          )
-          .then((toRender) => {
-            console.log(`toRender ${JSON.stringify(toRender)}`);
-          });
-      });
-    }
+    //   this.worker.then((tileFunctions) => {
+    //     tileFunctions
+    //       .clusterSegments(
+    //         this.dataFetcher.uid,
+    //         Object.values(this.fetchedTiles).map((x) => x.remoteId),
+    //         this._xScale.domain(),
+    //         this._xScale.range(),
+    //         this.position,
+    //         this.dimensions,
+    //         this.prevRows,
+    //         this.options,
+    //         range,
+    //       )
+    //       .then((toRender) => {
+    //         console.log(`toRender ${JSON.stringify(toRender)}`);
+    //       });
+    //   });
+    // }
 
     updateExistingGraphics() {
       this.loadingText.text = 'Rendering...';
@@ -531,8 +548,12 @@ varying vec4 vColor;
             this.dimensions,
             this.prevRows,
             this.options,
+            this.clusterSegments,
+            this.clusterSegmentsRange,
           )
           .then((toRender) => {
+            // console.log(`toRender ${JSON.stringify(toRender)}`);
+
             this.loadingText.visible = false;
 
             fetchedTileKeys.forEach((x) => {
@@ -648,6 +669,12 @@ varying vec4 vColor;
 
             this.draw();
             this.animate();
+
+            if (this.clusterSegments) {
+              this.clusterSegments = false;
+              this.clusterSegmentsRange = null;
+            }
+
             this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
           });
         // .catch(err => {
