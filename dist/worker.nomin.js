@@ -34039,12 +34039,14 @@ const renderSegments = (
   // calculate the the rows of reads for each group
   if (clusterSegments && clusterSegmentsRange) {
     // const chromName = clusterSegmentsRange.left.chrom;
-    const chromStart = clusterSegmentsRange.left.start - 1; // 0-based
+    const chromStart = clusterSegmentsRange.left.start;
     const chromEnd = clusterSegmentsRange.right.stop;
     const eventVecLen = chromEnd - chromStart;
+    // console.log(`eventVecLen ${eventVecLen}`);
     const nReads = segmentList.length;
     const data = new Array();
     let allowedRowIdx = 0;
+    const trueRow = {};
     for (let i = 0; i < nReads; ++i) {
       const segment = segmentList[i];
       const segmentLength = segment.to - segment.from;
@@ -34052,7 +34054,7 @@ const renderSegments = (
       const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
       // clean up clustering
       for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
-        if (coverIdx >= chromEnd) break;
+        if (coverIdx === eventVecLen) break;
         eventVec[coverIdx] = 0;
       }
       const mos = segment.methylationOffsets;
@@ -34069,6 +34071,7 @@ const renderSegments = (
         }
       })
       if (!eventVecNotModified) {
+        trueRow[allowedRowIdx] = i;
         data[allowedRowIdx++] = eventVec;
       }
     }
@@ -34077,8 +34080,10 @@ const renderSegments = (
       distance: hclust_min["euclideanDistance"],
       linkage: hclust_min["avgDistance"],
     });
+    // console.log(`order ${order}`);
     const orderedSegments = order.map(i => {
-      const segment = segmentList[i];
+      const trueRowIdx = trueRow[i];
+      const segment = segmentList[trueRowIdx];
       return [segment];
     })
     for (let key of Object.keys(grouped)) {

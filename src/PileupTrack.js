@@ -812,27 +812,82 @@ varying vec4 vColor;
                     mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
                   }
 
-                  let mouseOverHtml =
-                    `Name: ${read.readName}<br>` +
-                    `Position: ${read.chrName}:${
-                      read.from - read.chrOffset
-                    }<br>` +
-                    `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mapq}<br>` +
-                    `Strand: ${read.strand}<br>` +
-                    insertSizeHtml +
-                    chimericReadHtml +
-                    mappingOrientationHtml;
+                  // let mouseOverHtml =
+                  //   `Name: ${read.readName}<br>` +
+                  //   `Position: ${read.chrName}:${
+                  //     read.from - read.chrOffset
+                  //   }<br>` +
+                  //   `Read length: ${read.to - read.from}<br>` +
+                  //   `MAPQ: ${read.mapq}<br>` +
+                  //   `Strand: ${read.strand}<br>` +
+                  //   insertSizeHtml +
+                  //   chimericReadHtml +
+                  //   mappingOrientationHtml;
 
-                  if (nearestSub && nearestSub.type) {
-                    mouseOverHtml += `Nearest operation: ${cigarTypeToText(
-                      nearestSub.type,
-                    )} (${nearestSub.length})`;
-                  } else if (nearestSub && nearestSub.variant) {
-                    mouseOverHtml += `Nearest operation: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+                  // if (nearestSub && nearestSub.type) {
+                  //   mouseOverHtml += `Nearest operation: ${cigarTypeToText(
+                  //     nearestSub.type,
+                  //   )} (${nearestSub.length})`;
+                  // } else if (nearestSub && nearestSub.variant) {
+                  //   mouseOverHtml += `Nearest operation: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+                  // }
+
+                  const dataX = this._xScale.invert(trackX);
+                  let positionText = null;
+                  if (this.options.chromInfo) {
+                    const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
+                    const chrom = atcX[0];
+                    const position = Math.ceil(atcX[1]);
+                    positionText = `${chrom}:${position}`;
                   }
 
-                  return mouseOverHtml;
+                  let output = `<div class="track-mouseover-menu-table">`;
+
+                  if (positionText) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="position" class="track-mouseover-menu-table-item-label">Position</label>
+                      <div name="position" class="track-mouseover-menu-table-item-value">${positionText}</div>
+                    </div>
+                    `;
+                  }
+
+                  const readName = read.readName;
+                  output += `<div class="track-mouseover-menu-table-item">
+                    <label for="readName" class="track-mouseover-menu-table-item-label">Name</label>
+                    <div name="readName" class="track-mouseover-menu-table-item-value">${readName}</div>
+                  </div>`;
+
+                  const readInterval = `${read.chrName}:${read.from - read.chrOffset}-${read.to - read.chrOffset - 1} (${read.strand})`;
+                  output += `<div class="track-mouseover-menu-table-item">
+                    <label for="readInterval" class="track-mouseover-menu-table-item-label">Interval</label>
+                    <div name="readInterval" class="track-mouseover-menu-table-item-value">${readInterval}</div>
+                  </div>`;
+
+                  const readLength = `${read.to - read.from}`;
+                  output += `<div class="track-mouseover-menu-table-item">
+                    <label for="readLength" class="track-mouseover-menu-table-item-label">Length</label>
+                    <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
+                  </div>`;
+
+                  if (nearestSub && nearestSub.type) {
+                    const readNearestOp = `${nearestSub.length}${cigarTypeToText(nearestSub.type)}`;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
+                      <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
+                    </div>`;
+                  }
+                  else if (nearestSub && nearestSub.variant) {
+                    const readNearestOp = `${nearestSub.length} (${nearestSub.variant})`;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
+                      <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
+                    </div>`;
+                  }
+
+                  output += `</div>`;
+
+                  return output;
                   // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                 }
               }
