@@ -258,8 +258,10 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      this.clusterSegments = false;
-      this.clusterSegmentsRange = null;
+      // this.clusterSegments = false;
+      // this.clusterSegmentsRange = null;
+
+      this.cluster = null;
 
       this.setUpShaderAndTextures();
 
@@ -428,8 +430,12 @@ varying vec4 vColor;
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
-            this.clusterSegments = true;
-            this.clusterSegmentsRange = data.range;
+            // this.clusterSegments = true;
+            // this.clusterSegmentsRange = data.range;
+            this.cluster = {
+              range: data.range, 
+              distanceFn: data.distanceFn,
+            };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break
@@ -548,8 +554,9 @@ varying vec4 vColor;
             this.dimensions,
             this.prevRows,
             this.options,
-            this.clusterSegments,
-            this.clusterSegmentsRange,
+            // this.clusterSegments,
+            // this.clusterSegmentsRange,
+            this.cluster,
           )
           .then((toRender) => {
             // console.log(`toRender ${JSON.stringify(toRender)}`);
@@ -670,9 +677,13 @@ varying vec4 vColor;
             this.draw();
             this.animate();
 
-            if (this.clusterSegments) {
-              this.clusterSegments = false;
-              this.clusterSegmentsRange = null;
+            // if (this.clusterSegments) {
+            //   this.clusterSegments = false;
+            //   this.clusterSegmentsRange = null;
+            // }
+
+            if (this.cluster) {
+              this.cluster = null;
             }
 
             this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});

@@ -8,7 +8,7 @@ import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 import BAMDataFetcher from './bam-fetcher';
-import { clusterData, euclideanDistance, avgDistance } from '@greenelab/hclust';
+import { clusterData, euclideanDistance, jaccardDistance, avgDistance } from '@greenelab/hclust';
 
 function currTime() {
   const d = new Date();
@@ -854,8 +854,9 @@ const renderSegments = (
   dimensions,
   prevRows,
   trackOptions,
-  clusterSegments,
-  clusterSegmentsRange,
+  // clusterSegments,
+  // clusterSegmentsRange,
+  cluster,
 ) => {
 
   const allSegments = {};
@@ -882,7 +883,7 @@ const renderSegments = (
 
   prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterSegments) {
+  if (areMatesRequired(trackOptions) && !cluster) {
     // At this point reads are colored correctly, but we only want to align those reads that
     // are within the visible tiles - not mates that are far away, as this can mess up the alignment
     let tileMinPos = Number.MAX_VALUE;
@@ -927,49 +928,88 @@ const renderSegments = (
   // console.log(`clusterSegmentsRange ${clusterSegmentsRange} | ${typeof clusterSegmentsRange}`);
 
   // calculate the the rows of reads for each group
-  if (clusterSegments && clusterSegmentsRange) {
-    // const chromName = clusterSegmentsRange.left.chrom;
-    const chromStart = clusterSegmentsRange.left.start;
-    const chromEnd = clusterSegmentsRange.right.stop;
+  if (cluster) {
+    // const chromName = cluster.range.left.chrom;
+    const chromStart = cluster.range.left.start;
+    const chromEnd = cluster.range.right.stop;
+    const distanceFn = cluster.distanceFn;
+    let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     // console.log(`eventVecLen ${eventVecLen}`);
     const nReads = segmentList.length;
     const data = new Array();
     let allowedRowIdx = 0;
     const trueRow = {};
-    for (let i = 0; i < nReads; ++i) {
-      const segment = segmentList[i];
-      const segmentLength = segment.to - segment.from;
-      const eventVec = new Array(eventVecLen).fill(-255);
-      const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
-      // clean up clustering
-      for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
-        if (coverIdx === eventVecLen) break;
-        eventVec[coverIdx] = 0;
-      }
-      const mos = segment.methylationOffsets;
-      // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
-      let eventVecNotModified = true; 
-      mos.forEach((mo) => {
-        if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
-          mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
-            if (modOffset >= 0 && modOffset < eventVecLen) {
-              eventVec[modOffset] = mo.probabilities[moIdx]; // some value between 1 and 255, presumably
-              eventVecNotModified = false;
+
+    switch (distanceFn) {
+      case 'Euclidean':
+        distanceFnToCall = euclideanDistance;
+        for (let i = 0; i < nReads; ++i) {
+          const segment = segmentList[i];
+          const segmentLength = segment.to - segment.from;
+          const eventVec = new Array(eventVecLen).fill(-255);
+          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          // clean up clustering
+          for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
+            if (coverIdx === eventVecLen) break;
+            eventVec[coverIdx] = 0;
+          }
+          const mos = segment.methylationOffsets;
+          // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
+          let eventVecNotModified = true; 
+          mos.forEach((mo) => {
+            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+                if (modOffset >= 0 && modOffset < eventVecLen) {
+                  eventVec[modOffset] = mo.probabilities[moIdx]; // some value between 0 and 255, presumably
+                  eventVecNotModified = false;
+                }
+              })
             }
           })
+          if (!eventVecNotModified) {
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
+          }
         }
-      })
-      if (!eventVecNotModified) {
-        trueRow[allowedRowIdx] = i;
-        data[allowedRowIdx++] = eventVec;
-      }
+        break;
+      case 'Jaccard':
+        distanceFnToCall = jaccardDistance;
+        for (let i = 0; i < nReads; ++i) {
+          const segment = segmentList[i];
+          const segmentLength = segment.to - segment.from;
+          const eventVec = new Array(eventVecLen).fill(0);
+          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          const mos = segment.methylationOffsets;
+          // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
+          let eventVecNotModified = true; 
+          mos.forEach((mo) => {
+            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+                if (modOffset >= 0 && modOffset < eventVecLen) {
+                  eventVec[modOffset] = 1;
+                  eventVecNotModified = false;
+                }
+              })
+            }
+          })
+          if (!eventVecNotModified) {
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
+          }
+        }
+        break;
+      default:
+        throw new Error("Clustering is missing distance function");
+        break;
     }
+
     const { clusters, distances, order, clustersGivenK } = clusterData({
       data: data,
-      distance: euclideanDistance,
+      distance: distanceFnToCall,
       linkage: avgDistance,
     });
+
     // console.log(`order ${order}`);
     const orderedSegments = order.map(i => {
       const trueRowIdx = trueRow[i];
