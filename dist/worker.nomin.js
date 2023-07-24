@@ -34050,7 +34050,7 @@ const renderSegments = (
     for (let i = 0; i < nReads; ++i) {
       const segment = segmentList[i];
       const segmentLength = segment.to - segment.from;
-      const eventVec = new Array(eventVecLen).fill(-1);
+      const eventVec = new Array(eventVecLen).fill(-255);
       const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
       // clean up clustering
       for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
@@ -34061,10 +34061,10 @@ const renderSegments = (
       // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
       let eventVecNotModified = true; 
       mos.forEach((mo) => {
-        if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T') {
-          mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset) => {
+        if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+          mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
             if (modOffset >= 0 && modOffset < eventVecLen) {
-              eventVec[modOffset] = 1;
+              eventVec[modOffset] = mo.probabilities[moIdx]; // some value between 1 and 255, presumably
               eventVecNotModified = false;
             }
           })
@@ -34192,7 +34192,7 @@ const renderSegments = (
 
     // addRect(0, grouped[key].end, dimensions[0], lineHeight, PILEUP_COLOR_IXS.BLACK);
 
-    if (groupCounter % 2) {
+    // if (groupCounter % 2) {
       // addRect(
       //   0,
       //   grouped[key].start,
@@ -34200,7 +34200,7 @@ const renderSegments = (
       //   grouped[key].end - grouped[key].start,
       //   PILEUP_COLOR_IXS.BLACK_05
       // );
-    }
+    // }
 
     groupCounter += 1;
   }
@@ -34444,94 +34444,6 @@ const renderSegments = (
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
-// const clusterSegments = (
-//   uid,
-//   tileIds,
-//   domain,
-//   scaleRange,
-//   position,
-//   dimensions,
-//   prevRows,
-//   trackOptions,
-//   range,
-// ) => {
-
-//   const { bamUrl, chromSizesUrl } = dataConfs[uid];
-//   const bamFile = bamFiles[bamUrl];
-
-//   const recordPromises = [];
-//   const chromName = range.left.chrom;
-//   const chromStart = range.left.start - 1; // 0-based
-//   const chromEnd = range.right.stop;
-//   const eventVecLen = chromEnd - chromStart;
-
-//   const fetchOptions = {
-//     viewAsPairs: false, // areMatesRequired(trackOptions[uid]),
-//   };
-
-//   console.log(`uid ${uid} | trackOptions ${JSON.stringify(trackOptions)}`);
-
-//   recordPromises.push(
-//     bamFile
-//       .getRecordsForRange(
-//         chromName,
-//         chromStart,
-//         chromEnd,
-//         fetchOptions
-//       )
-//       .then((records) => {
-//         const mappedRecords = records.map((rec) =>
-//           bamRecordToJson(rec, chromName, 0, trackOptions),
-//         );
-//         // console.log(`mappedRecords ${JSON.stringify(mappedRecords)}`);
-//         const nReads = mappedRecords.length;
-//         const data = new Array(nReads);
-//         const rowIdxToKey = new Array(nReads);
-//         for (let i = 0; i < nReads; ++i) {
-//           const segment = mappedRecords[i];
-//           const key = segment.readName;
-//           rowIdxToKey[i] = key;
-//           const eventVec = new Array(eventVecLen).fill(0);
-//           const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
-//           const mos = segment.methylationOffsets;
-//           mos.forEach((mo) => {
-//             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T') {
-//               mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset) => {
-//                 if (modOffset >= 0 && modOffset < eventVecLen) {
-//                   eventVec[modOffset] = 1;
-//                 }
-//               })
-//             }
-//           })
-//           data[i] = eventVec;
-//         }
-//         // console.log(`data ${JSON.stringify(data)}`);
-//         // console.log(`rowIdxToKey ${JSON.stringify(rowIdxToKey)}`);
-//         const { clusters, distances, order, clustersGivenK } = clusterData({
-//           data: data,
-//           distance: euclideanDistance,
-//           linkage: avgDistance,
-//         });
-//         // console.log(`clusters ${JSON.stringify(clusters)}`);
-//         // console.log(`uid ${uid} | order ${JSON.stringify(order)}`);
-//         const orderedSegments = order.map(i => {
-//           const segment = mappedRecords[i];
-//           return [segment];
-//         })
-//         // console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
-//         return orderedSegments;
-//       })
-//   )
-
-//   // const objData = {
-//   //   rows: [uid]
-//   // };
-
-//   // return Transfer(objData, []);
-
-//   return Promise.all(recordPromises).then((values) => values.flat());
-// }
-
 const tileFunctions = {
   init,
   serverInit,
@@ -34541,7 +34453,6 @@ const tileFunctions = {
   fetchTilesDebounced,
   tile,
   renderSegments,
-  // clusterSegments,
 };
 
 expose(tileFunctions);
