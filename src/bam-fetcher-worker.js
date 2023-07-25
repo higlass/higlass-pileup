@@ -7,8 +7,9 @@ import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylation
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
-import BAMDataFetcher from './bam-fetcher';
+// import BAMDataFetcher from './bam-fetcher';
 import { clusterData, euclideanDistance, jaccardDistance, avgDistance } from '@greenelab/hclust';
+import { RemoteFile } from 'generic-filehandle';
 
 function currTime() {
   const d = new Date();
@@ -113,8 +114,6 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
   segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
   segment.methylationOffsets = getMethylationOffsets(segment, seq);
-
-  // console.log(`segment.substitutions ${JSON.stringify(segment.substitutions)}`);
 
   let fromClippingAdjustment = 0;
   let toClippingAdjustment = 0;
@@ -298,7 +297,6 @@ const bamFiles = {};
 const bamHeaders = {};
 const dataOptions = {};
 
-
 const serverInfos = {};
 
 const MAX_TILES = 20;
@@ -308,6 +306,10 @@ const chromSizes = {};
 const chromInfos = {};
 const tileValues = new LRU({ max: MAX_TILES });
 const tilesetInfos = {};
+
+// sequence data
+const sequenceFiles = {};
+const sequenceTileValues = new LRU({ max: MAX_TILES });
 
 // indexed by uuid
 const dataConfs = {};
@@ -338,7 +340,7 @@ const DEFAULT_DATA_OPTIONS = {
   maxTileWidth: 2e5,
 }
 
-const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
+const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOptions) => {
   if (!options) {
     dataOptions[uid] = DEFAULT_DATA_OPTIONS;
   } else {
@@ -355,6 +357,18 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
     bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
   }
 
+  if (fastaUrl && faiUrl) {
+    // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
+    const remoteFasta = new RemoteFile(fastaUrl);
+    const remoteFai = new RemoteFile(faiUrl);
+    const { IndexedFasta } = require('@gmod/indexedfasta');
+    sequenceFiles[fastaUrl] = new IndexedFasta({
+      fasta: remoteFasta,
+      fai: remoteFai,
+    });
+    // console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
+  }
+
   if (chromSizesUrl) {
     // if no chromsizes are passed in, we'll retrieve them
     // from the BAM file
@@ -367,6 +381,7 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
 
   dataConfs[uid] = {
     bamUrl,
+    fastaUrl,
     chromSizesUrl,
   };
 
@@ -512,8 +527,11 @@ const tilesetInfo = (uid) => {
 const tile = async (uid, z, x) => {
   const {maxTileWidth} = dataOptions[uid];
 
-  const { bamUrl, chromSizesUrl } = dataConfs[uid];
+  const { bamUrl, fastaUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
+  const sequenceFile = (fastaUrl) ? sequenceFiles[fastaUrl] : null;
+
+  // console.log(`sequenceFile | ${fastaUrl} | ${JSON.stringify(sequenceFile)}`);
 
   return tilesetInfo(uid).then((tsInfo) => {
     const tileWidth = +tsInfo.max_width / 2 ** +z;
@@ -538,6 +556,7 @@ const tile = async (uid, z, x) => {
 
       const chromEnd = cumPositions[i].pos + chromLengths[chromName];
       tileValues.set(`${uid}.${z}.${x}`, []);
+      sequenceTileValues.set(`${uid}.${z}.${x}`, []);
 
       if (chromStart <= minX && minX < chromEnd) {
         // start of the visible region is within this chromosome
@@ -562,17 +581,46 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-
                 tileValues.set(
                   `${uid}.${z}.${x}`,
                   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
                 );
+                
               }),
           );
 
+          // handle sequence data, if available
+          if (sequenceFile) {
+            // console.log(`A1 | pushing sequenceFile lookup into sequenceTileValues | ${chromName}:${minX - chromStart}-${chromEnd - chromStart}`);
+            recordPromises.push(
+              sequenceFile
+                .getSequence(
+                  chromName,
+                  minX - chromStart,
+                  chromEnd - chromStart,
+                )
+                .then((sequence) => {
+                  // console.log(`A1 | sequence | ${uid}.${z}.${x} | ${minX - chromStart} | ${chromEnd - chromStart} | ${sequence}`);
+                  const sequenceRecord = {
+                    id: `${chromName}:${minX - chromStart}-${chromEnd - chromStart}`,
+                    chrom: chromName,
+                    start: minX - chromStart,
+                    stop: chromEnd - chromStart,
+                    chromOffset: cumPositions[i].pos,
+                    data: sequence,
+                  };
+                  sequenceTileValues.set(
+                    `${uid}.${z}.${x}`,
+                    sequenceTileValues.get(`${uid}.${z}.${x}`).concat(sequenceRecord),
+                  );
+                }),
+            );
+          }
+
           // continue onto the next chromosome
           minX = chromEnd;
-        } else {
+        } 
+        else {
           const endPos = Math.ceil(maxX - chromStart);
           const startPos = Math.floor(minX - chromStart);
           // the end of the region is within this chromosome
@@ -583,14 +631,44 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-                
                 tileValues.set(
                   `${uid}.${z}.${x}`,
                   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
                 );
+                
                 return [];
               }),
           );
+
+          if (sequenceFile) {
+            // handle sequence data, if available
+            recordPromises.push(
+              // console.log(`A2 | pushing sequenceFile lookup into sequenceTileValues | ${chromName}:${startPos}-${endPos}`);
+              sequenceFile
+                .getSequence(
+                  chromName,
+                  startPos,
+                  endPos,
+                )
+                .then((sequence) => {
+                  // console.log(`A2 | sequence | ${uid}.${z}.${x} | ${startPos} | ${endPos} | ${sequence}`);
+                  const sequenceRecord = {
+                    id: `${chromName}:${startPos}-${endPos}`,
+                    chrom: chromName,
+                    start: startPos,
+                    stop: endPos,
+                    chromOffset: cumPositions[i].pos,
+                    data: sequence,
+                  };
+                  sequenceTileValues.set(
+                    `${uid}.${z}.${x}`,
+                    sequenceTileValues.get(`${uid}.${z}.${x}`).concat(sequenceRecord),
+                  );
+
+                  return [];
+                }),
+            );
+          }
 
           // end the loop because we've retrieved the last chromosome
           break;
@@ -845,6 +923,11 @@ let allPositions = new Float32Array(allPositionsLength);
 let allColors = new Float32Array(allColorsLength);
 let allIndexes = new Int32Array(allIndexesLength);
 
+function isEmpty(obj) {
+  for (var i in obj) { return false; }
+  return true;
+}
+
 const renderSegments = (
   uid,
   tileIds,
@@ -854,12 +937,12 @@ const renderSegments = (
   dimensions,
   prevRows,
   trackOptions,
-  // clusterSegments,
-  // clusterSegmentsRange,
   cluster,
 ) => {
 
   const allSegments = {};
+  // const allSequences = {};
+  const highlightPositions = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
 
@@ -873,7 +956,32 @@ const renderSegments = (
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
+
+    const sequenceTileValue = sequenceTileValues.get(`${uid}.${tileId}`);
+
+    if (sequenceTileValue && trackOptions.methylation && trackOptions.methylation.highlights) {
+      const highlights = Object.keys(trackOptions.methylation.highlights);
+      // console.log(`highlights ${JSON.stringify(highlights)}`);
+      for (const sequence of sequenceTileValue) {
+        // allSequences[parseInt(sequence.start)] = sequence.data;
+        const absPosStart = parseInt(sequence.start) + parseInt(sequence.chromOffset);
+        const seq = sequence.data.toUpperCase();
+        highlights.forEach((highlight) => {
+          // console.log(`highlight ${JSON.stringify(highlight)}`);
+          const highlightUC = highlight.toUpperCase();
+          const highlightLength = highlight.length;
+          let posn = seq.indexOf(highlightUC);
+          if (isEmpty(highlightPositions) || !highlightPositions[highlight]) highlightPositions[highlight] = new Array();
+          while (posn > -1) {
+            highlightPositions[highlight].push(posn + absPosStart + 1); // 1-based indexed positions!
+            posn = seq.indexOf(highlightUC, posn + highlightLength);
+          }
+        });
+      }
+    }
   }
+
+  // if (!isEmpty(highlightPositions)) console.log(`highlightPositions ${JSON.stringify(highlightPositions)}`);
 
   let segmentList = Object.values(allSegments);
 
@@ -924,9 +1032,6 @@ const renderSegments = (
     grouped = { null: segmentList };
   }
 
-  // console.log(`clusterSegments ${clusterSegments} | ${typeof clusterSegments}`);
-  // console.log(`clusterSegmentsRange ${clusterSegmentsRange} | ${typeof clusterSegmentsRange}`);
-
   // calculate the the rows of reads for each group
   if (cluster) {
     // const chromName = cluster.range.left.chrom;
@@ -935,7 +1040,6 @@ const renderSegments = (
     const distanceFn = cluster.distanceFn;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
-    // console.log(`eventVecLen ${eventVecLen}`);
     const nReads = segmentList.length;
     const data = new Array();
     let allowedRowIdx = 0;
@@ -955,7 +1059,8 @@ const renderSegments = (
             eventVec[coverIdx] = 0;
           }
           const mos = segment.methylationOffsets;
-          // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
+          // a read may end upstream or start downstream of cluster.range bounds 
+          // but still be in segmentList[], so we filter it
           let eventVecNotModified = true; 
           mos.forEach((mo) => {
             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
@@ -981,7 +1086,8 @@ const renderSegments = (
           const eventVec = new Array(eventVecLen).fill(0);
           const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
           const mos = segment.methylationOffsets;
-          // a read may end upstream or start downstream of clusterSegmentsRange but be in segmentList, so we filter it
+          // a read may end upstream or start downstream of cluster.range bounds 
+          // but still be in segmentList[], so we filter it
           let eventVecNotModified = true; 
           mos.forEach((mo) => {
             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
@@ -1000,7 +1106,7 @@ const renderSegments = (
         }
         break;
       default:
-        throw new Error("Clustering is missing distance function");
+        throw new Error("Render cluster object is missing distance function");
         break;
     }
 
@@ -1211,6 +1317,29 @@ const renderSegments = (
 
         addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
 
+        //
+        // render sequence highlights
+        //
+        if (!isEmpty(highlightPositions)) {
+          const highlights = Object.keys(highlightPositions);
+          highlights.forEach((highlight) => {
+            const highlightLen = highlight.length;
+            const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
+            const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
+            const highlightPosns = highlightPositions[highlight];
+            highlightPosns.forEach((posn) => {
+              if (posn >= segment.from && posn < segment.to) {
+                xLeft = xScale(posn);
+                xRight = xLeft + highlightWidth;
+                addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+              }
+            })
+          });
+        }
+
+        //
+        // render methylation events
+        //
         const showM5CForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC+');
         const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
         const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
@@ -1219,11 +1348,11 @@ const renderSegments = (
         const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
         const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] : 255;
 
+        let mmSegmentColor = null;
         for (const mo of segment.methylationOffsets) {
           const offsets = mo.offsets;
           const probabilities = mo.probabilities;
           const offsetLength = 1;
-          let mmSegmentColor = null;
           switch (mo.unmodifiedBase) {
             case 'C':
               if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
@@ -1253,6 +1382,7 @@ const renderSegments = (
             for (const offset of offsets) {
               const probability = probabilities[offsetIdx];
               if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
+                // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
                 xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
                 const width = Math.max(1, xScale(offsetLength) - xScale(0));
                 xRight = xLeft + width;

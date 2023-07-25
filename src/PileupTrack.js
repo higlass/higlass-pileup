@@ -258,9 +258,6 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      // this.clusterSegments = false;
-      // this.clusterSegmentsRange = null;
-
       this.cluster = null;
 
       this.setUpShaderAndTextures();
@@ -337,6 +334,13 @@ const PileupTrack = (HGC, ...args) => {
             colorDict.MM_M5C_REV = this.colorToArray(this.options.methylation.colors[index]);
           }
         });
+      }
+
+      if (this.options && this.options.methylation && this.options.methylation.highlights) {
+        const highlights = Object.keys(this.options.methylation.highlights);
+        highlights.forEach((highlight) => {
+          colorDict[`HIGHLIGHTS_${highlight}`] = this.colorToArray(this.options.methylation.highlights[highlight]);
+        })
       }
 
       if (this.options && typeof this.options.plusStrandColor !== 'undefined') {
@@ -417,7 +421,6 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
-            // this.clusterExistingRange(data.range);
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
               this.options,
@@ -430,8 +433,6 @@ varying vec4 vColor;
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
-            // this.clusterSegments = true;
-            // this.clusterSegmentsRange = data.range;
             this.cluster = {
               range: data.range, 
               distanceFn: data.distanceFn,
@@ -554,8 +555,6 @@ varying vec4 vColor;
             this.dimensions,
             this.prevRows,
             this.options,
-            // this.clusterSegments,
-            // this.clusterSegmentsRange,
             this.cluster,
           )
           .then((toRender) => {
@@ -676,11 +675,6 @@ varying vec4 vColor;
 
             this.draw();
             this.animate();
-
-            // if (this.clusterSegments) {
-            //   this.clusterSegments = false;
-            //   this.clusterSegmentsRange = null;
-            // }
 
             if (this.cluster) {
               this.cluster = null;
@@ -859,6 +853,20 @@ varying vec4 vColor;
                     <div class="track-mouseover-menu-table-item">
                       <label for="position" class="track-mouseover-menu-table-item-label">Position</label>
                       <div name="position" class="track-mouseover-menu-table-item-value">${positionText}</div>
+                    </div>
+                    `;
+                  }
+
+                  let groupText = null;
+                  if (this.options.methylation && this.options.methylation.group && this.options.methylation.set) {
+                    groupText = `${this.options.methylation.group}/${this.options.methylation.set}`;
+                  }
+
+                  if (groupText) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="group" class="track-mouseover-menu-table-item-label">Group</label>
+                      <div name="group" class="track-mouseover-menu-table-item-value">${groupText}</div>
                     </div>
                     `;
                   }
