@@ -1066,7 +1066,7 @@ const renderSegments = (
             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
               mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
                 if (modOffset >= 0 && modOffset < eventVecLen) {
-                  eventVec[modOffset] = mo.probabilities[moIdx]; // some value between 0 and 255, presumably
+                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value between 0 and 255, presumably
                   eventVecNotModified = false;
                 }
               })
@@ -1110,22 +1110,33 @@ const renderSegments = (
         break;
     }
 
-    const { clusters, distances, order, clustersGivenK } = clusterData({
-      data: data,
-      distance: distanceFnToCall,
-      linkage: avgDistance,
-    });
+    if (data.length > 0) {
+      const { clusters, distances, order, clustersGivenK } = clusterData({
+        data: data,
+        distance: distanceFnToCall,
+        linkage: avgDistance,
+      });
 
-    // console.log(`order ${order}`);
-    const orderedSegments = order.map(i => {
-      const trueRowIdx = trueRow[i];
-      const segment = segmentList[trueRowIdx];
-      return [segment];
-    })
-    for (let key of Object.keys(grouped)) {
-      const rows = orderedSegments;
-      grouped[key] = {};
-      grouped[key].rows = rows;
+      // console.log(`order ${order}`);
+      const orderedSegments = order.map(i => {
+        const trueRowIdx = trueRow[i];
+        const segment = segmentList[trueRowIdx];
+        return [segment];
+      })
+      for (let key of Object.keys(grouped)) {
+        const rows = orderedSegments;
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
+    }
+    else {
+      for (let key of Object.keys(grouped)) {
+        const rows = segmentsToRows(grouped[key], {
+          prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        });
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
     }
   }
   else {

@@ -32076,6 +32076,10 @@ const PILEUP_COLORS = {
   MM_M5C_FOR: [1, 0, 0, 1], // red for CpG events
   MM_M5C_REV: [1, 0, 0, 1], // red for CpG events
   HIGHLIGHTS_CG: [0.95, 0.84, 0.84, 1], // CG highlights
+  HIGHLIGHTS_A: [0.95, 0.84, 0.84, 1], // A highlights
+  HIGHLIGHTS_T: [0.95, 0.84, 0.84, 1], // T highlights
+  HIGHLIGHTS_G: [0.95, 0.84, 0.84, 1], // G highlights
+  HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
 };
 
 const PILEUP_COLOR_IXS = {};
@@ -32168,13 +32172,13 @@ const getMethylationOffsets = (segment, seq) => {
   };
   
   const getAllIndexes = (arr, val) => {
-    let indexes = [], i;
+    let indices = [], i;
     for (let i = 0; i < arr.length; ++i) {
       if (arr[i] === val) {
-        indexes.push(i);
+        indices.push(i);
       }
     }
-    return indexes;
+    return indices;
   }
 
   // include IUPAC degeneracies, to follow SAM specification
@@ -34404,7 +34408,7 @@ const renderSegments = (
             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
               mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
                 if (modOffset >= 0 && modOffset < eventVecLen) {
-                  eventVec[modOffset] = mo.probabilities[moIdx]; // some value between 0 and 255, presumably
+                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value between 0 and 255, presumably
                   eventVecNotModified = false;
                 }
               })
@@ -34448,22 +34452,33 @@ const renderSegments = (
         break;
     }
 
-    const { clusters, distances, order, clustersGivenK } = Object(hclust_min["clusterData"])({
-      data: data,
-      distance: distanceFnToCall,
-      linkage: hclust_min["avgDistance"],
-    });
+    if (data.length > 0) {
+      const { clusters, distances, order, clustersGivenK } = Object(hclust_min["clusterData"])({
+        data: data,
+        distance: distanceFnToCall,
+        linkage: hclust_min["avgDistance"],
+      });
 
-    // console.log(`order ${order}`);
-    const orderedSegments = order.map(i => {
-      const trueRowIdx = trueRow[i];
-      const segment = segmentList[trueRowIdx];
-      return [segment];
-    })
-    for (let key of Object.keys(grouped)) {
-      const rows = orderedSegments;
-      grouped[key] = {};
-      grouped[key].rows = rows;
+      // console.log(`order ${order}`);
+      const orderedSegments = order.map(i => {
+        const trueRowIdx = trueRow[i];
+        const segment = segmentList[trueRowIdx];
+        return [segment];
+      })
+      for (let key of Object.keys(grouped)) {
+        const rows = orderedSegments;
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
+    }
+    else {
+      for (let key of Object.keys(grouped)) {
+        const rows = segmentsToRows(grouped[key], {
+          prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        });
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
     }
   }
   else {

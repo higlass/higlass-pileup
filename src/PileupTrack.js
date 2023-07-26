@@ -889,20 +889,20 @@ varying vec4 vColor;
                     <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
                   </div>`;
 
-                  if (nearestSub && nearestSub.type) {
-                    const readNearestOp = `${nearestSub.length}${cigarTypeToText(nearestSub.type)}`;
-                    output += `<div class="track-mouseover-menu-table-item">
-                      <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
-                      <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
-                    </div>`;
-                  }
-                  else if (nearestSub && nearestSub.variant) {
-                    const readNearestOp = `${nearestSub.length} (${nearestSub.variant})`;
-                    output += `<div class="track-mouseover-menu-table-item">
-                      <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
-                      <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
-                    </div>`;
-                  }
+                  // if (nearestSub && nearestSub.type) {
+                  //   const readNearestOp = `${nearestSub.length}${cigarTypeToText(nearestSub.type)}`;
+                  //   output += `<div class="track-mouseover-menu-table-item">
+                  //     <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
+                  //     <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
+                  //   </div>`;
+                  // }
+                  // else if (nearestSub && nearestSub.variant) {
+                  //   const readNearestOp = `${nearestSub.length} (${nearestSub.variant})`;
+                  //   output += `<div class="track-mouseover-menu-table-item">
+                  //     <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
+                  //     <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
+                  //   </div>`;
+                  // }
 
                   output += `</div>`;
 
