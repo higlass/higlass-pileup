@@ -499,31 +499,39 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
-    // clusterExistingRange(range) {
-    //   console.log(`clustering ${this.id} | ${JSON.stringify(range)} | ${JSON.stringify(this.options)}`);
-
-    //   this.worker.then((tileFunctions) => {
-    //     tileFunctions
-    //       .clusterSegments(
-    //         this.dataFetcher.uid,
-    //         Object.values(this.fetchedTiles).map((x) => x.remoteId),
-    //         this._xScale.domain(),
-    //         this._xScale.range(),
-    //         this.position,
-    //         this.dimensions,
-    //         this.prevRows,
-    //         this.options,
-    //         range,
-    //       )
-    //       .then((toRender) => {
-    //         console.log(`toRender ${JSON.stringify(toRender)}`);
-    //       });
-    //   });
-    // }
-
     updateExistingGraphics() {
-      this.loadingText.text = 'Rendering...';
-      this.bc.postMessage({state: 'update_start', msg: this.loadingText.text,  uid: this.id});
+      if (!this.maxTileWidthReached) {
+        this.loadingText.text = 'Rendering...';
+        this.bc.postMessage({state: 'update_start', msg: this.loadingText.text,  uid: this.id});
+      } 
+      else {
+        this.worker.then((tileFunctions) => {
+          tileFunctions
+            .renderSegments(
+              this.dataFetcher.uid,
+              Object.values(this.fetchedTiles).map((x) => x.remoteId),
+              this._xScale.domain(),
+              this._xScale.range(),
+              this.position,
+              this.dimensions,
+              this.prevRows,
+              this.options,
+              this.cluster,
+            )
+            .then((toRender) => {
+              // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
+              if (
+                this.segmentGraphics
+              ) {
+                this.pMain.removeChild(this.segmentGraphics);
+              }
+              this.draw();
+              this.animate();
+              this.bc.postMessage({state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id});
+            });
+        });
+        return;
+      }
 
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
@@ -568,16 +576,29 @@ varying vec4 vColor;
             this.updateLoadingText();
 
             if (this.maxTileWidthReached) {
-              if (
-                this.segmentGraphics &&
-                this.options.collapseWhenMaxTileWidthReached
-              ) {
+              // if (
+              //   this.segmentGraphics &&
+              //   this.options.collapseWhenMaxTileWidthReached
+              // ) {
+              //   this.pMain.removeChild(this.segmentGraphics);
+              // }
+              if (this.segmentGraphics) {
+                this.segmentGraphics.clear();
                 this.pMain.removeChild(this.segmentGraphics);
+                this.pBorder.clear();
+              }
+              if (this.mouseOverGraphics) {
+                requestAnimationFrame(this.animate);
+                this.mouseOverGraphics.clear();
+                this.pMain.removeChild(this.mouseOverGraphics);
+                this.pBorder.clear();
               }
               this.loadingText.visible = false;
               this.draw();
               this.animate();
-              this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
+              requestAnimationFrame(this.animate);
+              this.bc.postMessage({state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id});
+
               return;
             }
 
@@ -680,7 +701,7 @@ varying vec4 vColor;
               this.cluster = null;
             }
 
-            this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
+            this.bc.postMessage({state: 'update_end', msg: 'Completed (renderSegments Promise fulfillment)',  uid: this.id});
           });
         // .catch(err => {
         //   // console.log('err:', err);
@@ -701,6 +722,8 @@ varying vec4 vColor;
     updateLoadingText() {
       this.loadingText.visible = true;
       this.loadingText.text = '';
+
+      if (this.maxTileWidthReached) return;
 
       if (!this.tilesetInfo) {
         this.loadingText.text = 'Fetching tileset info...';
@@ -732,11 +755,13 @@ varying vec4 vColor;
       //   .domain([0, this.prevRows.length])
       //   .range([0, this.dimensions[1]]);
       // HGC.utils.trackUtils.drawAxis(this, valueScale);
-      this.trackNotFoundText.text = 'Track not found.';
+      this.trackNotFoundText.text = 'Track not found';
       this.trackNotFoundText.visible = true;
     }
 
     getMouseOverHtml(trackX, trackYIn) {
+      if (this.maxTileWidthReached) return;
+
       // const trackY = this.valueScaleTransform.invert(track)
       this.mouseOverGraphics.clear();
       // Prevents 'stuck' read outlines when hovering quickly
@@ -1056,10 +1081,11 @@ varying vec4 vColor;
             });
           }
 
-          this.errorTextText = 'Zoom in to see details';
+          this.errorTextText = 'Zoom in to load fibers';
           this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
+          this.bc.postMessage({state: 'update_end', msg: 'Completed (calculateVisibleTiles)',  uid: this.id});
           return;
         } else {
           this.maxTileWidthReached = false;
