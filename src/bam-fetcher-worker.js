@@ -106,14 +106,20 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
   if (segment.strand === '+' && trackOptions && trackOptions.plusStrandColor) {
     segment.color = PILEUP_COLOR_IXS.PLUS_STRAND;
-  } else if (segment.strand === '-' && trackOptions && trackOptions.minusStrandColor) {
+  } 
+  else if (segment.strand === '-' && trackOptions && trackOptions.minusStrandColor) {
     segment.color = PILEUP_COLOR_IXS.MINUS_STRAND;
   }
 
   const includeClippingOps = true;
 
   segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
-  segment.methylationOffsets = getMethylationOffsets(segment, seq);
+  if (trackOptions.methylation) {
+    segment.methylationOffsets = getMethylationOffsets(segment, seq);
+  }
+  if (trackOptions.indexDHS) {
+    segment.color = PILEUP_COLOR_IXS.INDEX_DHS_BG;
+  }
 
   let fromClippingAdjustment = 0;
   let toClippingAdjustment = 0;
@@ -140,13 +146,13 @@ const findMates = (segments) => {
 
   Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
     {
-      if(segmentGroup.length === 2){
+      if (segmentGroup.length === 2){
         const read = segmentGroup[0];
         const mate = segmentGroup[1];
         read.mate_ids = [mate.id];
         mate.mate_ids = [read.id];
       }
-      else if(segmentGroup.length > 2){
+      else if (segmentGroup.length > 2){
         // It might be useful to distinguish reads from chimeric alignments in the future,
         // e.g., if we want to highlight read orientations of split reads. Not doing this for now.
         // See flags here: https://broadinstitute.github.io/picard/explain-flags.html
@@ -189,7 +195,7 @@ const prepareHighlightedReads = (segments, trackOptions) => {
   Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
     {
       // We are only highlighting insert size and pair orientation for normal (non chimeric reads)
-      if(segmentGroup.length === 2){
+      if (segmentGroup.length === 2){
 
         // Changes to read or mate will change the values in the original segments array (reference)
         const read = segmentGroup[0];
@@ -1033,7 +1039,7 @@ const renderSegments = (
   }
 
   // calculate the the rows of reads for each group
-  if (cluster) {
+  if (cluster && trackOptions.methylation) {
     // const chromName = cluster.range.left.chrom;
     const chromStart = cluster.range.left.start;
     const chromEnd = cluster.range.right.stop;
@@ -1326,7 +1332,12 @@ const renderSegments = (
         xLeft = from;
         xRight = to;
 
-        addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+        if (trackOptions && trackOptions.indexDHS) {
+          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
+        }
+        else {
+          addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+        }
 
         //
         // render sequence highlights
@@ -1447,6 +1458,7 @@ const renderSegments = (
               );
             }
           } else if (substitution.type === 'N') {
+            
             // deletions so we're going to draw a thinner line
             // across
             const xMiddle = (yTop + yBottom) / 2;
@@ -1457,37 +1469,45 @@ const renderSegments = (
 
             addRect(
               xLeft,
-              yTop,
-              xRight - xLeft,
-              yMidTop - yTop,
-              PILEUP_COLOR_IXS.N,
-            );
-            addRect(
-              xLeft,
               yMidBottom,
-              width,
-              yBottom - yMidBottom,
-              PILEUP_COLOR_IXS.N,
+              xRight - xLeft,
+              delWidth,
+              PILEUP_COLOR_IXS.BLACK,
             );
 
-            let currPos = xLeft;
-            const DASH_LENGTH = 6;
-            const DASH_SPACE = 4;
+            // addRect(
+            //   xLeft,
+            //   yTop,
+            //   xRight - xLeft,
+            //   yMidTop - yTop,
+            //   PILEUP_COLOR_IXS.N,
+            // );
+            // addRect(
+            //   xLeft,
+            //   yMidBottom,
+            //   width,
+            //   yBottom - yMidBottom,
+            //   PILEUP_COLOR_IXS.N,
+            // );
+
+            // let currPos = xLeft;
+            // const DASH_LENGTH = 6;
+            // const DASH_SPACE = 4;
 
             // draw dashes
-            while (currPos <= xRight) {
-              // make sure the last dash doesn't overrun
-              const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
+            // while (currPos <= xRight) {
+            //   // make sure the last dash doesn't overrun
+            //   const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
 
-              addRect(
-                currPos,
-                yMidTop,
-                dashLength,
-                delWidth,
-                PILEUP_COLOR_IXS.N,
-              );
-              currPos += DASH_LENGTH + DASH_SPACE;
-            }
+            //   addRect(
+            //     currPos,
+            //     yMidTop,
+            //     dashLength,
+            //     delWidth,
+            //     PILEUP_COLOR_IXS.N,
+            //   );
+            //   currPos += DASH_LENGTH + DASH_SPACE;
+            // }
             // allready handled above
           } else {
             addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);

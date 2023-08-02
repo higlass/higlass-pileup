@@ -182,12 +182,19 @@ const PileupTrack = (HGC, ...args) => {
       super(context, options);
       context.dataFetcher.track = this;
 
+      // console.log(`${this.id} | options ${JSON.stringify(options)}`);
+
       this.trackId = this.id;
       this.viewId = context.viewUid;
       this.originalHeight = context.definition.height;
       this.worker = worker;
       this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
+
+      // this.optionsDict = {};
+      // this.optionsDict[trackId] = options;
+
+      // this.backgroundColor = (options.methylation) ? '#1c1c1cff' : (options.indexDHS) '#00000000';
 
       this.maxTileWidthReached = false;
 
@@ -220,7 +227,9 @@ const PileupTrack = (HGC, ...args) => {
 
     // Some of the initialization code is factored out, so that we can 
     // reset/reinitialize if an option change requires it
-    externalInit(options){
+    externalInit(options) {
+
+      
 
       // we scale the entire view up until a certain point
       // at which point we redraw everything to get rid of
@@ -260,7 +269,7 @@ const PileupTrack = (HGC, ...args) => {
 
       this.cluster = null;
 
-      this.setUpShaderAndTextures();
+      this.setUpShaderAndTextures(options);
 
     }
 
@@ -282,12 +291,14 @@ const PileupTrack = (HGC, ...args) => {
       return color.hex();
     }
 
-    setUpShaderAndTextures() {
+    setUpShaderAndTextures(options) {
       // console.log(`setUpShaderAndTextures`);
+
+      // console.log(`setUpShaderAndTextures | ${this.id} | options ${JSON.stringify(options)}`);
 
       const colorDict = PILEUP_COLORS;
 
-      if (this.options && this.options.colorScale && this.options.colorScale.length == 6) {
+      if (options && options.colorScale && options.colorScale.length == 6) {
         [
           colorDict.A,
           colorDict.T,
@@ -295,9 +306,9 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.C,
           colorDict.N,
           colorDict.X,
-        ] = this.options.colorScale.map((x) => this.colorToArray(x));
+        ] = options.colorScale.map((x) => this.colorToArray(x));
       }
-      else if (this.options && this.options.colorScale && this.options.colorScale.length == 11) {
+      else if (options && options.colorScale && options.colorScale.length == 11) {
         [
           colorDict.A,
           colorDict.T,
@@ -310,8 +321,8 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.LL,
           colorDict.RR,
           colorDict.RL,
-        ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      } else if(this.options && this.options.colorScale){
+        ] = options.colorScale.map((x) => this.colorToArray(x));
+      } else if (options && options.colorScale){
         console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
       }
 
@@ -319,36 +330,40 @@ const PileupTrack = (HGC, ...args) => {
       // if (this.options && this.options.methylationTagColor) {
       //   colorDict.MM = this.colorToArray(this.options.methylationTagColor);
       // }
-      if (this.options && this.options.methylation && this.options.methylation.categories && this.options.methylation.colors) {
-        this.options.methylation.categories.forEach((category, index) => {
+      if (options && options.methylation && options.methylation.categories && options.methylation.colors) {
+        options.methylation.categories.forEach((category, index) => {
           if (category.unmodifiedBase === 'A' && category.code === 'a' && category.strand === '+') {
-            colorDict.MM_M6A_FOR = this.colorToArray(this.options.methylation.colors[index]);
+            colorDict.MM_M6A_FOR = this.colorToArray(options.methylation.colors[index]);
           }
           else if (category.unmodifiedBase === 'T' && category.code === 'a' && category.strand === '-') {
-            colorDict.MM_M6A_REV = this.colorToArray(this.options.methylation.colors[index]);
+            colorDict.MM_M6A_REV = this.colorToArray(options.methylation.colors[index]);
           }
           else if (category.unmodifiedBase === 'C' && category.code === 'm' && category.strand === '+') {
-            colorDict.MM_M5C_FOR = this.colorToArray(this.options.methylation.colors[index]);
+            colorDict.MM_M5C_FOR = this.colorToArray(options.methylation.colors[index]);
           }
           else if (category.unmodifiedBase === 'G' && category.code === 'm' && category.strand === '-') {
-            colorDict.MM_M5C_REV = this.colorToArray(this.options.methylation.colors[index]);
+            colorDict.MM_M5C_REV = this.colorToArray(options.methylation.colors[index]);
           }
         });
       }
 
-      if (this.options && this.options.methylation && this.options.methylation.highlights) {
-        const highlights = Object.keys(this.options.methylation.highlights);
+      if (options && options.methylation && options.methylation.highlights) {
+        const highlights = Object.keys(options.methylation.highlights);
         highlights.forEach((highlight) => {
-          colorDict[`HIGHLIGHTS_${highlight}`] = this.colorToArray(this.options.methylation.highlights[highlight]);
+          colorDict[`HIGHLIGHTS_${highlight}`] = this.colorToArray(options.methylation.highlights[highlight]);
         })
       }
 
-      if (this.options && typeof this.options.plusStrandColor !== 'undefined') {
-        colorDict.PLUS_STRAND = this.colorToArray(this.options.plusStrandColor);
+      if (options && typeof options.plusStrandColor !== 'undefined') {
+        colorDict.PLUS_STRAND = this.colorToArray(options.plusStrandColor);
       }
 
-      if (this.options && typeof this.options.minusStrandColor !== 'undefined') {
-        colorDict.MINUS_STRAND = this.colorToArray(this.options.minusStrandColor);
+      if (options && typeof options.minusStrandColor !== 'undefined') {
+        colorDict.MINUS_STRAND = this.colorToArray(options.minusStrandColor);
+      }
+
+      if (options && options.indexDHS && options.indexDHS.backgroundColor) {
+        colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
       }
 
       const colors = Object.values(colorDict);
@@ -405,6 +420,8 @@ varying vec4 vColor;
       if (data.state === 'request') {
         switch (data.msg) {
           case "refresh-layout":
+            if (!this.options.methylation) 
+              break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
               this.options,
@@ -421,6 +438,8 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
+            if (!this.options.methylation) 
+              break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
               this.options,
@@ -464,7 +483,7 @@ varying vec4 vColor;
         this.hideMousePosition = undefined;
       }
 
-      this.setUpShaderAndTextures();
+      this.setUpShaderAndTextures(options);
       // Reset the following, so the graphic actually updates
       this.previousTileIdsUsedForRendering = {};
 
@@ -896,23 +915,28 @@ varying vec4 vColor;
                     `;
                   }
 
-                  const readName = read.readName;
+                  const readNameLabel = (this.options.methylation) ? 'Name' : (this.options.indexDHS) ? 'Index DHS' : 'Name';
+                  const readNameValue = read.readName;
                   output += `<div class="track-mouseover-menu-table-item">
-                    <label for="readName" class="track-mouseover-menu-table-item-label">Name</label>
-                    <div name="readName" class="track-mouseover-menu-table-item-value">${readName}</div>
+                    <label for="readName" class="track-mouseover-menu-table-item-label">${readNameLabel}</label>
+                    <div name="readName" class="track-mouseover-menu-table-item-value">${readNameValue}</div>
                   </div>`;
 
-                  const readInterval = `${read.chrName}:${read.from - read.chrOffset}-${read.to - read.chrOffset - 1} (${read.strand})`;
+                  const readIntervalLabel = (this.options.methylation) ? 'Interval' : (this.options.indexDHS) ? 'Range' : 'Interval';
+                  let readIntervalValue = `${read.chrName}:${read.from - read.chrOffset}-${read.to - read.chrOffset - 1}`;
+                  readIntervalValue += (this.options.methylation) ? ` (${read.strand})` : '';
                   output += `<div class="track-mouseover-menu-table-item">
-                    <label for="readInterval" class="track-mouseover-menu-table-item-label">Interval</label>
-                    <div name="readInterval" class="track-mouseover-menu-table-item-value">${readInterval}</div>
+                    <label for="readInterval" class="track-mouseover-menu-table-item-label">${readIntervalLabel}</label>
+                    <div name="readInterval" class="track-mouseover-menu-table-item-value">${readIntervalValue}</div>
                   </div>`;
 
-                  const readLength = `${read.to - read.from}`;
-                  output += `<div class="track-mouseover-menu-table-item">
-                    <label for="readLength" class="track-mouseover-menu-table-item-label">Length</label>
-                    <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
-                  </div>`;
+                  if (this.options.methylation) {
+                    const readLength = `${read.to - read.from}`;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readLength" class="track-mouseover-menu-table-item-label">Length</label>
+                      <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
+                    </div>`;
+                  }
 
                   // if (nearestSub && nearestSub.type) {
                   //   const readNearestOp = `${nearestSub.length}${cigarTypeToText(nearestSub.type)}`;

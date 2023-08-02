@@ -30,6 +30,7 @@ export const PILEUP_COLORS = {
   HIGHLIGHTS_T: [0.95, 0.84, 0.84, 1], // T highlights
   HIGHLIGHTS_G: [0.95, 0.84, 0.84, 1], // G highlights
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
+  INDEX_DHS_BG: [0, 0, 0, 0], // Index DHS background default
 };
 
 export const PILEUP_COLOR_IXS = {};
