@@ -1,6 +1,6 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
+import { PILEUP_COLORS, indexDHSColors, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -296,7 +296,7 @@ const PileupTrack = (HGC, ...args) => {
 
       // console.log(`setUpShaderAndTextures | ${this.id} | options ${JSON.stringify(options)}`);
 
-      const colorDict = PILEUP_COLORS;
+      let colorDict = PILEUP_COLORS;
 
       if (options && options.colorScale && options.colorScale.length == 6) {
         [
@@ -362,8 +362,15 @@ const PileupTrack = (HGC, ...args) => {
         colorDict.MINUS_STRAND = this.colorToArray(options.minusStrandColor);
       }
 
-      if (options && options.indexDHS && options.indexDHS.backgroundColor) {
-        colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
+      //
+      // add Index DHS color table data, if available
+      //
+      if (options && options.indexDHS) { 
+        const indexDHSColorDict = indexDHSColors(options);
+        colorDict = {...colorDict, ...indexDHSColorDict};
+        if (options.indexDHS.backgroundColor) {
+          colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
+        }
       }
 
       const colors = Object.values(colorDict);
@@ -778,6 +785,98 @@ varying vec4 vColor;
       this.trackNotFoundText.visible = true;
     }
 
+    indexDHSElementCategory(colormap, rgb) {
+      return `<div style="display:inline-block; position:relative; top:-2px;">
+        <svg width="10" height="10">
+          <rect width="10" height="10" rx="2" ry="2" style="fill:rgb(${rgb});stroke:black;stroke-width:2;" />
+        </svg>
+        <span style="position:relative; top:1px; font-weight:600;">${colormap[rgb]}</span>
+      </div>`;
+    }
+
+    indexDHSElementCartoon(elementStart, elementEnd, rgb, subs, summitStart, summitEnd, elementId) {
+      let elementCartoon = '';
+      const elementCartoonWidth = 200;
+      const elementCartoonGeneHeight = 30;
+      const elementCartoonHeight = elementCartoonGeneHeight + 10;
+      const elementCartoonMiddle = elementCartoonHeight / 2;
+      function pos2pixel(pos) {
+        return ((pos - elementStart) / ((elementEnd - elementStart) * 1.0)) * elementCartoonWidth;
+      }
+      let blockCount = 0;
+      let blockStarts = [];
+      let blockSizes = [];
+      subs.forEach((s, i) => {
+        if (s.type === 'M') {
+          blockCount++;
+          blockStarts.push(s.pos);
+          blockSizes.push(s.length);
+        }
+      });
+      if (blockCount > 0) {
+        elementCartoon += `<svg width="${elementCartoonWidth}" height="${elementCartoonHeight}">
+          <style type="text/css">
+            .ticks {stroke:rgb(${rgb});stroke-width:1px;fill:none;}
+            .gene {stroke:rgb(${rgb});stroke-width:1px;fill:none;}
+            .translate { fill:rgb(${rgb});fill-opacity:1;}
+            .exon { fill:rgb(${rgb});fill-opacity:1;}
+            .score { fill:rgb(${rgb});fill-opacity:1;font:bold 12px sans-serif;}
+            .id { fill:rgb(${rgb});fill-opacity:1;font:bold 12px sans-serif;}
+          </style>
+          <defs>
+            <path id="ft" class="ticks" d="m -3 -3  l 3 3  l -3 3" />
+            <path id="rt" class="ticks" d="m 3 -3  l -3 3  l 3 3" />
+          </defs>
+        `;
+        const isElementBarPlotLike = true;
+        const ecStart = pos2pixel(elementStart);
+        const ecEnd = pos2pixel(elementEnd);
+        elementCartoon += `<line class="gene" x1=${ecStart} x2=${ecEnd} y1=${elementCartoonMiddle} y2=${elementCartoonMiddle} />`;
+        const ecThickStart = pos2pixel(summitStart);
+        const ecThickEnd = pos2pixel(summitEnd);
+        const ecThickY = elementCartoonMiddle - elementCartoonGeneHeight / 4;
+        const ecThickHeight = elementCartoonGeneHeight / 2;
+        let ecThickWidth = ecThickEnd - ecThickStart;
+        if (isElementBarPlotLike) {
+          ecThickWidth = ecThickWidth !== 1 ? 1 : ecThickWidth;
+        }
+        let realIdTextAnchor = '';
+        if (ecThickStart < 0.15 * elementCartoonWidth) {
+          realIdTextAnchor = 'start';
+        } else if (
+          ecThickStart >= 0.15 * elementCartoonWidth &&
+          ecThickStart <= 0.85 * elementCartoonWidth
+        ) {
+          realIdTextAnchor = 'middle';
+        } else {
+          realIdTextAnchor = 'end';
+        }
+        elementCartoon += `<rect class="translate" x=${ecThickStart} y=${ecThickY} width=${ecThickWidth} height=${ecThickHeight} />`;
+        const ecLabelDy = '-0.25em';
+        elementCartoon += `<text class="id" text-anchor="${realIdTextAnchor}" x=${ecThickStart} y=${ecThickY} dy=${ecLabelDy}>${elementId}</text>`;
+
+        for (let i = 0; i < blockCount; i++) {
+          let ecExonStart = pos2pixel(elementStart + +blockStarts[i]);
+          const ecExonY = elementCartoonMiddle - elementCartoonGeneHeight / 8;
+          let ecExonWidth = pos2pixel(elementStart + +blockSizes[i]);
+          const ecExonHeight = elementCartoonGeneHeight / 4;
+          if (isElementBarPlotLike) {
+            if (i === 0) {
+              ecExonStart = ecStart;
+              ecExonWidth = ecStart + 1;
+            } else if (i === blockCount - 1) {
+              ecExonStart = ecEnd - 1;
+              ecExonWidth = ecEnd;
+            }
+          }
+          elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
+        }
+
+        elementCartoon += '</svg>';
+      }
+      return elementCartoon;
+    }
+
     getMouseOverHtml(trackX, trackYIn) {
       if (this.maxTileWidthReached) return;
 
@@ -935,6 +1034,42 @@ varying vec4 vColor;
                     output += `<div class="track-mouseover-menu-table-item">
                       <label for="readLength" class="track-mouseover-menu-table-item-label">Length</label>
                       <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
+                    </div>`;
+                  }
+
+                  if (this.options.indexDHS) {
+                    const metadata = read.metadata;
+                    // const realId = metadata.dhs.id;
+                    const elementSummit = `${read.chrName}:${parseInt(metadata.summit.start + (metadata.summit.end - metadata.summit.start)/2)}`;
+                    const elementScorePrecision = 4;
+                    const elementScore = Number.parseFloat(metadata.dhs.score).toPrecision(elementScorePrecision);
+                    const elementBiosampleCount = Number.parseInt(metadata.dhs.n);
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readSummit" class="track-mouseover-menu-table-item-label">Summit</label>
+                      <div name="readSummit" class="track-mouseover-menu-table-item-value">${elementSummit}</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readScore" class="track-mouseover-menu-table-item-label">Score</label>
+                      <div name="readScore" class="track-mouseover-menu-table-item-value">${elementScore}</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readSamples" class="track-mouseover-menu-table-item-label">Samples</label>
+                      <div name="readSamples" class="track-mouseover-menu-table-item-value">Found in <span style="font-weight: 900; padding-left:5px; padding-right:5px;">${elementBiosampleCount}</span> / ${this.options.indexDHS.biosampleCount} biosamples</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readCategory" class="track-mouseover-menu-table-item-label">Category</label>
+                      <div name="readCategory" class="track-mouseover-menu-table-item-value">${this.indexDHSElementCategory(this.options.indexDHS.itemRGBMap, metadata.rgb)}</div>
+                    </div>`;
+
+                    const indexDHSStart = read.from - read.chrOffset;
+                    const indexDHSEnd = read.to - read.chrOffset - 1;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readStructure" class="track-mouseover-menu-table-item-label">Structure</label>
+                      <div name="readStructure" class="track-mouseover-menu-table-item-value track-mouseover-menu-table-item-value-svg">${this.indexDHSElementCartoon(indexDHSStart, indexDHSEnd, metadata.rgb, read.substitutions, metadata.summit.start, metadata.summit.end, metadata.dhs.id)}</div>
                     </div>`;
                   }
 

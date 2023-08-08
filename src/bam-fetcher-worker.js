@@ -3,9 +3,9 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylationOffsets } from './bam-utils';
+import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylationOffsets, indexDHSColors } from './bam-utils';
 import LRU from 'lru-cache';
-import { PILEUP_COLOR_IXS } from './bam-utils';
+import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 // import BAMDataFetcher from './bam-fetcher';
 import { clusterData, euclideanDistance, jaccardDistance, avgDistance } from '@greenelab/hclust';
@@ -117,7 +117,18 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   if (trackOptions.methylation) {
     segment.methylationOffsets = getMethylationOffsets(segment, seq);
   }
+
   if (trackOptions.indexDHS) {
+    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
+    segment.indexDHSColors = indexDHSColors(trackOptions);
+
+    const newPileupColorIdxs = {};
+    Object.keys(segment.indexDHSColors).map((x, i) => {
+      newPileupColorIdxs[x] = i;
+      return null;
+    })
+    replaceColorIdxs(newPileupColorIdxs);
     segment.color = PILEUP_COLOR_IXS.INDEX_DHS_BG;
   }
 
@@ -1418,6 +1429,15 @@ const renderSegments = (
         if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
           return;
         }
+
+        //
+        // apply color to segment, if available
+        //
+        const indexDHSMetadata = (trackOptions.indexDHS) ? segment.metadata : {};
+        let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
+        if (trackOptions.indexDHS) {
+          defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
+        }
         
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
@@ -1454,7 +1474,7 @@ const renderSegments = (
                 yTop,
                 stripeWidth,
                 height,
-                PILEUP_COLOR_IXS.BLACK,
+                defaultSegmentColor,
               );
             }
           } else if (substitution.type === 'N') {
@@ -1472,7 +1492,7 @@ const renderSegments = (
               yMidBottom,
               xRight - xLeft,
               delWidth,
-              PILEUP_COLOR_IXS.BLACK,
+              defaultSegmentColor,
             );
 
             // addRect(
@@ -1510,8 +1530,27 @@ const renderSegments = (
             // }
             // allready handled above
           } else {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
+            const indexDHSElementHeight = yScale.bandwidth() * 0.5;
+            const indexDHSYTop = yTop + ((yBottom - yTop) * 0.25);
+            addRect(xLeft, indexDHSYTop, width, indexDHSElementHeight, defaultSegmentColor);
           }
+        }
+        //
+        // draw Index DHS summit
+        //
+        if (trackOptions && trackOptions.indexDHS) {
+          // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+          const indexDHSElementStart = segment.from - segment.chrOffset;
+          const indexDHSSummitStart = indexDHSMetadata.summit.start;
+          const indexDHSSummitEnd = indexDHSMetadata.summit.end;
+          const indexDHSSummitLength = indexDHSSummitEnd - indexDHSSummitStart;
+          const indexDHSSummitPos = indexDHSSummitStart - indexDHSElementStart;
+          const indexDHSXLeft = xScale(segment.from + indexDHSSummitPos);
+          const indexDHSYTop = yTop;
+          const indexDHSWidth = Math.max(1, xScale(indexDHSSummitLength) - xScale(0));
+          const indexDHSHeight = height;
+          // const indexDHSXRight = indexDHSXLeft + indexDHSWidth;
+          addRect(indexDHSXLeft, indexDHSYTop, indexDHSWidth, indexDHSHeight, defaultSegmentColor);
         }
       });
     });

@@ -32080,15 +32080,34 @@ const PILEUP_COLORS = {
   HIGHLIGHTS_T: [0.95, 0.84, 0.84, 1], // T highlights
   HIGHLIGHTS_G: [0.95, 0.84, 0.84, 1], // G highlights
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
-  INDEX_DHS_BG: [0, 0, 0, 0], // Index DHS background default
+  INDEX_DHS_BG: [0, 0, 0, 0],
 };
 
-const PILEUP_COLOR_IXS = {};
+let PILEUP_COLOR_IXS = {};
 Object.keys(PILEUP_COLORS).map((x, i) => {
   PILEUP_COLOR_IXS[x] = i;
-
   return null;
 });
+
+function replaceColorIdxs(newColorIdxs) {
+  PILEUP_COLOR_IXS = newColorIdxs;
+}
+
+const indexDHSColors = (options) => {
+  if (!options.indexDHS) return {};
+  // console.log(`options ${JSON.stringify(options)}`);
+  // console.log(`options.indexDHS.itemRGBMap ${JSON.stringify(options.indexDHS.itemRGBMap)}`);]
+  const colorTable = {};
+  colorTable['INDEX_DHS_BG'] = [0, 0, 0, 0], // Index DHS background default
+  Object.entries(options.indexDHS.itemRGBMap).map((o) => {
+    const k = o[0];
+    // const v = o[1];
+    const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`INDEX_DHS_${k}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify(colorTable)}`);
+  return {...PILEUP_COLORS, ...colorTable};
+};
 
 const cigarTypeToText = (type) => {
   if (type === 'D') {
@@ -33460,7 +33479,18 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   if (trackOptions.methylation) {
     segment.methylationOffsets = getMethylationOffsets(segment, seq);
   }
+
   if (trackOptions.indexDHS) {
+    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
+    segment.indexDHSColors = indexDHSColors(trackOptions);
+
+    const newPileupColorIdxs = {};
+    Object.keys(segment.indexDHSColors).map((x, i) => {
+      newPileupColorIdxs[x] = i;
+      return null;
+    })
+    replaceColorIdxs(newPileupColorIdxs);
     segment.color = PILEUP_COLOR_IXS.INDEX_DHS_BG;
   }
 
@@ -34761,6 +34791,15 @@ const renderSegments = (
         if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
           return;
         }
+
+        //
+        // apply color to segment, if available
+        //
+        const indexDHSMetadata = (trackOptions.indexDHS) ? segment.metadata : {};
+        let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
+        if (trackOptions.indexDHS) {
+          defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
+        }
         
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
@@ -34797,7 +34836,7 @@ const renderSegments = (
                 yTop,
                 stripeWidth,
                 height,
-                PILEUP_COLOR_IXS.BLACK,
+                defaultSegmentColor,
               );
             }
           } else if (substitution.type === 'N') {
@@ -34815,7 +34854,7 @@ const renderSegments = (
               yMidBottom,
               xRight - xLeft,
               delWidth,
-              PILEUP_COLOR_IXS.BLACK,
+              defaultSegmentColor,
             );
 
             // addRect(
@@ -34853,8 +34892,27 @@ const renderSegments = (
             // }
             // allready handled above
           } else {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
+            const indexDHSElementHeight = yScale.bandwidth() * 0.5;
+            const indexDHSYTop = yTop + ((yBottom - yTop) * 0.25);
+            addRect(xLeft, indexDHSYTop, width, indexDHSElementHeight, defaultSegmentColor);
           }
+        }
+        //
+        // draw Index DHS summit
+        //
+        if (trackOptions && trackOptions.indexDHS) {
+          // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+          const indexDHSElementStart = segment.from - segment.chrOffset;
+          const indexDHSSummitStart = indexDHSMetadata.summit.start;
+          const indexDHSSummitEnd = indexDHSMetadata.summit.end;
+          const indexDHSSummitLength = indexDHSSummitEnd - indexDHSSummitStart;
+          const indexDHSSummitPos = indexDHSSummitStart - indexDHSElementStart;
+          const indexDHSXLeft = xScale(segment.from + indexDHSSummitPos);
+          const indexDHSYTop = yTop;
+          const indexDHSWidth = Math.max(1, xScale(indexDHSSummitLength) - xScale(0));
+          const indexDHSHeight = height;
+          // const indexDHSXRight = indexDHSXLeft + indexDHSWidth;
+          addRect(indexDHSXLeft, indexDHSYTop, indexDHSWidth, indexDHSHeight, defaultSegmentColor);
         }
       });
     });

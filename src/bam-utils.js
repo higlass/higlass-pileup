@@ -30,15 +30,34 @@ export const PILEUP_COLORS = {
   HIGHLIGHTS_T: [0.95, 0.84, 0.84, 1], // T highlights
   HIGHLIGHTS_G: [0.95, 0.84, 0.84, 1], // G highlights
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
-  INDEX_DHS_BG: [0, 0, 0, 0], // Index DHS background default
+  INDEX_DHS_BG: [0, 0, 0, 0],
 };
 
-export const PILEUP_COLOR_IXS = {};
+export let PILEUP_COLOR_IXS = {};
 Object.keys(PILEUP_COLORS).map((x, i) => {
   PILEUP_COLOR_IXS[x] = i;
-
   return null;
 });
+
+export function replaceColorIdxs(newColorIdxs) {
+  PILEUP_COLOR_IXS = newColorIdxs;
+}
+
+export const indexDHSColors = (options) => {
+  if (!options.indexDHS) return {};
+  // console.log(`options ${JSON.stringify(options)}`);
+  // console.log(`options.indexDHS.itemRGBMap ${JSON.stringify(options.indexDHS.itemRGBMap)}`);]
+  const colorTable = {};
+  colorTable['INDEX_DHS_BG'] = [0, 0, 0, 0], // Index DHS background default
+  Object.entries(options.indexDHS.itemRGBMap).map((o) => {
+    const k = o[0];
+    // const v = o[1];
+    const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`INDEX_DHS_${k}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify(colorTable)}`);
+  return {...PILEUP_COLORS, ...colorTable};
+};
 
 export const cigarTypeToText = (type) => {
   if (type === 'D') {
