@@ -3,7 +3,7 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylationOffsets, indexDHSColors } from './bam-utils';
+import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylationOffsets, hexToRGBRawTriplet, indexDHSColors } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
@@ -945,6 +945,262 @@ function isEmpty(obj) {
   return true;
 }
 
+const exportSegmentsAsBED12 = (
+  uid,
+  tileIds,
+  domain,
+  scaleRange,
+  position,
+  dimensions,
+  prevRows,
+  trackOptions,
+  bed12ExportDataObj,
+) => {
+  const allSegments = {};
+
+  const bed12Elements = [];
+
+  for (const tileId of tileIds) {
+    const tileValue = tileValues.get(`${uid}.${tileId}`);
+
+    if (tileValue.error) {
+      throw new Error(tileValue.error);
+    }
+
+    for (const segment of tileValue) {
+      allSegments[segment.id] = segment;
+    }
+  }
+
+  // console.log(`allSegments ${JSON.stringify(allSegments)}`);
+
+  let segmentList = Object.values(allSegments);
+
+  if (trackOptions.minMappingQuality > 0) {
+    segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
+  }
+
+  let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
+
+  for (let i = 0; i < segmentList.length; i++) {
+    if (segmentList[i].from < minPos) {
+      minPos = segmentList[i].from;
+    }
+
+    if (segmentList[i].to > maxPos) {
+      maxPos = segmentList[i].to;
+    }
+  }
+  let grouped = null;
+
+  // group by some attribute or don't
+  if (groupBy) {
+    let groupByOption = trackOptions && trackOptions.groupBy;
+    groupByOption = groupByOption ? groupByOption : null;
+    grouped = groupBy(segmentList, groupByOption);
+  } else {
+    grouped = { null: segmentList };
+  }
+
+  // console.log(`bed12ExportDataObj ${JSON.stringify(bed12ExportDataObj)}`);
+  // console.log(`grouped ${JSON.stringify(grouped)}`);
+
+  if (bed12ExportDataObj && trackOptions.methylation) {
+    const chromName = bed12ExportDataObj.range.left.chrom;
+    const chromStart = bed12ExportDataObj.range.left.start;
+    const chromEnd = bed12ExportDataObj.range.right.stop;
+    const distanceFn = bed12ExportDataObj.distanceFn;
+    let distanceFnToCall = null;
+    const eventVecLen = chromEnd - chromStart;
+    const nReads = segmentList.length;
+    const data = new Array();
+    let allowedRowIdx = 0;
+    const trueRow = {};
+
+    switch (distanceFn) {
+      case 'Euclidean':
+        distanceFnToCall = euclideanDistance;
+        for (let i = 0; i < nReads; ++i) {
+          const segment = segmentList[i];
+          const segmentLength = segment.to - segment.from;
+          const eventVec = new Array(eventVecLen).fill(-255);
+          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          // clean up clustering
+          for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
+            if (coverIdx === eventVecLen) break;
+            eventVec[coverIdx] = 0;
+          }
+          const mos = segment.methylationOffsets;
+          // a read may end upstream or start downstream of clusterDataObj.range bounds 
+          // but still be in segmentList[], so we filter it
+          let eventVecNotModified = true; 
+          mos.forEach((mo) => {
+            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+                if (modOffset >= 0 && modOffset < eventVecLen) {
+                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value between 0 and 255, presumably
+                  eventVecNotModified = false;
+                }
+              })
+            }
+          })
+          if (!eventVecNotModified) {
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
+          }
+        }
+        break;
+      case 'Jaccard':
+        distanceFnToCall = jaccardDistance;
+        for (let i = 0; i < nReads; ++i) {
+          const segment = segmentList[i];
+          const segmentLength = segment.to - segment.from;
+          const eventVec = new Array(eventVecLen).fill(0);
+          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          const mos = segment.methylationOffsets;
+          // a read may end upstream or start downstream of clusterDataObj.range bounds 
+          // but still be in segmentList[], so we filter it
+          let eventVecNotModified = true; 
+          mos.forEach((mo) => {
+            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+                if (modOffset >= 0 && modOffset < eventVecLen) {
+                  eventVec[modOffset] = 1;
+                  eventVecNotModified = false;
+                }
+              })
+            }
+          })
+          if (!eventVecNotModified) {
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
+          }
+        }
+        break;
+      default:
+        throw new Error("Render cluster data object is missing distance function");
+        break;
+    }
+
+    if (data.length > 0) {
+      const { clusters, distances, order, clustersGivenK } = clusterData({
+        data: data,
+        distance: distanceFnToCall,
+        linkage: avgDistance,
+      });
+
+      // console.log(`order ${order}`);
+      const orderedSegments = order.map(i => {
+        const trueRowIdx = trueRow[i];
+        const segment = segmentList[trueRowIdx];
+        return [segment];
+      })
+      for (let key of Object.keys(grouped)) {
+        const rows = orderedSegments;
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
+    }
+    else {
+      for (let key of Object.keys(grouped)) {
+        const rows = segmentsToRows(grouped[key], {
+          prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        });
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
+    }
+
+    const totalRows = Object.values(grouped)
+      .map((x) => x.rows.length)
+      .reduce((a, b) => a + b, 0);
+
+    for (const group of Object.values(grouped)) {
+      const { rows } = group;
+
+      rows.map((row, i) => {
+        row.map((segment, j) => {
+          const showM5CForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC+');
+          const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
+          const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
+          const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
+          const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
+          const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] : 255;
+          let mmSegmentColor = null;
+          //
+          // UCSC BED format
+          // https://genome.ucsc.edu/FAQ/FAQformat.html#format1
+          //
+          const newBed12Element = {
+            'chrom': chromName,
+            'chromStart': segment.start - 1, // zero-based index
+            'chromEnd': segment.start + (segment.to - segment.from) - 1, // zero-based index
+            'name': `${bed12ExportDataObj.name}__${segment.readName}`,
+            'score': 1000,
+            'strand': segment.strand,
+            'thickStart': segment.start - 1, // zero-based index
+            'thickEnd': segment.start + (segment.to - segment.from) - 1, // zero-based index
+            'itemRgb': hexToRGBRawTriplet(bed12ExportDataObj.colors[0]),
+            'blockCount': 0,
+            'blockSizes': [],
+            'blockStarts': [],
+          };
+          for (const mo of segment.methylationOffsets) {
+            const offsets = mo.offsets;
+            const probabilities = mo.probabilities;
+            const offsetLength = 1;
+            switch (mo.unmodifiedBase) {
+              case 'C':
+                if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
+                  mmSegmentColor = null; // PILEUP_COLOR_IXS.MM_M5C_FOR;
+                }
+                break;
+              case 'G':
+                if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
+                  mmSegmentColor = null; // PILEUP_COLOR_IXS.MM_M5C_REV;
+                }
+                break;
+              case 'A':
+                if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
+                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+                }
+                break
+              case 'T':
+                if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
+                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
+                }
+                break;
+              default:
+                break;
+            }
+            if (mmSegmentColor) {
+              let offsetIdx = 0;
+              for (const offset of offsets) {
+                const probability = probabilities[offsetIdx];
+                if (probability >= minProbabilityThreshold && probability <= maxProbabilityThreshold) {
+                  newBed12Element.blockCount++;
+                  newBed12Element.blockSizes.push(offsetLength);
+                  newBed12Element.blockStarts.push(offset - 1); // zero-based index
+                }
+                offsetIdx++;
+              }
+              newBed12Element.blockStarts.sort((a, b) => a - b); // can do this because blockSizes are all the same size
+            }
+          };
+          bed12Elements.push(newBed12Element);
+        });
+      });
+    }
+  }
+
+  const objData = {
+    // rows: grouped,
+    uid: bed12ExportDataObj.uid,
+    bed12Elements: bed12Elements,
+  }
+  return objData;
+};
+
 const renderSegments = (
   uid,
   tileIds,
@@ -954,7 +1210,7 @@ const renderSegments = (
   dimensions,
   prevRows,
   trackOptions,
-  cluster,
+  clusterDataObj,
 ) => {
 
   const allSegments = {};
@@ -1008,7 +1264,7 @@ const renderSegments = (
 
   prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !cluster) {
+  if (areMatesRequired(trackOptions) && !clusterDataObj) {
     // At this point reads are colored correctly, but we only want to align those reads that
     // are within the visible tiles - not mates that are far away, as this can mess up the alignment
     let tileMinPos = Number.MAX_VALUE;
@@ -1050,11 +1306,11 @@ const renderSegments = (
   }
 
   // calculate the the rows of reads for each group
-  if (cluster && trackOptions.methylation) {
-    // const chromName = cluster.range.left.chrom;
-    const chromStart = cluster.range.left.start;
-    const chromEnd = cluster.range.right.stop;
-    const distanceFn = cluster.distanceFn;
+  if (clusterDataObj && trackOptions.methylation) {
+    // const chromName = clusterDataObj.range.left.chrom;
+    const chromStart = clusterDataObj.range.left.start;
+    const chromEnd = clusterDataObj.range.right.stop;
+    const distanceFn = clusterDataObj.distanceFn;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
@@ -1076,7 +1332,7 @@ const renderSegments = (
             eventVec[coverIdx] = 0;
           }
           const mos = segment.methylationOffsets;
-          // a read may end upstream or start downstream of cluster.range bounds 
+          // a read may end upstream or start downstream of clusterDataObj.range bounds 
           // but still be in segmentList[], so we filter it
           let eventVecNotModified = true; 
           mos.forEach((mo) => {
@@ -1103,7 +1359,7 @@ const renderSegments = (
           const eventVec = new Array(eventVecLen).fill(0);
           const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
           const mos = segment.methylationOffsets;
-          // a read may end upstream or start downstream of cluster.range bounds 
+          // a read may end upstream or start downstream of clusterDataObj.range bounds 
           // but still be in segmentList[], so we filter it
           let eventVecNotModified = true; 
           mos.forEach((mo) => {
@@ -1123,7 +1379,7 @@ const renderSegments = (
         }
         break;
       default:
-        throw new Error("Render cluster object is missing distance function");
+        throw new Error("Render cluster data object is missing distance function");
         break;
     }
 
@@ -1562,6 +1818,7 @@ const renderSegments = (
 
   const objData = {
     rows: grouped,
+    tileIds: tileIds,
     coverage: allReadCounts,
     coverageSamplingDistance,
     positionsBuffer,
@@ -1583,6 +1840,7 @@ const tileFunctions = {
   fetchTilesDebounced,
   tile,
   renderSegments,
+  exportSegmentsAsBED12,
 };
 
 expose(tileFunctions);

@@ -267,7 +267,8 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      this.cluster = null;
+      this.clusterData = null;
+      this.bed12ExportData = null;
 
       this.setUpShaderAndTextures(options);
 
@@ -459,13 +460,27 @@ varying vec4 vColor;
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
-            this.cluster = {
+            this.clusterData = {
               range: data.range, 
               distanceFn: data.distanceFn,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
-            break
+            break;
+          case "bed12-layout":
+            if (!this.options.methylation) 
+              break;
+            const bed12Name = `${this.options.methylation.group}/${this.options.methylation.set}`;
+            const bed12Colors = this.options.methylation.colors;
+            this.bed12ExportData = {
+              range: data.range,
+              distanceFn: data.distanceFn,
+              uid: this.id,
+              name: bed12Name,
+              colors: bed12Colors,
+            };
+            this.exportBED12Layout();
+            break;
           default:
             break;
         }
@@ -525,6 +540,47 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
+    exportBED12Layout() {
+      console.log(`exportBED12Layout called`);
+      this.bc.postMessage({
+        state: 'export_bed12_start',
+        msg: 'Begin BED12 export worker processing',
+        uid: this.id,
+      });
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportSegmentsAsBED12(
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.bed12ExportData,
+          )
+          .then((toExport) => {
+            // console.log(`toExport ${JSON.stringify(toExport)}`);
+
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            this.bc.postMessage({
+              state: 'export_bed12_end',
+              msg: 'Completed (exportBED12Layout Promise fulfillment)', 
+              uid: this.id,
+              data: toExport,
+            });
+          })
+      });
+    }
+
     updateExistingGraphics() {
       if (!this.maxTileWidthReached) {
         this.loadingText.text = 'Rendering...';
@@ -542,7 +598,7 @@ varying vec4 vColor;
               this.dimensions,
               this.prevRows,
               this.options,
-              this.cluster,
+              this.clusterData,
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
@@ -553,7 +609,10 @@ varying vec4 vColor;
               }
               this.draw();
               this.animate();
-              this.bc.postMessage({state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id});
+
+              const msg = {state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id};
+              // console.log(`${JSON.stringify(msg)}`);
+              this.bc.postMessage(msg);
             });
         });
         return;
@@ -589,10 +648,10 @@ varying vec4 vColor;
             this.dimensions,
             this.prevRows,
             this.options,
-            this.cluster,
+            this.clusterData,
           )
           .then((toRender) => {
-            // console.log(`toRender ${JSON.stringify(toRender)}`);
+            // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
 
             this.loadingText.visible = false;
 
@@ -623,7 +682,10 @@ varying vec4 vColor;
               this.draw();
               this.animate();
               requestAnimationFrame(this.animate);
-              this.bc.postMessage({state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id});
+              
+              const msg = {state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id};
+              // console.log(`${JSON.stringify(msg)}`);
+              this.bc.postMessage(msg);
 
               return;
             }
@@ -723,11 +785,17 @@ varying vec4 vColor;
             this.draw();
             this.animate();
 
-            if (this.cluster) {
-              this.cluster = null;
+            if (this.clusterData) {
+              this.clusterData = null;
             }
 
-            this.bc.postMessage({state: 'update_end', msg: 'Completed (renderSegments Promise fulfillment)',  uid: this.id});
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            const msg = {state: 'update_end', msg: 'Completed (renderSegments Promise fulfillment)',  uid: this.id};
+            // console.log(`${JSON.stringify(msg)}`);
+            this.bc.postMessage(msg);
           });
         // .catch(err => {
         //   // console.log('err:', err);
@@ -1244,7 +1312,11 @@ varying vec4 vColor;
           this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
-          this.bc.postMessage({state: 'update_end', msg: 'Completed (calculateVisibleTiles)',  uid: this.id});
+
+          const msg = {state: 'update_end', msg: 'Completed (calculateVisibleTiles)',  uid: this.id};
+          // console.log(`${JSON.stringify(msg)}`);
+          this.bc.postMessage(msg);
+
           return;
         } else {
           this.maxTileWidthReached = false;
