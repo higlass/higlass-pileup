@@ -1404,6 +1404,8 @@ varying vec4 vColor;
     }
 
     exportSVG() {
+      // console.log(`PileupTrack.exportSVG() A1`);
+
       let track = null;
       let base = null;
 
@@ -1414,22 +1416,32 @@ varying vec4 vColor;
         track = base;
       }
 
+      // console.log(`PileupTrack.exportSVG() A2`);
+
       const output = document.createElement('g');
       track.appendChild(output);
+
+      // console.log(`PileupTrack.exportSVG() A3`);
 
       output.setAttribute(
         'transform',
         `translate(${this.pMain.position.x},${this.pMain.position.y}) scale(${this.pMain.scale.x},${this.pMain.scale.y})`,
       );
 
+      // console.log(`PileupTrack.exportSVG() A4`);
+
       const gSegment = document.createElement('g');
       output.appendChild(gSegment);
+
+      // console.log(`PileupTrack.exportSVG() A5`);
 
       if (this.segmentGraphics) {
         const b64string = HGC.services.pixiRenderer.plugins.extract.base64(
           // this.segmentGraphics, 'image/png', 1,
           this.pMain.parent.parent,
         );
+
+        // console.log(`PileupTrack.exportSVG() A6`);
 
         // const xPositions = this.positions.filter((x,i) => i%2 == 0);
         // let minX = Number.MAX_SAFE_INTEGER;
@@ -1443,6 +1455,8 @@ varying vec4 vColor;
 
         gImage.setAttribute('transform', `translate(0,0)`);
 
+        console.log(`PileupTrack.exportSVG() A7`);
+
         const image = document.createElement('image');
         image.setAttributeNS(
           'http://www.w3.org/1999/xlink',
@@ -1452,7 +1466,12 @@ varying vec4 vColor;
         gImage.appendChild(image);
         gSegment.appendChild(gImage);
 
+        // console.log(`PileupTrack.exportSVG() A8`);
+
         // gSegment.appendChild(image);
+      }
+      else {
+        // console.log(`PileupTrack.exportSVG() B1`);
       }
       // if (this.positions) {
       //   // short for colorIndex
@@ -1484,6 +1503,8 @@ varying vec4 vColor;
       //     ci += 24;
       //   }
       // }
+
+      // console.log(`PileupTrack.exportSVG() C1`);
 
       return [base, base];
     }
