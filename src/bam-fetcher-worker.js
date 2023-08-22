@@ -1524,6 +1524,8 @@ const renderSegments = (
 
     groupCounter += 1;
   }
+  // background
+  addRect(0, 0, dimensions[0], dimensions[1], PILEUP_COLOR_IXS.WHITE);
 
   if (trackOptions.showCoverage) {
     const maxCoverageSamples = 10000;

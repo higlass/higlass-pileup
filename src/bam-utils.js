@@ -17,6 +17,7 @@ export const PILEUP_COLORS = {
   LL: [0.15, 0.75, 0.75, 1], // cyan for Left-Left reads (see https://software.broadinstitute.org/software/igv/interpreting_pair_orientations)
   RR: [0.18, 0.24, 0.8, 1], // darker blue for Right-Right reads
   RL: [0, 0.5, 0.02, 1], // darker green for Right-Left reads
+  WHITE: [1, 1, 1, 1],
   BLACK: [0, 0, 0, 1],
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
