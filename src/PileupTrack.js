@@ -1124,11 +1124,6 @@ varying vec4 vColor;
                     </div>`;
 
                     output += `<div class="track-mouseover-menu-table-item">
-                      <label for="readSamples" class="track-mouseover-menu-table-item-label">Samples</label>
-                      <div name="readSamples" class="track-mouseover-menu-table-item-value">Found in <span style="font-weight: 900; padding-left:5px; padding-right:5px;">${elementBiosampleCount}</span> / ${this.options.indexDHS.biosampleCount} biosamples</div>
-                    </div>`;
-
-                    output += `<div class="track-mouseover-menu-table-item">
                       <label for="readCategory" class="track-mouseover-menu-table-item-label">Category</label>
                       <div name="readCategory" class="track-mouseover-menu-table-item-value">${this.indexDHSElementCategory(this.options.indexDHS.itemRGBMap, metadata.rgb)}</div>
                     </div>`;
@@ -1138,6 +1133,11 @@ varying vec4 vColor;
                     output += `<div class="track-mouseover-menu-table-item">
                       <label for="readStructure" class="track-mouseover-menu-table-item-label">Structure</label>
                       <div name="readStructure" class="track-mouseover-menu-table-item-value track-mouseover-menu-table-item-value-svg">${this.indexDHSElementCartoon(indexDHSStart, indexDHSEnd, metadata.rgb, read.substitutions, metadata.summit.start, metadata.summit.end, metadata.dhs.id)}</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readSamples" class="track-mouseover-menu-table-item-label">Samples</label>
+                      <div name="readSamples" class="track-mouseover-menu-table-item-value">Found in <span style="font-weight: 900; padding-left:5px; padding-right:5px;">${elementBiosampleCount}</span> / ${this.options.indexDHS.biosampleCount} biosamples</div>
                     </div>`;
                   }
 
@@ -1308,7 +1308,7 @@ varying vec4 vColor;
             });
           }
 
-          this.errorTextText = 'Zoom in to load fibers';
+          this.errorTextText = (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage) ? this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage : "Zoom in to load data";
           this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
