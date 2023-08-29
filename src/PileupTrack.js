@@ -1490,8 +1490,6 @@ varying vec4 vColor;
       //   }
       // }
 
-      // console.log(`PileupTrack.exportSVG() C1`);
-
       return [base, base];
     }
   }
