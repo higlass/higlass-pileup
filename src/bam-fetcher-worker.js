@@ -1602,6 +1602,7 @@ const renderSegments = (
         xRight = to;
 
         if (trackOptions && trackOptions.indexDHS) {
+          console.log(`PILEUP_COLOR_IXS.INDEX_DHS_BG ${PILEUP_COLOR_IXS.INDEX_DHS_BG}`);
           addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
         }
         else {
