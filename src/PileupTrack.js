@@ -370,7 +370,7 @@ const PileupTrack = (HGC, ...args) => {
         const indexDHSColorDict = indexDHSColors(options);
         colorDict = {...colorDict, ...indexDHSColorDict};
         if (options.indexDHS.backgroundColor) {
-          console.log(`[PileupTrack] options.indexDHS.backgroundColor ${options.indexDHS.backgroundColor}`);
+          // console.log(`[PileupTrack] options.indexDHS.backgroundColor ${options.indexDHS.backgroundColor}`);
           colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
         }
       }
