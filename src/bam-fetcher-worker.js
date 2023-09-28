@@ -1124,10 +1124,8 @@ const exportSegmentsAsBED12 = (
           const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
           const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
           const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
-          const minProbabilityThresholdA = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
-          const maxProbabilityThresholdA = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] + 1: 255;
-          const minProbabilityThresholdB = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[2] : 0;
-          const maxProbabilityThresholdB = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[3] + 1: 255;
+          const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
+          const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] + 1: 255;
           let mmSegmentColor = null;
           //
           // UCSC BED format
@@ -1179,7 +1177,7 @@ const exportSegmentsAsBED12 = (
               let offsetIdx = 0;
               for (const offset of offsets) {
                 const probability = probabilities[offsetIdx];
-                if ((probability >= minProbabilityThresholdA && probability < maxProbabilityThresholdA) || (probability >= minProbabilityThresholdB && probability < maxProbabilityThresholdB)) {
+                if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
                   newBed12Element.blockCount++;
                   newBed12Element.blockSizes.push(offsetLength);
                   newBed12Element.blockStarts.push(offset - 1); // zero-based index
@@ -1639,12 +1637,10 @@ const renderSegments = (
         const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
         const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
 
-        const minProbabilityThresholdA = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
-        const maxProbabilityThresholdA = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] + 1 : 256;
-        const minProbabilityThresholdB = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[2] : 0;
-        const maxProbabilityThresholdB = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[3] + 1: 256;
+        const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
+        const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] + 1 : 256;
 
-        // console.log(`rendering events with ML ranges [${minProbabilityThresholdA}, ${maxProbabilityThresholdA}) and [${minProbabilityThresholdB}, ${maxProbabilityThresholdB})`);
+        // console.log(`rendering events with ML ranges [${minProbabilityThreshold}, ${maxProbabilityThreshold})`);
 
         let mmSegmentColor = null;
         for (const mo of segment.methylationOffsets) {
@@ -1679,7 +1675,7 @@ const renderSegments = (
             let offsetIdx = 0;
             for (const offset of offsets) {
               const probability = probabilities[offsetIdx];
-              if ((probability >= minProbabilityThresholdA && probability < maxProbabilityThresholdA) || (probability >= minProbabilityThresholdB && probability < maxProbabilityThresholdB)) {
+              if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
                 // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
                 xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
                 const width = Math.max(1, xScale(offsetLength) - xScale(0));
