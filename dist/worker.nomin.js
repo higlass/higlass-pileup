@@ -32077,10 +32077,11 @@ const PILEUP_COLORS = {
   MM_M5C_FOR: [1, 0, 0, 1], // red for CpG events
   MM_M5C_REV: [1, 0, 0, 1], // red for CpG events
   HIGHLIGHTS_CG: [0.95, 0.84, 0.84, 1], // CG highlights
-  HIGHLIGHTS_A: [0.95, 0.84, 0.84, 1], // A highlights
-  HIGHLIGHTS_T: [0.95, 0.84, 0.84, 1], // T highlights
+  HIGHLIGHTS_A: [0.95, 0.89, 0.71, 1], // A highlights
+  HIGHLIGHTS_T: [0.95, 0.89, 0.71, 1], // T highlights
   HIGHLIGHTS_G: [0.95, 0.84, 0.84, 1], // G highlights
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
+  HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
 };
 
@@ -33507,14 +33508,21 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   let toClippingAdjustment = 0;
 
   // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
-  segment.substitutions.forEach((sub) => {
-    // left soft clipped region
-    if((sub.type === "S" || sub.type === "H") && sub.pos < 0){
+  for (const sub of segment.substitutions) {
+    if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
       fromClippingAdjustment = -sub.length;
-    }else if((sub.type === "S" || sub.type === "H") && sub.pos > 0){
+    } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
       toClippingAdjustment = sub.length;
     }
-  });
+  }
+  // segment.substitutions.forEach((sub) => {
+  //   // left soft clipped region
+  //   if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
+  //     fromClippingAdjustment = -sub.length;
+  //   } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
+  //     toClippingAdjustment = sub.length;
+  //   }
+  // });
   segment.fromWithClipping += fromClippingAdjustment;
   segment.toWithClipping += toClippingAdjustment;
 
@@ -34266,9 +34274,12 @@ function segmentsToRows(segments, optionsIn) {
 
   if (prevSegments.length === 0) {
     filteredSegments.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
-    filteredSegments.forEach((segment) => {
+    for (const segment of filteredSegments) {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
-    });
+    }
+    // filteredSegments.forEach((segment) => {
+    //   assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    // });
     newSegments = filteredSegments;
   } else {
     // We subdivide the segments into those that are left/right of the existing previous segments
@@ -34278,15 +34289,21 @@ function segmentsToRows(segments, optionsIn) {
     const newSegmentsLeft = filteredSegments.filter((x) => x.fromWithClipping <= cutoff);
     // The sort order for new segments that are appended left is reversed
     newSegmentsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
-    newSegmentsLeft.forEach((segment) => {
+    for (const segment of newSegmentsLeft) {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
-    });
+    }
+    // newSegmentsLeft.forEach((segment) => {
+    //   assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    // });
 
     const newSegmentsRight = filteredSegments.filter((x) => x.fromWithClipping > cutoff);
     newSegmentsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
-    newSegmentsRight.forEach((segment) => {
+    for (const segment of newSegmentsRight) {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
-    });
+    }
+    // newSegmentsRight.forEach((segment) => {
+    //   assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    // });
 
     newSegments = newSegmentsLeft.concat(prevSegments, newSegmentsRight);
   }
@@ -34589,6 +34606,7 @@ const renderSegments = (
   const highlightPositions = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
+  let ATPositions = null;
 
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
@@ -34605,22 +34623,50 @@ const renderSegments = (
 
     if (sequenceTileValue && trackOptions.methylation && trackOptions.methylation.highlights) {
       const highlights = Object.keys(trackOptions.methylation.highlights);
-      // console.log(`highlights ${JSON.stringify(highlights)}`);
       for (const sequence of sequenceTileValue) {
         // allSequences[parseInt(sequence.start)] = sequence.data;
         const absPosStart = parseInt(sequence.start) + parseInt(sequence.chromOffset);
         const seq = sequence.data.toUpperCase();
-        highlights.forEach((highlight) => {
+        for (const highlight of highlights) {
           // console.log(`highlight ${JSON.stringify(highlight)}`);
-          const highlightUC = highlight.toUpperCase();
-          const highlightLength = highlight.length;
-          let posn = seq.indexOf(highlightUC);
-          if (isEmpty(highlightPositions) || !highlightPositions[highlight]) highlightPositions[highlight] = new Array();
-          while (posn > -1) {
-            highlightPositions[highlight].push(posn + absPosStart + 1); // 1-based indexed positions!
-            posn = seq.indexOf(highlightUC, posn + highlightLength);
+          if (highlight !== 'M0A') {
+            const highlightUC = highlight.toUpperCase();
+            const highlightLength = highlight.length;
+            let posn = seq.indexOf(highlightUC);
+            if (isEmpty(highlightPositions) || !highlightPositions[highlight]) highlightPositions[highlight] = new Array();
+            while (posn > -1) {
+              highlightPositions[highlight].push(posn + absPosStart + 1); // 1-based indexed positions!
+              posn = seq.indexOf(highlightUC, posn + highlightLength);
+            }
           }
-        });
+          else if (highlight === 'M0A') {
+            let posnA = seq.indexOf('A');
+            let posnT = seq.indexOf('T');
+            let posn = Math.min(posnA, posnT);
+            // console.log(`posnA ${posnA} | posnT ${posnT} | posn ${posn}`);
+            if (isEmpty(highlightPositions) || !highlightPositions[highlight]) highlightPositions[highlight] = new Array();
+            while (posn > -1) {
+              highlightPositions[highlight].push(posn + absPosStart + 1); // 1-based indexed positions!
+              posnA = seq.indexOf('A', posn + 1);
+              posnT = seq.indexOf('T', posn + 1);
+              posn = ((posnA !== -1) && (posnT !== -1)) ? Math.min(posnA, posnT) : (posnA === -1) ? posnT : (posnT === -1) ? posnA : -1;
+              // console.log(`posnA ${posnA} | posnT ${posnT} | posn ${posn}`);
+            }
+            // console.log(`highlightPositions[${highlight}] ${highlightPositions[highlight]}`);
+            ATPositions = new Set([...highlightPositions[highlight]]);
+          }
+        }
+        // highlights.forEach((highlight) => {
+        //   // console.log(`highlight ${JSON.stringify(highlight)}`);
+        //   const highlightUC = highlight.toUpperCase();
+        //   const highlightLength = highlight.length;
+        //   let posn = seq.indexOf(highlightUC);
+        //   if (isEmpty(highlightPositions) || !highlightPositions[highlight]) highlightPositions[highlight] = new Array();
+        //   while (posn > -1) {
+        //     highlightPositions[highlight].push(posn + absPosStart + 1); // 1-based indexed positions!
+        //     posn = seq.indexOf(highlightUC, posn + highlightLength);
+        //   }
+        // });
       }
     }
   }
@@ -34641,13 +34687,20 @@ const renderSegments = (
     let tileMinPos = Number.MAX_VALUE;
     let tileMaxPos = -Number.MAX_VALUE;
     const tsInfo = tilesetInfos[uid];
-    tileIds.forEach((id) => {
+    for (const id of tileIds) {
       const z = id.split('.')[0];
       const x = id.split('.')[1];
       const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
       tileMinPos = Math.min(tileMinPos, startEnd[0]);
       tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    });
+    }
+    // tileIds.forEach((id) => {
+    //   const z = id.split('.')[0];
+    //   const x = id.split('.')[1];
+    //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+    //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
+    //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+    // });
 
     segmentList = segmentList.filter(
       (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
@@ -34706,16 +34759,26 @@ const renderSegments = (
           // a read may end upstream or start downstream of clusterDataObj.range bounds 
           // but still be in segmentList[], so we filter it
           let eventVecNotModified = true; 
-          mos.forEach((mo) => {
+          for (const mo of mos) {
             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
               mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
                 if (modOffset >= 0 && modOffset < eventVecLen) {
-                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value between 0 and 255, presumably
+                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value in [1, 255], presumably
                   eventVecNotModified = false;
                 }
               })
             }
-          })
+          }
+          // mos.forEach((mo) => {
+          //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+          //     mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+          //       if (modOffset >= 0 && modOffset < eventVecLen) {
+          //         eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value in [1, 255], presumably
+          //         eventVecNotModified = false;
+          //       }
+          //     })
+          //   }
+          // })
           if (!eventVecNotModified) {
             trueRow[allowedRowIdx] = i;
             data[allowedRowIdx++] = eventVec;
@@ -34733,7 +34796,7 @@ const renderSegments = (
           // a read may end upstream or start downstream of clusterDataObj.range bounds 
           // but still be in segmentList[], so we filter it
           let eventVecNotModified = true; 
-          mos.forEach((mo) => {
+          for (const mo of mos) {
             if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
               mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
                 if (modOffset >= 0 && modOffset < eventVecLen) {
@@ -34742,7 +34805,17 @@ const renderSegments = (
                 }
               })
             }
-          })
+          }
+          // mos.forEach((mo) => {
+          //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+          //     mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+          //       if (modOffset >= 0 && modOffset < eventVecLen) {
+          //         eventVec[modOffset] = 1;
+          //         eventVecNotModified = false;
+          //       }
+          //     })
+          //   }
+          // })
           if (!eventVecNotModified) {
             trueRow[allowedRowIdx] = i;
             data[allowedRowIdx++] = eventVec;
@@ -34981,23 +35054,49 @@ const renderSegments = (
         }
 
         //
-        // render sequence highlights
+        // render non-m0A sequence highlights
         //
         if (!isEmpty(highlightPositions)) {
           const highlights = Object.keys(highlightPositions);
-          highlights.forEach((highlight) => {
+          for (const highlight of highlights) {
             const highlightLen = highlight.length;
             const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
             const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
             const highlightPosns = highlightPositions[highlight];
-            highlightPosns.forEach((posn) => {
-              if (posn >= segment.from && posn < segment.to) {
-                xLeft = xScale(posn);
-                xRight = xLeft + highlightWidth;
-                addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+            if (highlight !== 'M0A') {
+              for (const posn of highlightPosns) {
+                if (posn >= segment.from && posn < segment.to) {
+                  xLeft = xScale(posn);
+                  xRight = xLeft + highlightWidth;
+                  addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+                }
               }
-            })
-          });
+            }
+            // else if (highlight === 'M0A') {
+            //   for (const posn of highlightPosns) {
+            //     if (posn >= segment.from && posn < segment.to) {
+            //       xLeft = xScale(posn);
+            //       xRight = xLeft + highlightWidth;
+            //       addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+            //     }
+            //   }
+            // }
+          }
+          // highlights.forEach((highlight) => {
+          //   const highlightLen = highlight.length;
+          //   const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
+          //   const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
+          //   const highlightPosns = highlightPositions[highlight];
+          //   if (highlight !== 'M0A') {
+          //     highlightPosns.forEach((posn) => {
+          //       if (posn >= segment.from && posn < segment.to) {
+          //         xLeft = xScale(posn);
+          //         xRight = xLeft + highlightWidth;
+          //         addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+          //       }
+          //     })
+          //   }
+          // });
         }
 
         //
@@ -35043,6 +35142,28 @@ const renderSegments = (
               break;
           }
           if (mmSegmentColor) {
+            if ((mo.code === 'a') && ('M0A' in highlightPositions)) {
+              const segmentModifiedOffsets = new Set(offsets.filter((d, i) => probabilities[i] < minProbabilityThreshold).map(d => d + segment.from));
+              // console.log(`segmentModifiedOffsets ${JSON.stringify(segmentModifiedOffsets)}`);
+              // const segmentModifiedOffsetMin = Math.min(...segmentModifiedOffsets);
+              // const segmentModifiedOffsetMax = Math.max(...segmentModifiedOffsets);
+              const highlight = 'M0A';
+              const highlightLen = 1;
+              const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
+              const highlightColor = PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
+              // console.log(`highlightColor ${highlightColor}`);
+              // const highlightPosns = highlightPositions[highlight].filter(d => !segmentModifiedOffsets.includes(d));
+              const highlightPosns = [...ATPositions].filter(d => !segmentModifiedOffsets.has(d));
+              // console.log(`highlightPositions[highlight] ${highlightPositions[highlight].length}`);
+              // console.log(`highlightPosns ${highlightPosns.length}`);
+              for (const highlightPosn of highlightPosns) {
+                if ((highlightPosn >= segment.from) && (highlightPosn <= segment.to)) {
+                  xLeft = xScale(highlightPosn);
+                  xRight = xLeft + highlightWidth;
+                  addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+                }
+              }
+            }
             let offsetIdx = 0;
             for (const offset of offsets) {
               const probability = probabilities[offsetIdx];
@@ -35069,6 +35190,8 @@ const renderSegments = (
         let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
         if (trackOptions.indexDHS) {
           defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
+          // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
+          // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
         }
         
         for (const substitution of segment.substitutions) {

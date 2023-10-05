@@ -583,9 +583,14 @@ varying vec4 vColor;
     }
 
     updateExistingGraphics() {
+      const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
         this.loadingText.text = 'Rendering...';
-        this.bc.postMessage({state: 'update_start', msg: this.loadingText.text,  uid: this.id});
+        this.bc.postMessage({
+          state: 'update_start', 
+          msg: this.loadingText.text,
+          uid: this.id,
+        });
       } 
       else {
         this.worker.then((tileFunctions) => {
@@ -610,9 +615,15 @@ varying vec4 vColor;
               }
               this.draw();
               this.animate();
-
-              const msg = {state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id};
-              // console.log(`${JSON.stringify(msg)}`);
+              const updateExistingGraphicsEndA = performance.now();
+              const elapsedTimeA = updateExistingGraphicsEndA - updateExistingGraphicsStart;
+              const msg = {
+                state: 'update_end', 
+                msg: 'Completed (maxTileWidthReached)', 
+                uid: this.id, 
+                elapsedTime: elapsedTimeA,
+              };
+              console.log(`${JSON.stringify(msg)}`);
               this.bc.postMessage(msg);
             });
         });
@@ -632,10 +643,16 @@ varying vec4 vColor;
       this.previousTileIdsUsedForRendering = fetchedTileIds;
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-      fetchedTileKeys.forEach((x) => {
-        this.fetching.delete(x);
-        this.rendering.add(x);
-      });
+
+      for (const fetchedTileKey of fetchedTileKeys) {
+        this.fetching.delete(fetchedTileKey);
+        this.rendering.add(fetchedTileKey);
+      }
+      // fetchedTileKeys.forEach((x) => {
+      //   this.fetching.delete(x);
+      //   this.rendering.add(x);
+      // });
+
       this.updateLoadingText();
 
       this.worker.then((tileFunctions) => {
@@ -656,9 +673,13 @@ varying vec4 vColor;
 
             this.loadingText.visible = false;
 
-            fetchedTileKeys.forEach((x) => {
-              this.rendering.delete(x);
-            });
+            for (const fetchedTileKey of fetchedTileKeys) {
+              this.rendering.delete(fetchedTileKey);
+            }
+            // fetchedTileKeys.forEach((x) => {
+            //   this.rendering.delete(x);
+            // });
+
             this.updateLoadingText();
 
             if (this.maxTileWidthReached) {
@@ -684,8 +705,15 @@ varying vec4 vColor;
               this.animate();
               requestAnimationFrame(this.animate);
               
-              const msg = {state: 'update_end', msg: 'Completed (maxTileWidthReached)',  uid: this.id};
-              // console.log(`${JSON.stringify(msg)}`);
+              const updateExistingGraphicsEndB = performance.now();
+              const elapsedTimeB = updateExistingGraphicsEndB - updateExistingGraphicsStart;
+              const msg = {
+                state: 'update_end', 
+                msg: 'Completed (maxTileWidthReached)', 
+                uid: this.id, 
+                elapsedTime: elapsedTimeB,
+              };
+              console.log(`${JSON.stringify(msg)}`);
               this.bc.postMessage(msg);
 
               return;
@@ -709,15 +737,22 @@ varying vec4 vColor;
             if (this.loadMates) {
               this.readsById = {};
               for (let key in this.prevRows) {
-                this.prevRows[key].rows.forEach((row) => {
-                  row.forEach((segment) => {
-                    if (segment.id in this.readsById) return;
 
+                for (const row of this.prevRows[key].rows) {
+                  for (const segment of row) {
+                    if (segment.id in this.readsById) return;
                     this.readsById[segment.id] = segment;
-                    // Will be needed later in the mouseover to determine the correct yPos for the mate
                     this.readsById[segment.id]['groupKey'] = key;
-                  });
-                });
+                  }
+                }
+                // this.prevRows[key].rows.forEach((row) => {
+                //   row.forEach((segment) => {
+                //     if (segment.id in this.readsById) return;
+                //     this.readsById[segment.id] = segment;
+                //     // Will be needed later in the mouseover to determine the correct yPos for the mate
+                //     this.readsById[segment.id]['groupKey'] = key;
+                //   });
+                // });
               }
             }
 
@@ -794,8 +829,15 @@ varying vec4 vColor;
               this.bed12ExportData = null;
             }
 
-            const msg = {state: 'update_end', msg: 'Completed (renderSegments Promise fulfillment)',  uid: this.id};
-            // console.log(`${JSON.stringify(msg)}`);
+            const updateExistingGraphicsEndC = performance.now();
+            const elapsedTimeC = updateExistingGraphicsEndC - updateExistingGraphicsStart;
+            const msg = {
+              state: 'update_end', 
+              msg: 'Completed (renderSegments Promise fulfillment)', 
+              uid: this.id,
+              elapsedTime: elapsedTimeC,
+            };
+            console.log(`${JSON.stringify(msg)}`);
             this.bc.postMessage(msg);
           });
         // .catch(err => {
@@ -875,13 +917,20 @@ varying vec4 vColor;
       let blockCount = 0;
       let blockStarts = [];
       let blockSizes = [];
-      subs.forEach((s, i) => {
-        if (s.type === 'M') {
+      for (const sub of subs) {
+        if (sub.type === 'M') {
           blockCount++;
-          blockStarts.push(s.pos);
-          blockSizes.push(s.length);
+          blockStarts.push(sub.pos);
+          blockSizes.push(sub.length);
         }
-      });
+      }
+      // subs.forEach((s, i) => {
+      //   if (s.type === 'M') {
+      //     blockCount++;
+      //     blockStarts.push(s.pos);
+      //     blockSizes.push(s.length);
+      //   }
+      // });
       if (blockCount > 0) {
         elementCartoon += `<svg width="${elementCartoonWidth}" height="${elementCartoonHeight}">
           <style type="text/css">
@@ -1238,8 +1287,8 @@ varying vec4 vColor;
     }
 
     outlineMate(read, yScaleBand){
-      read.mate_ids.forEach((mate_id) => {
-        if(!this.readsById[mate_id]){
+      for (const mate_id of read.mate_ids) {
+        if (!this.readsById[mate_id]) {
           return;
         }
         const mate = this.readsById[mate_id];
@@ -1263,9 +1312,34 @@ varying vec4 vColor;
           mate_width,
           mate_height,
         );
-      });
+      }      
+      // read.mate_ids.forEach((mate_id) => {
+      //   if (!this.readsById[mate_id]) {
+      //     return;
+      //   }
+      //   const mate = this.readsById[mate_id];
+      //   // We assume the mate height is the same, but width might be different
+      //   const mate_width =
+      //     this._xScale(mate.to) - this._xScale(mate.from);
+      //   const mate_height =
+      //     yScaleBand.bandwidth() * this.valueScaleTransform.k;
+      //   const mate_xPos = this._xScale(mate.from);
+      //   const mate_yPos = transformY(
+      //     this.yScaleBands[mate.groupKey](mate.row),
+      //     this.valueScaleTransform,
+      //   );
+      //   this.mouseOverGraphics.lineStyle({
+      //     width: 1,
+      //     color: 0,
+      //   });
+      //   this.mouseOverGraphics.drawRect(
+      //     mate_xPos,
+      //     mate_yPos,
+      //     mate_width,
+      //     mate_height,
+      //   );
+      // });
       this.animate();
-
     }
 
     calculateZoomLevel() {

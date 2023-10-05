@@ -27,10 +27,11 @@ export const PILEUP_COLORS = {
   MM_M5C_FOR: [1, 0, 0, 1], // red for CpG events
   MM_M5C_REV: [1, 0, 0, 1], // red for CpG events
   HIGHLIGHTS_CG: [0.95, 0.84, 0.84, 1], // CG highlights
-  HIGHLIGHTS_A: [0.95, 0.84, 0.84, 1], // A highlights
-  HIGHLIGHTS_T: [0.95, 0.84, 0.84, 1], // T highlights
+  HIGHLIGHTS_A: [0.95, 0.89, 0.71, 1], // A highlights
+  HIGHLIGHTS_T: [0.95, 0.89, 0.71, 1], // T highlights
   HIGHLIGHTS_G: [0.95, 0.84, 0.84, 1], // G highlights
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
+  HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
 };
 
