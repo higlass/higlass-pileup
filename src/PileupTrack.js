@@ -223,6 +223,8 @@ const PileupTrack = (HGC, ...args) => {
 
       const monitor = new BroadcastChannel(`pileup-track-viewer`);
       monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
+
+      // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
     }
 
     // Some of the initialization code is factored out, so that we can 
