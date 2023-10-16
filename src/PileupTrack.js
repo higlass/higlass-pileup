@@ -440,6 +440,14 @@ varying vec4 vColor;
             //   HGC,
             // );
             // this.dataFetcher.track = this;
+            for (const key in this.prevRows) {
+              for (const row of this.prevRows[key].rows) {
+                for (const segment of row) {
+                  console.log(`rerender > segment.id ${segment.id} | ${Object.getOwnPropertyNames(segment)}`);
+                  segment.methylationOffsets.length = 0;
+                }
+              }
+            }
             this.prevRows = [];
             this.removeTiles(Object.keys(this.fetchedTiles));
             this.fetching.clear();
@@ -531,7 +539,6 @@ varying vec4 vColor;
           HGC,
         );
         this.dataFetcher.track = this;
-
         this.prevRows = [];
         this.removeTiles(Object.keys(this.fetchedTiles));
         this.fetching.clear();
