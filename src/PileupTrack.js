@@ -433,19 +433,19 @@ varying vec4 vColor;
           case "refresh-layout":
             if (!this.options.methylation) 
               break;
-            this.dataFetcher = new BAMDataFetcher(
-              this.dataFetcher.dataConfig,
-              this.options,
-              this.worker,
-              HGC,
-            );
-            this.dataFetcher.track = this;
+            // this.dataFetcher = new BAMDataFetcher(
+            //   this.dataFetcher.dataConfig,
+            //   this.options,
+            //   this.worker,
+            //   HGC,
+            // );
+            // this.dataFetcher.track = this;
             this.prevRows = [];
             this.removeTiles(Object.keys(this.fetchedTiles));
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
-            this.updateExistingGraphics();
+            // this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
@@ -839,7 +839,7 @@ varying vec4 vColor;
               uid: this.id,
               elapsedTime: elapsedTimeC,
             };
-            console.log(`${JSON.stringify(msg)}`);
+            // console.log(`${JSON.stringify(msg)}`);
             this.bc.postMessage(msg);
           });
         // .catch(err => {

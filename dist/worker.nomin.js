@@ -34609,11 +34609,19 @@ const renderSegments = (
   let ATPositions = null;
 
   for (const tileId of tileIds) {
-    const tileValue = tileValues.get(`${uid}.${tileId}`);
+    let tileValue = null;
+    try {
+      tileValue = tileValues.get(`${uid}.${tileId}`);
 
-    if (tileValue.error) {
-      throw new Error(tileValue.error);
+      if (tileValue.error) {
+        // throw new Error(tileValue.error);
+        continue;
+      }
     }
+    catch (err) {
+      continue;
+    }
+    if (!tileValue) continue;
 
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
@@ -35053,259 +35061,259 @@ const renderSegments = (
           addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
         }
 
-        //
-        // render non-m0A sequence highlights
-        //
-        if (!isEmpty(highlightPositions)) {
-          const highlights = Object.keys(highlightPositions);
-          for (const highlight of highlights) {
-            const highlightLen = highlight.length;
-            const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-            const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
-            const highlightPosns = highlightPositions[highlight];
-            if (highlight !== 'M0A') {
-              for (const posn of highlightPosns) {
-                if (posn >= segment.from && posn < segment.to) {
-                  xLeft = xScale(posn);
-                  xRight = xLeft + highlightWidth;
-                  addRect(xLeft, yTop, highlightWidth, height, highlightColor);
-                }
-              }
-            }
-            // else if (highlight === 'M0A') {
-            //   for (const posn of highlightPosns) {
-            //     if (posn >= segment.from && posn < segment.to) {
-            //       xLeft = xScale(posn);
-            //       xRight = xLeft + highlightWidth;
-            //       addRect(xLeft, yTop, highlightWidth, height, highlightColor);
-            //     }
-            //   }
-            // }
-          }
-          // highlights.forEach((highlight) => {
-          //   const highlightLen = highlight.length;
-          //   const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-          //   const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
-          //   const highlightPosns = highlightPositions[highlight];
-          //   if (highlight !== 'M0A') {
-          //     highlightPosns.forEach((posn) => {
-          //       if (posn >= segment.from && posn < segment.to) {
-          //         xLeft = xScale(posn);
-          //         xRight = xLeft + highlightWidth;
-          //         addRect(xLeft, yTop, highlightWidth, height, highlightColor);
-          //       }
-          //     })
-          //   }
-          // });
-        }
-
-        //
-        // render methylation events
-        //
-        const showM5CForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC+');
-        const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
-        const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
-        const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
-
-        const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
-        const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] + 1 : 256;
-
-        // console.log(`rendering events with ML ranges [${minProbabilityThreshold}, ${maxProbabilityThreshold})`);
-
-        let mmSegmentColor = null;
-        for (const mo of segment.methylationOffsets) {
-          const offsets = mo.offsets;
-          const probabilities = mo.probabilities;
-          const offsetLength = 1;
-          switch (mo.unmodifiedBase) {
-            case 'C':
-              if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
-                mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
-              }
-              break;
-            case 'G':
-              if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
-                mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
-              }
-              break;
-            case 'A':
-              if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
-                mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
-              }
-              break
-            case 'T':
-              if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
-                mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
-              }
-              break;
-            default:
-              break;
-          }
-          if (mmSegmentColor) {
-            if ((mo.code === 'a') && ('M0A' in highlightPositions)) {
-              const segmentModifiedOffsets = new Set(offsets.filter((d, i) => probabilities[i] < minProbabilityThreshold).map(d => d + segment.from));
-              // console.log(`segmentModifiedOffsets ${JSON.stringify(segmentModifiedOffsets)}`);
-              // const segmentModifiedOffsetMin = Math.min(...segmentModifiedOffsets);
-              // const segmentModifiedOffsetMax = Math.max(...segmentModifiedOffsets);
-              const highlight = 'M0A';
-              const highlightLen = 1;
-              const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-              const highlightColor = PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
-              // console.log(`highlightColor ${highlightColor}`);
-              // const highlightPosns = highlightPositions[highlight].filter(d => !segmentModifiedOffsets.includes(d));
-              const highlightPosns = [...ATPositions].filter(d => !segmentModifiedOffsets.has(d));
-              // console.log(`highlightPositions[highlight] ${highlightPositions[highlight].length}`);
-              // console.log(`highlightPosns ${highlightPosns.length}`);
-              for (const highlightPosn of highlightPosns) {
-                if ((highlightPosn >= segment.from) && (highlightPosn <= segment.to)) {
-                  xLeft = xScale(highlightPosn);
-                  xRight = xLeft + highlightWidth;
-                  addRect(xLeft, yTop, highlightWidth, height, highlightColor);
-                }
-              }
-            }
-            let offsetIdx = 0;
-            for (const offset of offsets) {
-              const probability = probabilities[offsetIdx];
-              if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
-                // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
-                xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
-                const width = Math.max(1, xScale(offsetLength) - xScale(0));
-                xRight = xLeft + width;
-                addRect(xLeft, yTop, width, height, mmSegmentColor);
-              }
-              offsetIdx++;
-            }
-          }
-        }
-
         if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
-          return;
+          //
+          // render non-m0A sequence highlights
+          //
+          if (!isEmpty(highlightPositions)) {
+            const highlights = Object.keys(highlightPositions);
+            for (const highlight of highlights) {
+              const highlightLen = highlight.length;
+              const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
+              const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
+              const highlightPosns = highlightPositions[highlight];
+              if (highlight !== 'M0A') {
+                for (const posn of highlightPosns) {
+                  if (posn >= segment.from && posn < segment.to) {
+                    xLeft = xScale(posn);
+                    xRight = xLeft + highlightWidth;
+                    addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+                  }
+                }
+              }
+              // else if (highlight === 'M0A') {
+              //   for (const posn of highlightPosns) {
+              //     if (posn >= segment.from && posn < segment.to) {
+              //       xLeft = xScale(posn);
+              //       xRight = xLeft + highlightWidth;
+              //       addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+              //     }
+              //   }
+              // }
+            }
+            // highlights.forEach((highlight) => {
+            //   const highlightLen = highlight.length;
+            //   const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
+            //   const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
+            //   const highlightPosns = highlightPositions[highlight];
+            //   if (highlight !== 'M0A') {
+            //     highlightPosns.forEach((posn) => {
+            //       if (posn >= segment.from && posn < segment.to) {
+            //         xLeft = xScale(posn);
+            //         xRight = xLeft + highlightWidth;
+            //         addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+            //       }
+            //     })
+            //   }
+            // });
+          }
+
+          //
+          // render methylation events
+          //
+          const showM5CForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC+');
+          const showM5CReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('5mC-');
+          const showM6AForwardEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A+');
+          const showM6AReverseEvents = trackOptions && trackOptions.methylation && trackOptions.methylation.categoryAbbreviations && trackOptions.methylation.categoryAbbreviations.includes('m6A-');
+
+          const minProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[0] : 0;
+          const maxProbabilityThreshold = (trackOptions && trackOptions.methylation && trackOptions.methylation.probabilityThresholdRange) ? trackOptions.methylation.probabilityThresholdRange[1] + 1 : 256;
+
+          // console.log(`rendering events with ML ranges [${minProbabilityThreshold}, ${maxProbabilityThreshold})`);
+
+          let mmSegmentColor = null;
+          for (const mo of segment.methylationOffsets) {
+            const offsets = mo.offsets;
+            const probabilities = mo.probabilities;
+            const offsetLength = 1;
+            switch (mo.unmodifiedBase) {
+              case 'C':
+                if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
+                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
+                }
+                break;
+              case 'G':
+                if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
+                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
+                }
+                break;
+              case 'A':
+                if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
+                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+                }
+                break
+              case 'T':
+                if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
+                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
+                }
+                break;
+              default:
+                break;
+            }
+            if (mmSegmentColor) {
+              if ((mo.code === 'a') && ('M0A' in highlightPositions)) {
+                const segmentModifiedOffsets = new Set(offsets.filter((d, i) => probabilities[i] < minProbabilityThreshold).map(d => d + segment.from));
+                // console.log(`segmentModifiedOffsets ${JSON.stringify(segmentModifiedOffsets)}`);
+                // const segmentModifiedOffsetMin = Math.min(...segmentModifiedOffsets);
+                // const segmentModifiedOffsetMax = Math.max(...segmentModifiedOffsets);
+                const highlight = 'M0A';
+                const highlightLen = 1;
+                const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
+                const highlightColor = PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
+                // console.log(`highlightColor ${highlightColor}`);
+                // const highlightPosns = highlightPositions[highlight].filter(d => !segmentModifiedOffsets.includes(d));
+                const highlightPosns = [...ATPositions].filter(d => !segmentModifiedOffsets.has(d));
+                // console.log(`highlightPositions[highlight] ${highlightPositions[highlight].length}`);
+                // console.log(`highlightPosns ${highlightPosns.length}`);
+                for (const highlightPosn of highlightPosns) {
+                  if ((highlightPosn >= segment.from) && (highlightPosn <= segment.to)) {
+                    xLeft = xScale(highlightPosn);
+                    xRight = xLeft + highlightWidth;
+                    addRect(xLeft, yTop, highlightWidth, height, highlightColor);
+                  }
+                }
+              }
+              let offsetIdx = 0;
+              for (const offset of offsets) {
+                const probability = probabilities[offsetIdx];
+                if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
+                  // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
+                  xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
+                  const width = Math.max(1, xScale(offsetLength) - xScale(0));
+                  xRight = xLeft + width;
+                  addRect(xLeft, yTop, width, height, mmSegmentColor);
+                }
+                offsetIdx++;
+              }
+            }
+          }
         }
 
-        //
-        // apply color to segment, if available
-        //
-        const indexDHSMetadata = (trackOptions.indexDHS) ? segment.metadata : {};
-        let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
-        if (trackOptions.indexDHS) {
-          defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
-          // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
-          // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
-        }
-        
-        for (const substitution of segment.substitutions) {
-          xLeft = xScale(segment.from + substitution.pos);
-          const width = Math.max(1, xScale(substitution.length) - xScale(0));
-          const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
-          xRight = xLeft + width;
+        if (trackOptions && trackOptions.indexDHS) {
+          //
+          // apply color to segment, if available
+          //
+          const indexDHSMetadata = (trackOptions.indexDHS) ? segment.metadata : {};
+          let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
+          if (trackOptions.indexDHS) {
+            defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
+            // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
+            // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
+          }
+          
+          for (const substitution of segment.substitutions) {
+            xLeft = xScale(segment.from + substitution.pos);
+            const width = Math.max(1, xScale(substitution.length) - xScale(0));
+            const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
+            xRight = xLeft + width;
 
-          if (substitution.variant === 'A') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
-          } else if (substitution.variant === 'C') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
-          } else if (substitution.variant === 'G') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
-          } else if (substitution.variant === 'T') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
-          } else if (substitution.type === 'S') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
-          } else if (substitution.type === 'H') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
-          } else if (substitution.type === 'X') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
-          } else if (substitution.type === 'I') {
-            addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
-          } else if (substitution.type === 'D') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
+            if (substitution.variant === 'A') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
+            } else if (substitution.variant === 'C') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
+            } else if (substitution.variant === 'G') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
+            } else if (substitution.variant === 'T') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
+            } else if (substitution.type === 'S') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
+            } else if (substitution.type === 'H') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
+            } else if (substitution.type === 'X') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
+            } else if (substitution.type === 'I') {
+              addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
+            } else if (substitution.type === 'D') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
 
-            // add some stripes
-            const numStripes = 6;
-            const stripeWidth = 0.1;
-            for (let i = 0; i <= numStripes; i++) {
-              const xStripe = xLeft + (i * width) / numStripes;
+              // add some stripes
+              const numStripes = 6;
+              const stripeWidth = 0.1;
+              for (let i = 0; i <= numStripes; i++) {
+                const xStripe = xLeft + (i * width) / numStripes;
+                addRect(
+                  xStripe,
+                  yTop,
+                  stripeWidth,
+                  height,
+                  defaultSegmentColor,
+                );
+              }
+            } else if (substitution.type === 'N') {
+              
+              // deletions so we're going to draw a thinner line
+              // across
+              const xMiddle = (yTop + yBottom) / 2;
+              const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
+
+              const yMidTop = xMiddle - delWidth / 2;
+              const yMidBottom = xMiddle + delWidth / 2;
+
               addRect(
-                xStripe,
-                yTop,
-                stripeWidth,
-                height,
+                xLeft,
+                yMidBottom,
+                xRight - xLeft,
+                delWidth,
                 defaultSegmentColor,
               );
+
+              // addRect(
+              //   xLeft,
+              //   yTop,
+              //   xRight - xLeft,
+              //   yMidTop - yTop,
+              //   PILEUP_COLOR_IXS.N,
+              // );
+              // addRect(
+              //   xLeft,
+              //   yMidBottom,
+              //   width,
+              //   yBottom - yMidBottom,
+              //   PILEUP_COLOR_IXS.N,
+              // );
+
+              // let currPos = xLeft;
+              // const DASH_LENGTH = 6;
+              // const DASH_SPACE = 4;
+
+              // draw dashes
+              // while (currPos <= xRight) {
+              //   // make sure the last dash doesn't overrun
+              //   const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
+
+              //   addRect(
+              //     currPos,
+              //     yMidTop,
+              //     dashLength,
+              //     delWidth,
+              //     PILEUP_COLOR_IXS.N,
+              //   );
+              //   currPos += DASH_LENGTH + DASH_SPACE;
+              // }
+              // allready handled above
+            } else {
+              const indexDHSElementHeight = yScale.bandwidth() * 0.5;
+              const indexDHSYTop = yTop + ((yBottom - yTop) * 0.25);
+              addRect(xLeft, indexDHSYTop, width, indexDHSElementHeight, defaultSegmentColor);
             }
-          } else if (substitution.type === 'N') {
-            
-            // deletions so we're going to draw a thinner line
-            // across
-            const xMiddle = (yTop + yBottom) / 2;
-            const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
-
-            const yMidTop = xMiddle - delWidth / 2;
-            const yMidBottom = xMiddle + delWidth / 2;
-
-            addRect(
-              xLeft,
-              yMidBottom,
-              xRight - xLeft,
-              delWidth,
-              defaultSegmentColor,
-            );
-
-            // addRect(
-            //   xLeft,
-            //   yTop,
-            //   xRight - xLeft,
-            //   yMidTop - yTop,
-            //   PILEUP_COLOR_IXS.N,
-            // );
-            // addRect(
-            //   xLeft,
-            //   yMidBottom,
-            //   width,
-            //   yBottom - yMidBottom,
-            //   PILEUP_COLOR_IXS.N,
-            // );
-
-            // let currPos = xLeft;
-            // const DASH_LENGTH = 6;
-            // const DASH_SPACE = 4;
-
-            // draw dashes
-            // while (currPos <= xRight) {
-            //   // make sure the last dash doesn't overrun
-            //   const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
-
-            //   addRect(
-            //     currPos,
-            //     yMidTop,
-            //     dashLength,
-            //     delWidth,
-            //     PILEUP_COLOR_IXS.N,
-            //   );
-            //   currPos += DASH_LENGTH + DASH_SPACE;
-            // }
-            // allready handled above
-          } else {
-            const indexDHSElementHeight = yScale.bandwidth() * 0.5;
-            const indexDHSYTop = yTop + ((yBottom - yTop) * 0.25);
-            addRect(xLeft, indexDHSYTop, width, indexDHSElementHeight, defaultSegmentColor);
           }
-        }
-        //
-        // draw Index DHS summit
-        //
-        if (trackOptions && trackOptions.indexDHS) {
-          // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
-          const indexDHSElementStart = segment.from - segment.chrOffset;
-          const indexDHSSummitStart = indexDHSMetadata.summit.start;
-          const indexDHSSummitEnd = indexDHSMetadata.summit.end;
-          const indexDHSSummitLength = indexDHSSummitEnd - indexDHSSummitStart;
-          const indexDHSSummitPos = indexDHSSummitStart - indexDHSElementStart;
-          const indexDHSXLeft = xScale(segment.from + indexDHSSummitPos);
-          const indexDHSYTop = yTop;
-          const indexDHSWidth = Math.max(1, xScale(indexDHSSummitLength) - xScale(0));
-          const indexDHSHeight = height;
-          // const indexDHSXRight = indexDHSXLeft + indexDHSWidth;
-          addRect(indexDHSXLeft, indexDHSYTop, indexDHSWidth, indexDHSHeight, defaultSegmentColor);
+          //
+          // draw Index DHS summit
+          //
+          if (trackOptions && trackOptions.indexDHS) {
+            // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+            const indexDHSElementStart = segment.from - segment.chrOffset;
+            const indexDHSSummitStart = indexDHSMetadata.summit.start;
+            const indexDHSSummitEnd = indexDHSMetadata.summit.end;
+            const indexDHSSummitLength = indexDHSSummitEnd - indexDHSSummitStart;
+            const indexDHSSummitPos = indexDHSSummitStart - indexDHSElementStart;
+            const indexDHSXLeft = xScale(segment.from + indexDHSSummitPos);
+            const indexDHSYTop = yTop;
+            const indexDHSWidth = Math.max(1, xScale(indexDHSSummitLength) - xScale(0));
+            const indexDHSHeight = height;
+            // const indexDHSXRight = indexDHSXLeft + indexDHSWidth;
+            addRect(indexDHSXLeft, indexDHSYTop, indexDHSWidth, indexDHSHeight, defaultSegmentColor);
+          }
         }
       });
     });
