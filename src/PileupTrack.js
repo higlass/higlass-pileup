@@ -443,7 +443,7 @@ varying vec4 vColor;
             for (const key in this.prevRows) {
               for (const row of this.prevRows[key].rows) {
                 for (const segment of row) {
-                  console.log(`rerender > segment.id ${segment.id} | ${Object.getOwnPropertyNames(segment)}`);
+                  // console.log(`rerender > segment.id ${segment.id} | ${Object.getOwnPropertyNames(segment)}`);
                   segment.methylationOffsets = [];
                 }
               }
