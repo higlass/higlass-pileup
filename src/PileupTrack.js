@@ -1130,6 +1130,9 @@ varying vec4 vColor;
                   let groupText = null;
                   if (this.options.methylation && this.options.methylation.group && this.options.methylation.set) {
                     groupText = `${this.options.methylation.group}/${this.options.methylation.set}`;
+                    if (this.options.methylation.haplotype) {
+                      groupText += ` (${this.options.methylation.haplotype})`;
+                    }
                   }
 
                   if (groupText) {
