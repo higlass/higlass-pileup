@@ -1126,11 +1126,26 @@ varying vec4 vColor;
 
                   const dataX = this._xScale.invert(trackX);
                   let positionText = null;
+                  let eventText = null;
+                  let eventProbability = null;
                   if (this.options.chromInfo) {
                     const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
                     const chrom = atcX[0];
                     const position = Math.ceil(atcX[1]);
                     positionText = `${chrom}:${position}`;
+                    const methylationOffset = position - (read.from - read.chrOffset);
+                    for (const mo of read.methylationOffsets) {
+                      const moQuery = mo.offsets.indexOf(methylationOffset);
+                      if (moQuery !== -1) {
+                        // console.log(`mo @ ${methylationOffset} ${moQuery} | ${mo.unmodifiedBase} ${mo.strand} ${mo.probabilities[moQuery]}`);
+                        eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : '5mC';
+                        eventProbability = parseInt(mo.probabilities[moQuery]);
+                        if (eventProbability < this.options.methylation.probabilityThresholdRange[0]) {
+                          eventProbability = null;
+                        }
+                        break;
+                      }
+                    }
                   }
 
                   let output = `<div class="track-mouseover-menu-table">`;
@@ -1140,6 +1155,19 @@ varying vec4 vColor;
                     <div class="track-mouseover-menu-table-item">
                       <label for="position" class="track-mouseover-menu-table-item-label">Position</label>
                       <div name="position" class="track-mouseover-menu-table-item-value">${positionText}</div>
+                    </div>
+                    `;
+                  }
+
+                  if (eventText && eventProbability) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="eventType" class="track-mouseover-menu-table-item-label">Event</label>
+                      <div name="eventType" class="track-mouseover-menu-table-item-value">${eventText}</div>
+                    </div>
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="eventProbability" class="track-mouseover-menu-table-item-label">Probability (ML)</label>
+                      <div name="eventProbability" class="track-mouseover-menu-table-item-value">${eventProbability}</div>
                     </div>
                     `;
                   }
