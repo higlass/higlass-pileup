@@ -1127,19 +1127,66 @@ varying vec4 vColor;
                     `;
                   }
 
-                  let groupText = null;
-                  if (this.options.methylation && this.options.methylation.group && this.options.methylation.set) {
-                    groupText = `${this.options.methylation.group}/${this.options.methylation.set}`;
-                    if (this.options.methylation.haplotype) {
-                      groupText += ` (${this.options.methylation.haplotype})`;
-                    }
+                  // let cellLineText = null;
+                  // if (this.options.methylation && this.options.methylation.group && this.options.methylation.set) {
+                  //   groupText = `${this.options.methylation.group}/${this.options.methylation.set}`;
+                  //   if (this.options.methylation.haplotype) {
+                  //     groupText += ` (${this.options.methylation.haplotype})`;
+                  //   }
+                  // }
+
+                  let cellLineText = null;
+                  if (this.options.methylation && this.options.methylation.group) {
+                    cellLineText = `${this.options.methylation.group}`;
                   }
 
-                  if (groupText) {
+                  if (cellLineText) {
                     output += `
                     <div class="track-mouseover-menu-table-item">
-                      <label for="group" class="track-mouseover-menu-table-item-label">Group</label>
-                      <div name="group" class="track-mouseover-menu-table-item-value">${groupText}</div>
+                      <label for="cell_line" class="track-mouseover-menu-table-item-label">Cell line</label>
+                      <div name="cell_line" class="track-mouseover-menu-table-item-value">${cellLineText}</div>
+                    </div>
+                    `;
+                  }
+
+                  let conditionText = null;
+                  if (this.options.methylation && this.options.methylation.set) {
+                    conditionText = `${this.options.methylation.set}`;
+                  }
+
+                  if (conditionText) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="condition" class="track-mouseover-menu-table-item-label">Condition</label>
+                      <div name="condition" class="track-mouseover-menu-table-item-value">${conditionText}</div>
+                    </div>
+                    `;
+                  }
+
+                  let donorText = null;
+                  if (this.options.methylation && this.options.methylation.donor) {
+                    donorText = `${this.options.methylation.donor}`;
+                  }
+
+                  if (donorText) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="donor" class="track-mouseover-menu-table-item-label">Donor</label>
+                      <div name="donor" class="track-mouseover-menu-table-item-value">${donorText}</div>
+                    </div>
+                    `;
+                  }
+
+                  let haplotypeText = null;
+                  if (this.options.methylation && this.options.methylation.haplotype) {
+                    haplotypeText = `${this.options.methylation.haplotype}`;
+                  }
+
+                  if (haplotypeText) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="haplotype" class="track-mouseover-menu-table-item-label">Haplotype</label>
+                      <div name="haplotype" class="track-mouseover-menu-table-item-value">${haplotypeText}</div>
                     </div>
                     `;
                   }
