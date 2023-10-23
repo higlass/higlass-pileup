@@ -221,8 +221,8 @@ const PileupTrack = (HGC, ...args) => {
       this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
       this.bc.postMessage({state: 'loading', msg: this.loadingText.text, uid: this.id});
 
-      const monitor = new BroadcastChannel(`pileup-track-viewer`);
-      monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
+      this.monitor = new BroadcastChannel(`pileup-track-viewer`);
+      this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
 
       // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
     }
@@ -257,7 +257,6 @@ const PileupTrack = (HGC, ...args) => {
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
       
-
       this.fetching = new Set();
       this.rendering = new Set();
 
@@ -428,6 +427,11 @@ varying vec4 vColor;
 
     handlePileupTrackViewerMessage(data) {
       // console.log(`data ${JSON.stringify(data)} | ${JSON.stringify(this.options)}`);
+      if (data.state === 'mouseover') {
+        if (this.id !== data.uid) {
+          this.clearMouseOver();
+        }
+      }
       if (data.state === 'request') {
         switch (data.msg) {
           case "refresh-layout":
@@ -1004,6 +1008,11 @@ varying vec4 vColor;
       return elementCartoon;
     }
 
+    clearMouseOver() {
+      this.mouseOverGraphics.clear();
+      requestAnimationFrame(this.animate);
+    }
+
     getMouseOverHtml(trackX, trackYIn) {
       if (this.maxTileWidthReached) return;
 
@@ -1011,6 +1020,14 @@ varying vec4 vColor;
       this.mouseOverGraphics.clear();
       // Prevents 'stuck' read outlines when hovering quickly
       requestAnimationFrame(this.animate);
+
+      const msg = {
+        state: 'mouseover', 
+        msg: 'mouseover event', 
+        uid: this.id,
+      };
+      this.monitor.postMessage(msg);
+
       const trackY = invY(trackYIn, this.valueScaleTransform);
 
       const bandCoverageStart = 0;
@@ -1541,6 +1558,8 @@ varying vec4 vColor;
       let track = null;
       let base = null;
 
+      this.clearMouseOver();
+
       if (super.exportSVG) {
         [base, track] = super.exportSVG();
       } else {
@@ -1549,6 +1568,7 @@ varying vec4 vColor;
       }
 
       this.mouseOverGraphics.clear();
+      this.animate();
 
       // base = document.createElement('g');
       // track = base;
