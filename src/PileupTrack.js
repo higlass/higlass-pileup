@@ -461,7 +461,7 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
-            if (!this.options.methylation) 
+            if ((!this.options.methylation) || (this.clusterData))
               break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
