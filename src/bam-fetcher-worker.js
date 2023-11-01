@@ -1103,6 +1103,7 @@ const exportSegmentsAsBED12 = (
         data: data,
         distance: distanceFnToCall,
         linkage: avgDistance,
+        onProgress: null,
       });
 
       // console.log(`order ${order}`);
@@ -1802,13 +1803,14 @@ const renderSegments = (
                 }
               }
               let offsetIdx = 0;
+              const width = 1;
               for (const offset of offsets) {
                 const probability = probabilities[offsetIdx];
                 if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
                   // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
                   xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
-                  const width = Math.max(1, xScale(offsetLength) - xScale(0));
-                  xRight = xLeft + width;
+                  // const width = Math.max(1, xScale(offsetLength) - xScale(0));
+                  // xRight = xLeft + width;
                   addRect(xLeft, yTop, width, height, mmSegmentColor);
                 }
                 offsetIdx++;
@@ -1828,7 +1830,7 @@ const renderSegments = (
             // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
             // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
           }
-          
+          // const width = 1;
           for (const substitution of segment.substitutions) {
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));

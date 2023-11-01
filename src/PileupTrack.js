@@ -636,7 +636,7 @@ varying vec4 vColor;
                 uid: this.id, 
                 elapsedTime: elapsedTimeA,
               };
-              console.log(`${JSON.stringify(msg)}`);
+              // console.log(`${JSON.stringify(msg)}`);
               this.bc.postMessage(msg);
             });
         });
@@ -726,7 +726,7 @@ varying vec4 vColor;
                 uid: this.id, 
                 elapsedTime: elapsedTimeB,
               };
-              console.log(`${JSON.stringify(msg)}`);
+              // console.log(`${JSON.stringify(msg)}`);
               this.bc.postMessage(msg);
 
               return;
