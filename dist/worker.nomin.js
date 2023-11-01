@@ -35938,19 +35938,34 @@ const renderSegments = (
                   }
                 }
               }
-              let offsetIdx = 0;
-              const width = 1;
-              for (const offset of offsets) {
-                const probability = probabilities[offsetIdx];
-                if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
-                  // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
-                  xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
-                  // const width = Math.max(1, xScale(offsetLength) - xScale(0));
-                  // xRight = xLeft + width;
-                  addRect(xLeft, yTop, width, height, mmSegmentColor);
-                }
-                offsetIdx++;
-              }
+              // let offsetIdx = 0;
+              // const width = 1;
+              // for (const offset of offsets) {
+              //   const probability = probabilities[offsetIdx];
+              //   if (probability >= minProbabilityThreshold && probability < maxProbabilityThreshold) {
+              //     // console.log(`segment.from + offset -> | ${segment.from} | ${offset} | ${segment.from + offset}`);
+              //     xLeft = xScale(segment.from + offset); // 'from' uses 1-based index
+              //     // const width = Math.max(1, xScale(offsetLength) - xScale(0));
+              //     // xRight = xLeft + width;
+              //     addRect(xLeft, yTop, width, height, mmSegmentColor);
+              //   }
+              //   offsetIdx++;
+              // }
+
+              // const offsetWidth = 1;
+              // const filteredOffsets = offsets.filter((d, i) => probabilities[i] >= minProbabilityThreshold && probabilities[i] < maxProbabilityThreshold);
+              // for (const filteredOffset of filteredOffsets) {
+              //   xLeft = xScale(segment.from + filteredOffset);
+              //   addRect(xLeft, yTop, offsetWidth, height, mmSegmentColor);
+              // }
+
+              const offsetWidth = 1;
+              offsets
+                .filter((d, i) => probabilities[i] >= minProbabilityThreshold && probabilities[i] < maxProbabilityThreshold)
+                .map(filteredOffset => {
+                  xLeft = xScale(segment.from + filteredOffset);
+                  addRect(xLeft, yTop, offsetWidth, height, mmSegmentColor);
+                })
             }
           }
         }
