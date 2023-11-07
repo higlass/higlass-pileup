@@ -602,14 +602,31 @@ const tile = async (uid, z, x) => {
                 fetchOptions
               )
               .then((records) => {
-                const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
-                );
-                tileValues.set(
-                  `${uid}.${z}.${x}`,
-                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                );
-                
+                if (trackOptions[uid].methylation && trackOptions[uid].methylation.maxSegmentsPerTile) {
+                  const mappedRecordsWithMaxSegments = records.map((rec) =>
+                    bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  ).slice(0, trackOptions[uid].methylation.maxSegmentsPerTile);
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecordsWithMaxSegments),
+                  );
+                }
+                else {
+                  const mappedRecords = records.map((rec) =>
+                    bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  );
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                  );
+                }
+                // const mappedRecords = records.map((rec) =>
+                //   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                // );
+                // tileValues.set(
+                //   `${uid}.${z}.${x}`,
+                //   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                // );
               }),
           );
 
@@ -652,14 +669,24 @@ const tile = async (uid, z, x) => {
             bamFile
               .getRecordsForRange(chromName, startPos, endPos, fetchOptions)
               .then((records) => {
-                const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
-                );
-                tileValues.set(
-                  `${uid}.${z}.${x}`,
-                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                );
-                
+                if (trackOptions[uid].methylation && trackOptions[uid].methylation.maxSegmentsPerTile) {
+                  const mappedRecordsWithMaxSegments = records.map((rec) =>
+                    bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  ).slice(0, trackOptions[uid].methylation.maxSegmentsPerTile);
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecordsWithMaxSegments),
+                  );
+                }
+                else {
+                  const mappedRecords = records.map((rec) =>
+                    bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  );
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                  );
+                }                
                 return [];
               }),
           );
@@ -845,6 +872,7 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
       }
     }
     // There is no space in the existing rows, so add a new one.
+    // console.log(`adding row to ${occupiedSpaceInRows.length} occupiedSpaceInRows rows`);
     segment.row = occupiedSpaceInRows.length;
     occupiedSpaceInRows.push({
       from: segmentFromWithPadding,
@@ -887,6 +915,8 @@ function segmentsToRows(segments, optionsIn) {
   const prevSegments = prevRows
     .flat()
     .filter((segment) => segmentIds.has(segment.id));
+
+  const maxRows = (optionsIn.maxRows) ? optionsIn.maxRows : null;
 
   for (let i = 0; i < prevSegments.length; i++) {
     // prevSegments contains already assigned segments. The function below therefore just
@@ -1497,11 +1527,18 @@ const renderSegments = (
     for (let key of Object.keys(grouped)) {
       const rows = segmentsToRows(grouped[key], {
         prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        // maxRows: (trackOptions.methylation && trackOptions.methylation.maxRows) ? trackOptions.methylation.maxRows : null,
       });
       // console.log(`uid ${uid} | rows ${JSON.stringify(rows)}`);
       // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
       // Therefore we get rid of everything else to save memory and increase performance
       grouped[key] = {};
+      // if (trackOptions.methylation && trackOptions.methylation.maxRows) {
+      //   grouped[key].rows = rows.slice(0, trackOptions.methylation.maxRows);
+      // }
+      // else {
+      //   grouped[key].rows = rows;
+      // }
       grouped[key].rows = rows;
     }
   }
