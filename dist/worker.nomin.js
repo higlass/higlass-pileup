@@ -36008,6 +36008,7 @@ const renderSegments = (
         }
 
         if (trackOptions && trackOptions.indexDHS) {
+          // console.log(`segment ${JSON.stringify(segment, null, 2)}`);
           //
           // apply color to segment, if available
           //
@@ -36018,6 +36019,49 @@ const renderSegments = (
             // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
             // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
           }
+          // if (segment.substitutions.length === 1) {
+          //   const newSubstitutions = [];
+          //   let offset = 0;
+          //   let length = 1;
+          //   let rangeStart = segment.start;
+          //   let rangeEnd = segment.start + 1;
+          //   newSubstitutions.push({
+          //     pos: offset,
+          //     length: length,
+          //     range: [
+          //       rangeStart,
+          //       rangeEnd,
+          //     ],
+          //     type: 'M',
+          //   });
+          //   offset += length;
+          //   length = segment.to - segment.from - offset - 1;
+          //   rangeStart = rangeEnd;
+          //   rangeEnd = rangeStart + length; 
+          //   newSubstitutions.push({
+          //     pos: 1,
+          //     length: length,
+          //     range: [
+          //       rangeStart,
+          //       rangeEnd,
+          //     ],
+          //     type: 'N',
+          //   });
+          //   offset += length;
+          //   length = 1;
+          //   rangeStart = rangeEnd;
+          //   rangeEnd = rangeStart + 1;
+          //   newSubstitutions.push({
+          //     pos: offset,
+          //     length: length,
+          //     range: [
+          //       rangeStart,
+          //       rangeEnd,
+          //     ],
+          //     type: 'M',
+          //   });
+          //   segment.substitutions = newSubstitutions;
+          // }
           // const width = 1;
           for (const substitution of segment.substitutions) {
             xLeft = xScale(segment.from + substitution.pos);

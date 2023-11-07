@@ -937,13 +937,6 @@ varying vec4 vColor;
           blockSizes.push(sub.length);
         }
       }
-      // subs.forEach((s, i) => {
-      //   if (s.type === 'M') {
-      //     blockCount++;
-      //     blockStarts.push(s.pos);
-      //     blockSizes.push(s.length);
-      //   }
-      // });
       if (blockCount > 0) {
         elementCartoon += `<svg width="${elementCartoonWidth}" height="${elementCartoonHeight}">
           <style type="text/css">
@@ -986,20 +979,24 @@ varying vec4 vColor;
         const ecLabelDy = '-0.25em';
         elementCartoon += `<text class="id" text-anchor="${realIdTextAnchor}" x=${ecThickStart} y=${ecThickY} dy=${ecLabelDy}>${elementId}</text>`;
 
+        let ecExonStart = 0;
+        let ecExonWidth = 0;
+        const ecExonY = elementCartoonMiddle - elementCartoonGeneHeight / 8;
+        const ecExonHeight = elementCartoonGeneHeight / 4;
         for (let i = 0; i < blockCount; i++) {
-          let ecExonStart = pos2pixel(elementStart + +blockStarts[i]);
-          const ecExonY = elementCartoonMiddle - elementCartoonGeneHeight / 8;
-          let ecExonWidth = pos2pixel(elementStart + +blockSizes[i]);
-          const ecExonHeight = elementCartoonGeneHeight / 4;
-          if (isElementBarPlotLike) {
-            if (i === 0) {
-              ecExonStart = ecStart;
-              ecExonWidth = ecStart + 1;
-            } else if (i === blockCount - 1) {
-              ecExonStart = ecEnd - 1;
-              ecExonWidth = ecEnd;
-            }
-          }
+          ecExonStart = pos2pixel(elementStart + +blockStarts[i]);
+          ecExonWidth = pos2pixel(elementStart + +blockSizes[i]);
+          elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
+        }
+        // add whiskers separately
+        if (isElementBarPlotLike) {
+          // leftmost whisker
+          ecExonStart = ecStart;
+          ecExonWidth = ecStart + 1;
+          elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
+          // rightmost whisker
+          ecExonStart = ecEnd - 1;
+          ecExonWidth = ecEnd;
           elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
         }
 
