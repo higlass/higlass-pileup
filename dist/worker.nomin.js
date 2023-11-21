@@ -33700,7 +33700,9 @@ const tilesetInfo = (uid) => {
 };
 
 const tile = async (uid, z, x) => {
-  const {maxTileWidth} = dataOptions[uid];
+  const {maxTileWidth, maxSampleSize} = dataOptions[uid];
+
+  // console.log(`maxSampleSize ${maxSampleSize}`);
 
   const { bamUrl, fastaUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
@@ -33737,6 +33739,7 @@ const tile = async (uid, z, x) => {
         // start of the visible region is within this chromosome
         const fetchOptions = {
           viewAsPairs: areMatesRequired(bam_fetcher_worker_trackOptions[uid]),
+          maxSampleSize: maxSampleSize || 1000,
           // maxInsertSize: 2000,
         };
 
@@ -33746,38 +33749,39 @@ const tile = async (uid, z, x) => {
           // fetch from the start until the end of the chromosome
           recordPromises.push(
             bamFile
-              .getRecordsForRange(
+              .getRecordsForRangeSample(
                 chromName,
                 minX - chromStart,
                 chromEnd - chromStart,
                 fetchOptions
               )
               .then((records) => {
-                if (bam_fetcher_worker_trackOptions[uid].methylation && bam_fetcher_worker_trackOptions[uid].methylation.maxSegmentsPerTile) {
-                  const mappedRecordsWithMaxSegments = records.map((rec) =>
-                    bamRecordToJson(rec, chromName, cumPositions[i].pos, bam_fetcher_worker_trackOptions[uid]),
-                  ).slice(0, bam_fetcher_worker_trackOptions[uid].methylation.maxSegmentsPerTile);
-                  tileValues.set(
-                    `${uid}.${z}.${x}`,
-                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecordsWithMaxSegments),
-                  );
-                }
-                else {
-                  const mappedRecords = records.map((rec) =>
-                    bamRecordToJson(rec, chromName, cumPositions[i].pos, bam_fetcher_worker_trackOptions[uid]),
-                  );
-                  tileValues.set(
-                    `${uid}.${z}.${x}`,
-                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                  );
-                }
-                // const mappedRecords = records.map((rec) =>
-                //   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
-                // );
-                // tileValues.set(
-                //   `${uid}.${z}.${x}`,
-                //   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                // );
+                // if (trackOptions[uid].methylation && trackOptions[uid].methylation.maxSegmentsPerTile) {
+                //   const mappedRecordsWithMaxSegments = records.map((rec) =>
+                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                //   ).slice(0, trackOptions[uid].methylation.maxSegmentsPerTile);
+                //   tileValues.set(
+                //     `${uid}.${z}.${x}`,
+                //     tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecordsWithMaxSegments),
+                //   );
+                // }
+                // else {
+                //   const mappedRecords = records.map((rec) =>
+                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                //   );
+                //   tileValues.set(
+                //     `${uid}.${z}.${x}`,
+                //     tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                //   );
+                // }
+                // console.log(`records ${JSON.stringify(records.length)}`);
+                const mappedRecords = records.map((rec) =>
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos, bam_fetcher_worker_trackOptions[uid]),
+                );
+                tileValues.set(
+                  `${uid}.${z}.${x}`,
+                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                );
               }),
           );
 
@@ -33818,26 +33822,39 @@ const tile = async (uid, z, x) => {
           // the end of the region is within this chromosome
           recordPromises.push(
             bamFile
-              .getRecordsForRange(chromName, startPos, endPos, fetchOptions)
+              .getRecordsForRangeSample(
+                chromName, 
+                startPos, 
+                endPos, 
+                fetchOptions
+              )
               .then((records) => {
-                if (bam_fetcher_worker_trackOptions[uid].methylation && bam_fetcher_worker_trackOptions[uid].methylation.maxSegmentsPerTile) {
-                  const mappedRecordsWithMaxSegments = records.map((rec) =>
-                    bamRecordToJson(rec, chromName, cumPositions[i].pos, bam_fetcher_worker_trackOptions[uid]),
-                  ).slice(0, bam_fetcher_worker_trackOptions[uid].methylation.maxSegmentsPerTile);
-                  tileValues.set(
-                    `${uid}.${z}.${x}`,
-                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecordsWithMaxSegments),
-                  );
-                }
-                else {
-                  const mappedRecords = records.map((rec) =>
-                    bamRecordToJson(rec, chromName, cumPositions[i].pos, bam_fetcher_worker_trackOptions[uid]),
-                  );
-                  tileValues.set(
-                    `${uid}.${z}.${x}`,
-                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                  );
-                }                
+                // if (trackOptions[uid].methylation && trackOptions[uid].methylation.maxSegmentsPerTile) {
+                //   const mappedRecordsWithMaxSegments = records.map((rec) =>
+                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                //   ).slice(0, trackOptions[uid].methylation.maxSegmentsPerTile);
+                //   tileValues.set(
+                //     `${uid}.${z}.${x}`,
+                //     tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecordsWithMaxSegments),
+                //   );
+                // }
+                // else {
+                //   const mappedRecords = records.map((rec) =>
+                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                //   );
+                //   tileValues.set(
+                //     `${uid}.${z}.${x}`,
+                //     tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                //   );
+                // }
+                // console.log(`records ${JSON.stringify(records.length)}`);
+                const mappedRecords = records.map((rec) =>
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos, bam_fetcher_worker_trackOptions[uid]),
+                );
+                tileValues.set(
+                  `${uid}.${z}.${x}`,
+                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                );
                 return [];
               }),
           );
