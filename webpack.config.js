@@ -1,5 +1,7 @@
 const path = require('path');
 
+const WorkerFileUpdaterPlugin = require('./worker-file-updater-plugin');
+
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const UnminifiedWebpackPlugin = require('unminified-webpack-plugin');
@@ -36,9 +38,11 @@ const workerConfig = {
     filename: 'worker.js',
     path: path.resolve(__dirname, 'dist'),
   },
-  entry: path.resolve(__dirname, 'src/bam-fetcher-worker'),
+  entry: {
+    "webworker" : path.resolve(__dirname, 'src/bam-fetcher-worker'),
+  },
   target: 'webworker',
-  plugins: [new UnminifiedWebpackPlugin(), new ThreadsPlugin()],
+  plugins: [new UnminifiedWebpackPlugin(), new ThreadsPlugin(), new WorkerFileUpdaterPlugin()],
 };
 
 const libraryConfig = {
