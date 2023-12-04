@@ -8,7 +8,7 @@ import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 // import BAMDataFetcher from './bam-fetcher';
-import { clusterData, euclideanDistance, jaccardDistance, avgDistance } from '@greenelab/hclust';
+import { clusterData, euclideanDistance, jaccardDistance, averageDistance } from '@greenelab/hclust';
 import { RemoteFile } from 'generic-filehandle';
 
 function currTime() {
@@ -1149,7 +1149,7 @@ const exportSegmentsAsBED12 = (
       const { clusters, distances, order, clustersGivenK } = clusterData({
         data: data,
         distance: distanceFnToCall,
-        linkage: avgDistance,
+        linkage: averageDistance,
         onProgress: null,
       });
 
@@ -1515,7 +1515,7 @@ const renderSegments = (
       const { clusters, distances, order, clustersGivenK } = clusterData({
         data: data,
         distance: distanceFnToCall,
-        linkage: avgDistance,
+        linkage: averageDistance,
       });
 
       // console.log(`order ${order}`);

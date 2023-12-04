@@ -59,7 +59,10 @@
     "clean": "rm -rf node_modules && rm -f package-lock.json && rm -rf dist && rm -rf build"
   },
   "dependencies": {
-    "@gmod/bam": "2.0.0",
+    "@gmod/indexedfasta": "^2.1.0",
+    "@greenelab/hclust": "git+https://alexpreynolds@github.com/alexpreynolds/hclust.git#methylation",
+    "apr144-bam": "^2.0.0",
+    "buffer": "^6.0.3",
     "d3-array": "^2.3.1",
     "d3-dsv": "^1.1.1",
     "d3-format": "^3.0.1",

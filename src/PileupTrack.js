@@ -161,11 +161,13 @@ function isIn(as) {
 }
 
 const PileupTrack = (HGC, ...args) => {
-  if (!new.target) {
-    throw new Error(
-      'Uncaught TypeError: Class constructor cannot be invoked without "new"',
-    );
-  }
+  /**
+     if (!new.target) {
+       throw new Error(
+         'Uncaught TypeError: Class constructor cannot be invoked without "new"',
+       );
+     }
+    */
 
   class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {

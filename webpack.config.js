@@ -34,6 +34,11 @@ class WaitPlugin extends WebpackBeforeBuildPlugin {
 }
 
 const workerConfig = {
+  resolve: {
+    fallback: {
+      "buffer": require.resolve("buffer/")
+    }
+  },
   output: {
     filename: 'worker.js',
     path: path.resolve(__dirname, 'dist'),
@@ -46,6 +51,11 @@ const workerConfig = {
 };
 
 const libraryConfig = {
+  resolve: {
+    fallback: {
+      "buffer": require.resolve("buffer/")
+    }
+  },
   output: {
     filename: 'higlass-pileup.min.js',
     library: 'higlass-pileup',
