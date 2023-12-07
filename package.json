@@ -1,6 +1,6 @@
 {
   "name": "higlass-pileup",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "HiGlass Pileup Track",
   "keywords": [
     "HiGlass",
@@ -12,6 +12,10 @@
     {
       "name": "Peter Kerpedjiev",
       "url": "http://github.com/pkerpedjiev"
+    },
+    {
+      "name": "Alex Reynolds",
+      "url": "http://github.com/alexpreynolds"
     }
   ],
   "repository": {
@@ -56,13 +60,12 @@
     "build": "npm run build-es && webpack --mode production",
     "start": "webpack serve --mode development -c webpack.config.js",
     "prerelease": "rm -rf dist/*; npm run build; zip -r dist.zip dist",
-    "clean": "rm -rf node_modules && rm -f package-lock.json && rm -rf dist && rm -rf build"
+    "clean": "rm -rf node_modules && rm -f package-lock.json && rm -rf dist && rm -rf build",
+    "reinstall": "npm run clean && npm install"
   },
   "dependencies": {
-    "@gmod/indexedfasta": "^2.1.0",
     "@greenelab/hclust": "git+https://alexpreynolds@github.com/alexpreynolds/hclust.git#methylation",
-    "apr144-bam": "^2.0.0",
-    "buffer": "^6.0.3",
+    "apr144-bam": "2.0.0-rs",
     "d3-array": "^2.3.1",
     "d3-dsv": "^1.1.1",
     "d3-format": "^3.0.1",
@@ -71,6 +74,10 @@
     "higlass-register": "^0.1.0",
     "lru-cache": "^6.0.0",
     "raw-loader": "^4.0.2",
-    "threads": "v1.7.0"
+    "threads": "v1.7.0",
+    "buffer": "^6.0.3"
+  },
+  "dependenciesComments": {
+    "@gmod/indexedfasta": "^2.1.0"
   }
 }

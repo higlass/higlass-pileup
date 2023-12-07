@@ -1009,7 +1009,7 @@
   resolved "https://registry.npmjs.org/@eslint/js/-/js-8.52.0.tgz"
   integrity sha512-mjZVbpaeMZludF2fsWLD0Z9gCref1Tk4i9+wddjRvpUNqqcndPkBD09N/Mapey0b3jaXbLm2kICwFv2E64QinA==
 
-"@gmod/bgzf-filehandle@^1.4.0", "@gmod/bgzf-filehandle@^1.4.4":
+"@gmod/bgzf-filehandle@^1.4.4":
   version "1.4.7"
   resolved "https://registry.npmjs.org/@gmod/bgzf-filehandle/-/bgzf-filehandle-1.4.7.tgz"
   integrity sha512-f/oXwWwsBe4nYN82mQ+Sz++/zH6EOyBCRqxFdv04SBkreQvilf3cql6F8ZAMMBq1f/abzBc0U0zJIMF9CLM7QQ==
@@ -1018,14 +1018,6 @@
     generic-filehandle "^3.0.0"
     long "^4.0.0"
     pako "^1.0.11"
-
-"@gmod/indexedfasta@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.npmjs.org/@gmod/indexedfasta/-/indexedfasta-2.1.0.tgz"
-  integrity sha512-I7kzSwlK0kxy05K1jsvRPsDr7vV7i/7EI1GMDzCqszn8FtwTlgkdQOYAuhK4kM5SIZrCEG3yAg+TQJmcsv33ug==
-  dependencies:
-    "@gmod/bgzf-filehandle" "^1.4.0"
-    generic-filehandle "^3.0.0"
 
 "@greenelab/hclust@git+https://alexpreynolds@github.com/alexpreynolds/hclust.git#methylation":
   version "0.0.0-dev"
@@ -1566,10 +1558,10 @@ anymatch@~3.1.2:
     normalize-path "^3.0.0"
     picomatch "^2.0.4"
 
-apr144-bam@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0.tgz"
-  integrity sha512-YiIQLsNNM800b1MGfdZUFp8zWklg8OxPU01tYWAuSWVOLBhz10GvHIgPBlFMmthIUVzZ1JpwL0ZDiZ9IsAkJQA==
+apr144-bam@2.0.0-rs:
+  version "2.0.0-rs"
+  resolved "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs.tgz"
+  integrity sha512-sJLhv0pf7RWb8AesqD55lJ+QoshXMHVKRvO7zQ3miU+2hasOgzwwYGDtUUy0V2+MtvBQveOJUvM8VwyePJJDLQ==
   dependencies:
     "@gmod/bgzf-filehandle" "^1.4.4"
     abortable-promise-cache "^1.5.0"

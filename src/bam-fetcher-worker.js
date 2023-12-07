@@ -385,11 +385,11 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
     // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
     const remoteFasta = new RemoteFile(fastaUrl);
     const remoteFai = new RemoteFile(faiUrl);
-    const { IndexedFasta } = require('@gmod/indexedfasta');
-    sequenceFiles[fastaUrl] = new IndexedFasta({
-      fasta: remoteFasta,
-      fai: remoteFai,
-    });
+    // const { IndexedFasta } = require('@gmod/indexedfasta');
+    // sequenceFiles[fastaUrl] = new IndexedFasta({
+    //   fasta: remoteFasta,
+    //   fai: remoteFai,
+    // });
     // console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
   }
 
@@ -555,7 +555,7 @@ const tile = async (uid, z, x) => {
 
   const { bamUrl, fastaUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
-  const sequenceFile = (fastaUrl) ? sequenceFiles[fastaUrl] : null;
+  const sequenceFile = (fastaUrl) ? (sequenceFiles[fastaUrl]) ? sequenceFiles[fastaUrl] : null : null;
 
   // console.log(`sequenceFile | ${fastaUrl} | ${JSON.stringify(sequenceFile)}`);
 
@@ -589,7 +589,7 @@ const tile = async (uid, z, x) => {
         const fetchOptions = {
           viewAsPairs: areMatesRequired(trackOptions[uid]),
           maxSampleSize: maxSampleSize || 1000,
-          // maxInsertSize: 2000,
+          maxInsertSize: 1000,
         };
 
         if (maxX > chromEnd) {
