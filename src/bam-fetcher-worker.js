@@ -390,7 +390,7 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
       fasta: remoteFasta,
       fai: remoteFai,
     });
-    console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
+    // console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
   }
 
   if (chromSizesUrl) {
