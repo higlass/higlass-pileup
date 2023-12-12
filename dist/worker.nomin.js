@@ -1,132 +1,387 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 152:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ 290:
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-var __webpack_unused_export__;
 
-
-__webpack_unused_export__ = ({
-  value: true
+// EXPORTS
+__webpack_require__.d(__webpack_exports__, {
+  q5: () => (/* reexport */ BgzFilehandle),
+  Ri: () => (/* reexport */ unzip),
+  y$: () => (/* reexport */ unzipChunkSlice)
 });
-exports.eM = exports.bP = exports.WI = void 0;
 
-// get euclidean distance between two equal-dimension vectors
-const euclideanDistance = (a, b) => {
-  const size = Math.min(a.length, b.length);
-  let sum = 0;
+// UNUSED EXPORTS: unzipChunk
 
-  for (let index = 0; index < size; index++) sum += (a[index] - b[index]) * (a[index] - b[index]);
+// EXTERNAL MODULE: ./node_modules/buffer/index.js
+var node_modules_buffer = __webpack_require__(764);
+// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
+var esm = __webpack_require__(949);
+// EXTERNAL MODULE: ./node_modules/pako/index.js
+var pako = __webpack_require__(591);
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/unzip-pako.js
 
-  return Math.sqrt(sum);
-}; // get average distance between sets of indexes, given distance matrix
+//@ts-ignore
 
-
-exports.WI = euclideanDistance;
-
-const averageDistance = (setA, setB, distances) => {
-  let distance = 0;
-
-  for (const a of setA) {
-    for (const b of setB) distance += distances[a][b];
-  }
-
-  return distance / setA.length / setB.length;
-}; // update progress by calling user onProgress and postMessage for web workers
-
-
-exports.bP = averageDistance;
-
-const updateProgress = (stepNumber, stepProgress, onProgress) => {
-  // currently only two distinct steps: computing distance matrix and clustering
-  const progress = stepNumber / 2 + stepProgress / 2; // if onProgress is defined and is a function, call onProgress
-
-  if (typeof onProgress === 'function') onProgress(progress); // if this script is being run as a web worker, call postMessage
-
-  if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) postMessage(progress);
-}; // default onProgress function. console logs progress
-
-
-const logProgress = progress => console.log('Clustering: ', (progress * 100).toFixed(1) + '%'); // the main clustering function
-
-
-const clusterData = ({
-  data = [],
-  key = '',
-  distance = euclideanDistance,
-  linkage = averageDistance,
-  onProgress = logProgress
-}) => {
-  // extract values from specified key
-  if (key) data = data.map(datum => datum[key]); // compute distance between each data point and every other data point
-  // N x N matrix where N = data.length
-
-  const distances = data.map((datum, index) => {
-    updateProgress(0, index / (data.length - 1), onProgress); // get distance between datum and other datum
-
-    return data.map(otherDatum => distance(datum, otherDatum));
-  }); // initialize clusters to match data
-
-  const clusters = data.map((datum, index) => ({
-    height: 0,
-    indexes: [Number(index)]
-  })); // keep track of all tree slices
-
-  let clustersGivenK = []; // iterate through data
-
-  for (let iteration = 0; iteration < data.length; iteration++) {
-    updateProgress(1, (iteration + 1) / data.length, onProgress); // add current tree slice
-
-    clustersGivenK.push(clusters.map(cluster => cluster.indexes)); // dont find clusters to merge when only one cluster left
-
-    if (iteration >= data.length - 1) break; // initialize smallest distance
-
-    let nearestDistance = Infinity;
-    let nearestRow = 0;
-    let nearestCol = 0; // upper triangular matrix of clusters
-
-    for (let row = 0; row < clusters.length; row++) {
-      for (let col = row + 1; col < clusters.length; col++) {
-        // calculate distance between clusters
-        const distance = linkage(clusters[row].indexes, clusters[col].indexes, distances); // update smallest distance
-
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestRow = row;
-          nearestCol = col;
+// browserify-zlib, which is the zlib shim used by default in webpacked code,
+// does not properly uncompress bgzf chunks that contain more than
+// one bgzf block, so export an unzip function that uses pako directly
+// if we are running in a browser.
+async function unzip(inputData) {
+    try {
+        let strm;
+        let pos = 0;
+        let i = 0;
+        const chunks = [];
+        let totalSize = 0;
+        let inflator;
+        do {
+            const remainingInput = inputData.subarray(pos);
+            inflator = new pako.Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            pos += strm.next_in;
+            chunks[i] = inflator.result;
+            totalSize += chunks[i].length;
+            i += 1;
+        } while (strm.avail_in);
+        const result = new Uint8Array(totalSize);
+        for (let i = 0, offset = 0; i < chunks.length; i++) {
+            result.set(chunks[i], offset);
+            offset += chunks[i].length;
         }
-      }
-    } // merge nearestRow and nearestCol clusters together
+        return node_modules_buffer/* Buffer */.lW.from(result);
+    }
+    catch (e) {
+        //cleanup error message
+        if (`${e}`.match(/incorrect header check/)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+// similar to pakounzip, except it does extra counting
+// to return the positions of compressed and decompressed
+// data offsets
+async function unzipChunk(inputData) {
+    try {
+        let strm;
+        let cpos = 0;
+        let dpos = 0;
+        const blocks = [];
+        const cpositions = [];
+        const dpositions = [];
+        do {
+            const remainingInput = inputData.slice(cpos);
+            const inflator = new Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            const buffer = Buffer.from(inflator.result);
+            blocks.push(buffer);
+            cpositions.push(cpos);
+            dpositions.push(dpos);
+            cpos += strm.next_in;
+            dpos += buffer.length;
+        } while (strm.avail_in);
+        const buffer = Buffer.concat(blocks);
+        return { buffer, cpositions, dpositions };
+    }
+    catch (e) {
+        //cleanup error message
+        if (`${e}`.match(/incorrect header check/)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+// similar to unzipChunk above but slices (0,minv.dataPosition) and
+// (maxv.dataPosition,end) off
+async function unzipChunkSlice(inputData, chunk) {
+    try {
+        let strm;
+        const { minv, maxv } = chunk;
+        let cpos = minv.blockPosition;
+        let dpos = minv.dataPosition;
+        const chunks = [];
+        const cpositions = [];
+        const dpositions = [];
+        let totalSize = 0;
+        let i = 0;
+        do {
+            const remainingInput = inputData.subarray(cpos - minv.blockPosition);
+            const inflator = new pako.Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            const buffer = inflator.result;
+            chunks.push(buffer);
+            let len = buffer.length;
+            cpositions.push(cpos);
+            dpositions.push(dpos);
+            if (chunks.length === 1 && minv.dataPosition) {
+                // this is the first chunk, trim it
+                chunks[0] = chunks[0].subarray(minv.dataPosition);
+                len = chunks[0].length;
+            }
+            const origCpos = cpos;
+            cpos += strm.next_in;
+            dpos += len;
+            if (origCpos >= maxv.blockPosition) {
+                // this is the last chunk, trim it and stop decompressing
+                // note if it is the same block is minv it subtracts that already
+                // trimmed part of the slice length
+                chunks[i] = chunks[i].subarray(0, maxv.blockPosition === minv.blockPosition
+                    ? maxv.dataPosition - minv.dataPosition + 1
+                    : maxv.dataPosition + 1);
+                cpositions.push(cpos);
+                dpositions.push(dpos);
+                totalSize += chunks[i].length;
+                break;
+            }
+            totalSize += chunks[i].length;
+            i++;
+        } while (strm.avail_in);
+        const result = new Uint8Array(totalSize);
+        for (let i = 0, offset = 0; i < chunks.length; i++) {
+            result.set(chunks[i], offset);
+            offset += chunks[i].length;
+        }
+        const buffer = node_modules_buffer/* Buffer */.lW.from(result);
+        return { buffer, cpositions, dpositions };
+    }
+    catch (e) {
+        //cleanup error message
+        if (`${e}`.match(/incorrect header check/)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+function nodeUnzip() {
+    throw new Error('nodeUnzip not implemented.');
+}
+
+//# sourceMappingURL=unzip-pako.js.map
+// EXTERNAL MODULE: ./node_modules/long/src/long.js
+var src_long = __webpack_require__(720);
+var long_default = /*#__PURE__*/__webpack_require__.n(src_long);
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/gziIndex.js
 
 
-    const newCluster = {
-      indexes: [...clusters[nearestRow].indexes, ...clusters[nearestCol].indexes],
-      height: nearestDistance,
-      children: [clusters[nearestRow], clusters[nearestCol]]
-    }; // remove nearestRow and nearestCol clusters
-    // splice higher index first so it doesn't affect second splice
 
-    clusters.splice(Math.max(nearestRow, nearestCol), 1);
-    clusters.splice(Math.min(nearestRow, nearestCol), 1); // add new merged cluster
+// const COMPRESSED_POSITION = 0
+const UNCOMPRESSED_POSITION = 1;
+class GziIndex {
+    constructor({ filehandle, path, }) {
+        if (filehandle) {
+            this.filehandle = filehandle;
+        }
+        else if (path) {
+            this.filehandle = new esm/* LocalFile */.S9(path);
+        }
+        else {
+            throw new TypeError('either filehandle or path must be defined');
+        }
+    }
+    _readLongWithOverflow(buf, offset = 0, unsigned = true) {
+        //@ts-ignore
+        const long = long_default().fromBytesLE(buf.slice(offset, offset + 8), unsigned);
+        if (long.greaterThan(Number.MAX_SAFE_INTEGER) ||
+            long.lessThan(Number.MIN_SAFE_INTEGER)) {
+            throw new TypeError('integer overflow');
+        }
+        return long.toNumber();
+    }
+    _getIndex() {
+        if (!this.index) {
+            this.index = this._readIndex();
+        }
+        return this.index;
+    }
+    async _readIndex() {
+        let buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(8);
+        await this.filehandle.read(buf, 0, 8, 0);
+        const numEntries = this._readLongWithOverflow(buf, 0, true);
+        if (!numEntries) {
+            return [[0, 0]];
+        }
+        const entries = new Array(numEntries + 1);
+        entries[0] = [0, 0];
+        // TODO rewrite this to make an index-index that stays in memory
+        const bufSize = 8 * 2 * numEntries;
+        if (bufSize > Number.MAX_SAFE_INTEGER) {
+            throw new TypeError('integer overflow');
+        }
+        buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(bufSize);
+        await this.filehandle.read(buf, 0, bufSize, 8);
+        for (let entryNumber = 0; entryNumber < numEntries; entryNumber += 1) {
+            const compressedPosition = this._readLongWithOverflow(buf, entryNumber * 16);
+            const uncompressedPosition = this._readLongWithOverflow(buf, entryNumber * 16 + 8);
+            entries[entryNumber + 1] = [compressedPosition, uncompressedPosition];
+        }
+        return entries;
+    }
+    async getLastBlock() {
+        const entries = await this._getIndex();
+        if (!entries.length) {
+            return undefined;
+        }
+        return entries[entries.length - 1];
+    }
+    async getRelevantBlocksForRead(length, position) {
+        const endPosition = position + length;
+        if (length === 0) {
+            return [];
+        }
+        const entries = await this._getIndex();
+        const relevant = [];
+        // binary search to find the block that the
+        // read starts in and extend forward from that
+        const compare = (entry, nextEntry) => {
+            const uncompressedPosition = entry[UNCOMPRESSED_POSITION];
+            const nextUncompressedPosition = nextEntry
+                ? nextEntry[UNCOMPRESSED_POSITION]
+                : Infinity;
+            // block overlaps read start
+            if (uncompressedPosition <= position &&
+                nextUncompressedPosition > position) {
+                return 0;
+                // block is before read start
+            }
+            if (uncompressedPosition < position) {
+                return -1;
+            }
+            // block is after read start
+            return 1;
+        };
+        let lowerBound = 0;
+        let upperBound = entries.length - 1;
+        let searchPosition = Math.floor(entries.length / 2);
+        let comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
+        while (comparison !== 0) {
+            if (comparison > 0) {
+                upperBound = searchPosition - 1;
+            }
+            else if (comparison < 0) {
+                lowerBound = searchPosition + 1;
+            }
+            searchPosition = Math.ceil((upperBound - lowerBound) / 2) + lowerBound;
+            comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
+        }
+        // here's where we read forward
+        relevant.push(entries[searchPosition]);
+        let i = searchPosition + 1;
+        for (; i < entries.length; i += 1) {
+            relevant.push(entries[i]);
+            if (entries[i][UNCOMPRESSED_POSITION] >= endPosition) {
+                break;
+            }
+        }
+        if (relevant[relevant.length - 1][UNCOMPRESSED_POSITION] < endPosition) {
+            relevant.push([]);
+        }
+        return relevant;
+    }
+}
+//# sourceMappingURL=gziIndex.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/bgzFilehandle.js
 
-    clusters.push(newCluster);
-  } // assemble full list of tree slices into array where index = k
+
+// locals
 
 
-  clustersGivenK = [[], ...clustersGivenK.reverse()]; // return useful information
+class BgzFilehandle {
+    constructor({ filehandle, path, gziFilehandle, gziPath, }) {
+        if (filehandle) {
+            this.filehandle = filehandle;
+        }
+        else if (path) {
+            this.filehandle = new esm/* LocalFile */.S9(path);
+        }
+        else {
+            throw new TypeError('either filehandle or path must be defined');
+        }
+        if (!gziFilehandle && !gziPath && !path) {
+            throw new TypeError('either gziFilehandle or gziPath must be defined');
+        }
+        this.gzi = new GziIndex({
+            filehandle: gziFilehandle,
+            path: !gziFilehandle && !gziPath && path ? gziPath : `${path}.gzi`,
+        });
+    }
+    async stat() {
+        const compressedStat = await this.filehandle.stat();
+        return Object.assign(compressedStat, {
+            size: await this.getUncompressedFileSize(),
+            blocks: undefined,
+            blksize: undefined,
+        });
+    }
+    async getUncompressedFileSize() {
+        // read the last block's ISIZE (see gzip RFC),
+        // and add it to its uncompressedPosition
+        const [, uncompressedPosition] = await this.gzi.getLastBlock();
+        const { size } = await this.filehandle.stat();
+        const buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(4);
+        // note: there should be a 28-byte EOF marker (an empty block) at
+        // the end of the file, so we skip backward past that
+        const { bytesRead } = await this.filehandle.read(buf, 0, 4, size - 28 - 4);
+        if (bytesRead !== 4) {
+            throw new Error('read error');
+        }
+        const lastBlockUncompressedSize = buf.readUInt32LE(0);
+        return uncompressedPosition + lastBlockUncompressedSize;
+    }
+    async _readAndUncompressBlock(blockBuffer, [compressedPosition], [nextCompressedPosition]) {
+        let next = nextCompressedPosition;
+        if (!next) {
+            next = (await this.filehandle.stat()).size;
+        }
+        // read the compressed data into the block buffer
+        const blockCompressedLength = next - compressedPosition;
+        await this.filehandle.read(blockBuffer, 0, blockCompressedLength, compressedPosition);
+        // uncompress it
+        const unzippedBuffer = await unzip(blockBuffer.slice(0, blockCompressedLength));
+        return unzippedBuffer;
+    }
+    async read(buf, offset, length, position) {
+        // get the block positions for this read
+        const blockPositions = await this.gzi.getRelevantBlocksForRead(length, position);
+        const blockBuffer = node_modules_buffer/* Buffer */.lW.allocUnsafe(32768 * 2);
+        // uncompress the blocks and read from them one at a time to keep memory usage down
+        let destinationOffset = offset;
+        let bytesRead = 0;
+        for (let blockNum = 0; blockNum < blockPositions.length - 1; blockNum += 1) {
+            // eslint-disable-next-line no-await-in-loop
+            const uncompressedBuffer = await this._readAndUncompressBlock(blockBuffer, blockPositions[blockNum], blockPositions[blockNum + 1]);
+            const [, uncompressedPosition] = blockPositions[blockNum];
+            const sourceOffset = uncompressedPosition >= position ? 0 : position - uncompressedPosition;
+            const sourceEnd = Math.min(position + length, uncompressedPosition + uncompressedBuffer.length) - uncompressedPosition;
+            if (sourceOffset >= 0 && sourceOffset < uncompressedBuffer.length) {
+                uncompressedBuffer.copy(buf, destinationOffset, sourceOffset, sourceEnd);
+                destinationOffset += sourceEnd - sourceOffset;
+                bytesRead += sourceEnd - sourceOffset;
+            }
+        }
+        return { bytesRead, buffer: buf };
+    }
+}
+//# sourceMappingURL=bgzFilehandle.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js
 
-  return {
-    clusters: clusters[0],
-    distances: distances,
-    order: clusters[0].indexes,
-    clustersGivenK: clustersGivenK
-  };
-};
 
-exports.eM = clusterData;
 
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
@@ -963,6 +1218,423 @@ exports.AbortController = AbortController;
 exports.AbortSignal = AbortSignal;
 exports.abortableFetch = abortableFetchDecorator;
 
+
+/***/ }),
+
+/***/ 803:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+var __webpack_unused_export__;
+
+
+__webpack_unused_export__ = ({
+  value: true
+});
+exports.eN = exports.WI = exports.eM = exports.bP = void 0;
+// get euclidean distance between two equal-dimension vectors
+const euclideanDistance = (a, b) => {
+  let index = 0;
+  const size = Math.min(a.length, b.length);
+  let sum = 0;
+  // for (let index = 0; index < size; index++)
+  //   sum += (a[index] - b[index]) * (a[index] - b[index]);
+  while (index < size) {
+    sum += (a[index] - b[index]) * (a[index] - b[index]);
+    ++index;
+  }
+  return Math.sqrt(sum);
+};
+
+// assuming vectors of binary data
+exports.WI = euclideanDistance;
+const jaccardDistance = (a, b) => {
+  let index = 0;
+  const size = Math.min(a.length, b.length);
+  let intersectionAcc = 0;
+  let unionAcc = 0;
+  while (index < size) {
+    if (a[index] !== b[index]) {
+      ++intersectionAcc;
+    } else if (a[index] !== 0) {
+      ++unionAcc;
+    }
+    ++index;
+  }
+  // if a and b are identical (all zeroes or all ones) then distance is zero
+  return intersectionAcc !== 0 ? 1 - unionAcc / (unionAcc + 2 * intersectionAcc) : 0;
+};
+
+// get average distance between sets of indexes, given distance matrix
+exports.eN = jaccardDistance;
+const averageDistance = (setA, setB, distances) => {
+  let distance = 0;
+  for (const a of setA) {
+    for (const b of setB) distance += distances[a][b];
+  }
+  return distance / setA.length / setB.length;
+};
+
+// update progress by calling user onProgress and postMessage for web workers
+exports.bP = averageDistance;
+const updateProgress = (stepNumber, stepProgress, onProgress) => {
+  // currently only two distinct steps: computing distance matrix and clustering
+  const progress = stepNumber / 2 + stepProgress / 2;
+
+  // if onProgress is defined and is a function, call onProgress
+  if (typeof onProgress === 'function') onProgress(progress);
+
+  // if this script is being run as a web worker, call postMessage
+  if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) postMessage(progress);
+};
+
+// default onProgress function. console logs progress
+const logProgress = progress => console.log('Clustering: ', (progress * 100).toFixed(1) + '%');
+
+// the main clustering function
+const clusterData = ({
+  data = [],
+  key = '',
+  distance = euclideanDistance,
+  linkage = averageDistance,
+  onProgress = null
+}) => {
+  // extract values from specified key
+  if (key) data = data.map(datum => datum[key]);
+
+  // compute distance between each data point and every other data point
+  // N x N matrix where N = data.length
+  const distances = data.map((datum, index) => {
+    updateProgress(0, index / (data.length - 1), onProgress);
+
+    // get distance between datum and other datum
+    return data.map(otherDatum => distance(datum, otherDatum));
+  });
+
+  // initialize clusters to match data
+  const clusters = data.map((datum, index) => ({
+    height: 0,
+    indexes: [Number(index)]
+  }));
+
+  // keep track of all tree slices
+  let clustersGivenK = [];
+
+  // iterate through data
+  for (let iteration = 0; iteration < data.length; iteration++) {
+    updateProgress(1, (iteration + 1) / data.length, onProgress);
+
+    // add current tree slice
+    clustersGivenK.push(clusters.map(cluster => cluster.indexes));
+
+    // dont find clusters to merge when only one cluster left
+    if (iteration >= data.length - 1) break;
+
+    // initialize smallest distance
+    let nearestDistance = Infinity;
+    let nearestRow = 0;
+    let nearestCol = 0;
+
+    // upper triangular matrix of clusters
+    for (let row = 0; row < clusters.length; row++) {
+      for (let col = row + 1; col < clusters.length; col++) {
+        // calculate distance between clusters
+        const distance = linkage(clusters[row].indexes, clusters[col].indexes, distances);
+        // update smallest distance
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestRow = row;
+          nearestCol = col;
+        }
+      }
+    }
+
+    // merge nearestRow and nearestCol clusters together
+    const newCluster = {
+      indexes: [...clusters[nearestRow].indexes, ...clusters[nearestCol].indexes],
+      height: nearestDistance,
+      children: [clusters[nearestRow], clusters[nearestCol]]
+    };
+
+    // remove nearestRow and nearestCol clusters
+    // splice higher index first so it doesn't affect second splice
+    clusters.splice(Math.max(nearestRow, nearestCol), 1);
+    clusters.splice(Math.min(nearestRow, nearestCol), 1);
+
+    // add new merged cluster
+    clusters.push(newCluster);
+  }
+
+  // assemble full list of tree slices into array where index = k
+  clustersGivenK = [[], ...clustersGivenK.reverse()];
+
+  // return useful information
+  return {
+    clusters: clusters[0],
+    distances: distances,
+    order: clusters[0].indexes,
+    clustersGivenK: clustersGivenK
+  };
+};
+exports.eM = clusterData;
+
+
+/***/ }),
+
+/***/ 805:
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+// ESM COMPAT FLAG
+__webpack_require__.r(__webpack_exports__);
+
+// EXPORTS
+__webpack_require__.d(__webpack_exports__, {
+  BgzipIndexedFasta: () => (/* reexport */ BgzipIndexedFasta),
+  FetchableSmallFasta: () => (/* binding */ FetchableSmallFasta),
+  IndexedFasta: () => (/* reexport */ IndexedFasta),
+  parseSmallFasta: () => (/* binding */ parseSmallFasta)
+});
+
+// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
+var esm = __webpack_require__(949);
+// EXTERNAL MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js + 3 modules
+var bgzf_filehandle_esm = __webpack_require__(290);
+;// CONCATENATED MODULE: ./node_modules/apr144-indexedfasta/esm/indexedFasta.js
+
+const Buffer = (__webpack_require__(764)/* .Buffer */ .lW);
+function _faiOffset(idx, pos) {
+    return (idx.offset +
+        idx.lineBytes * Math.floor(pos / idx.lineLength) +
+        (pos % idx.lineLength));
+}
+async function readFAI(fai, opts) {
+    const text = await fai.readFile(opts);
+    if (!(text && text.length)) {
+        throw new Error('No data read from FASTA index (FAI) file');
+    }
+    let idCounter = 0;
+    let currSeq;
+    const data = text
+        .toString('utf8')
+        .split(/\r?\n/)
+        .filter(line => /\S/.test(line))
+        .map(line => line.split('\t'))
+        .filter(row => row[0] !== '')
+        .map(row => {
+        if (!currSeq || currSeq.name !== row[0]) {
+            currSeq = { name: row[0], id: idCounter };
+            idCounter += 1;
+        }
+        return {
+            id: currSeq.id,
+            name: row[0],
+            length: +row[1],
+            start: 0,
+            end: +row[1],
+            offset: +row[2],
+            lineLength: +row[3],
+            lineBytes: +row[4],
+        };
+    });
+    return {
+        name: Object.fromEntries(data.map(entry => [entry.name, entry])),
+        id: Object.fromEntries(data.map(entry => [entry.id, entry])),
+    };
+}
+class IndexedFasta {
+    constructor({ fasta, fai, path, faiPath, }) {
+        if (fasta) {
+            this.fasta = fasta;
+        }
+        else if (path) {
+            this.fasta = new esm/* LocalFile */.S9(path);
+        }
+        else {
+            throw new Error('Need to pass filehandle for fasta or path to localfile');
+        }
+        if (fai) {
+            this.fai = fai;
+        }
+        else if (faiPath) {
+            this.fai = new esm/* LocalFile */.S9(faiPath);
+        }
+        else if (path) {
+            this.fai = new esm/* LocalFile */.S9(`${path}.fai`);
+        }
+        else {
+            throw new Error('Need to pass filehandle for  or path to localfile');
+        }
+    }
+    async _getIndexes(opts) {
+        if (!this.indexes) {
+            this.indexes = readFAI(this.fai, opts);
+        }
+        return this.indexes;
+    }
+    /**
+     * @returns {array[string]} array of string sequence
+     * names that are present in the index, in which the
+     * array index indicates the sequence ID, and the value
+     * is the sequence name
+     */
+    async getSequenceNames(opts) {
+        return Object.keys((await this._getIndexes(opts)).name);
+    }
+    /**
+     * @returns {array[string]} array of string sequence
+     * names that are present in the index, in which the
+     * array index indicates the sequence ID, and the value
+     * is the sequence name
+     */
+    async getSequenceSizes(opts) {
+        const returnObject = {};
+        const idx = await this._getIndexes(opts);
+        const vals = Object.values(idx.id);
+        for (let i = 0; i < vals.length; i += 1) {
+            returnObject[vals[i].name] = vals[i].length;
+        }
+        return returnObject;
+    }
+    /**
+     * @returns {array[string]} array of string sequence
+     * names that are present in the index, in which the
+     * array index indicates the sequence ID, and the value
+     * is the sequence name
+     */
+    async getSequenceSize(seqName, opts) {
+        var _a;
+        const idx = await this._getIndexes(opts);
+        return (_a = idx.name[seqName]) === null || _a === void 0 ? void 0 : _a.length;
+    }
+    /**
+     *
+     * @param {string} name
+     * @returns {Promise[boolean]} true if the file contains the given reference sequence name
+     */
+    async hasReferenceSequence(name, opts) {
+        return !!(await this._getIndexes(opts)).name[name];
+    }
+    /**
+     *
+     * @param {number} seqId
+     * @param {number} min
+     * @param {number} max
+     */
+    async getResiduesById(seqId, min, max, opts) {
+        const indexEntry = (await this._getIndexes(opts)).id[seqId];
+        if (!indexEntry) {
+            return undefined;
+        }
+        return this._fetchFromIndexEntry(indexEntry, min, max, opts);
+    }
+    /**
+     * @param {string} seqName
+     * @param {number} min
+     * @param {number} max
+     */
+    async getResiduesByName(seqName, min, max, opts) {
+        const indexEntry = (await this._getIndexes(opts)).name[seqName];
+        if (!indexEntry) {
+            return undefined;
+        }
+        return this._fetchFromIndexEntry(indexEntry, min, max, opts);
+    }
+    //alias for getResiduesByName
+    async getSequence(seqName, min, max, opts) {
+        return this.getResiduesByName(seqName, min, max, opts);
+    }
+    async _fetchFromIndexEntry(indexEntry, min = 0, max, opts) {
+        let end = max;
+        if (min < 0) {
+            throw new TypeError('regionStart cannot be less than 0');
+        }
+        if (end === undefined || end > indexEntry.length) {
+            end = indexEntry.length;
+        }
+        if (min >= end) {
+            return '';
+        }
+        const position = _faiOffset(indexEntry, min);
+        const readlen = _faiOffset(indexEntry, end) - position;
+        const residues = Buffer.allocUnsafe(readlen);
+        await this.fasta.read(residues, 0, readlen, position, opts);
+        return residues.toString('utf8').replace(/\s+/g, '');
+    }
+}
+//# sourceMappingURL=indexedFasta.js.map
+;// CONCATENATED MODULE: ./node_modules/apr144-indexedfasta/esm/bgzipIndexedFasta.js
+
+
+class BgzipIndexedFasta extends IndexedFasta {
+    constructor({ fasta, path, fai, faiPath, gzi, gziPath, }) {
+        super({ fasta, path, fai, faiPath });
+        if (fasta && gzi) {
+            // @ts-expect-error
+            this.fasta = new bgzf_filehandle_esm/* BgzfFilehandle */.q5({
+                filehandle: fasta,
+                gziFilehandle: gzi,
+            });
+        }
+        else if (path && gziPath) {
+            // @ts-expect-error
+            this.fasta = new bgzf_filehandle_esm/* BgzfFilehandle */.q5({ path, gziPath });
+        }
+    }
+}
+//# sourceMappingURL=bgzipIndexedFasta.js.map
+;// CONCATENATED MODULE: ./node_modules/apr144-indexedfasta/esm/index.js
+
+
+
+function parseSmallFasta(text) {
+    return text
+        .split('>')
+        .filter(t => /\S/.test(t))
+        .map(entryText => {
+        const [defLine, ...seqLines] = entryText.split('\n');
+        const [id, ...description] = defLine.split(' ');
+        const sequence = seqLines.join('').replace(/\s/g, '');
+        return {
+            id,
+            description: description.join(' '),
+            sequence,
+        };
+    });
+}
+// memoized
+class FetchableSmallFasta {
+    constructor({ fasta, path }) {
+        if (fasta) {
+            this.fasta = fasta;
+        }
+        else if (path) {
+            this.fasta = new esm/* LocalFile */.S9(path);
+        }
+        else {
+            throw new Error('Need to pass fasta or path');
+        }
+        this.data = this.fasta.readFile().then(buffer => {
+            const text = buffer.toString('utf8');
+            return parseSmallFasta(text);
+        });
+    }
+    async fetch(id, start, end) {
+        const data = await this.data;
+        const entry = data.find(iter => iter.id === id);
+        const length = end - start;
+        if (!entry) {
+            throw new Error(`no sequence with id ${id} exists`);
+        }
+        return entry.sequence.substr(start, length);
+    }
+    async getSequenceNames() {
+        const data = await this.data;
+        return data.map(entry => entry.id);
+    }
+}
+
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
@@ -3354,6 +4026,291 @@ function BufferBigIntNotDefined () {
   throw new Error('BigInt not supported')
 }
 
+
+/***/ }),
+
+/***/ 949:
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+
+// EXPORTS
+__webpack_require__.d(__webpack_exports__, {
+  S9: () => (/* reexport */ (localFile_ignored_default())),
+  kC: () => (/* reexport */ remoteFile_RemoteFile)
+});
+
+// UNUSED EXPORTS: BlobFile, fromUrl, open
+
+// EXTERNAL MODULE: ./localFile (ignored)
+var localFile_ignored_ = __webpack_require__(67);
+var localFile_ignored_default = /*#__PURE__*/__webpack_require__.n(localFile_ignored_);
+// EXTERNAL MODULE: ./node_modules/buffer/index.js
+var buffer = __webpack_require__(764);
+;// CONCATENATED MODULE: ./node_modules/generic-filehandle/esm/remoteFile.js
+
+class remoteFile_RemoteFile {
+    async getBufferFromResponse(response) {
+        if (typeof response.buffer === 'function') {
+            return response.buffer();
+        }
+        else if (typeof response.arrayBuffer === 'function') {
+            const resp = await response.arrayBuffer();
+            return buffer/* Buffer */.lW.from(resp);
+        }
+        else {
+            throw new TypeError('invalid HTTP response object, has no buffer method, and no arrayBuffer method');
+        }
+    }
+    constructor(source, opts = {}) {
+        this.baseOverrides = {};
+        this.url = source;
+        const fetch = opts.fetch || globalThis.fetch.bind(globalThis);
+        if (!fetch) {
+            throw new TypeError(`no fetch function supplied, and none found in global environment`);
+        }
+        if (opts.overrides) {
+            this.baseOverrides = opts.overrides;
+        }
+        this.fetchImplementation = fetch;
+    }
+    async fetch(input, init) {
+        let response;
+        try {
+            response = await this.fetchImplementation(input, init);
+        }
+        catch (e) {
+            if (`${e}`.includes('Failed to fetch')) {
+                // refetch to to help work around a chrome bug (discussed in
+                // generic-filehandle issue #72) in which the chrome cache returns a
+                // CORS error for content in its cache.  see also
+                // https://github.com/GMOD/jbrowse-components/pull/1511
+                console.warn(`generic-filehandle: refetching ${input} to attempt to work around chrome CORS header caching bug`);
+                response = await this.fetchImplementation(input, {
+                    ...init,
+                    cache: 'reload',
+                });
+            }
+            else {
+                throw e;
+            }
+        }
+        return response;
+    }
+    async read(buffer, offset = 0, length, position = 0, opts = {}) {
+        const { headers = {}, signal, overrides = {} } = opts;
+        if (length < Infinity) {
+            headers.range = `bytes=${position}-${position + length}`;
+        }
+        else if (length === Infinity && position !== 0) {
+            headers.range = `bytes=${position}-`;
+        }
+        const args = {
+            ...this.baseOverrides,
+            ...overrides,
+            headers: {
+                ...headers,
+                ...overrides.headers,
+                ...this.baseOverrides.headers,
+            },
+            method: 'GET',
+            redirect: 'follow',
+            mode: 'cors',
+            signal,
+        };
+        const response = await this.fetch(this.url, args);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText} ${this.url}`);
+        }
+        if ((response.status === 200 && position === 0) ||
+            response.status === 206) {
+            const responseData = await this.getBufferFromResponse(response);
+            const bytesCopied = responseData.copy(buffer, offset, 0, Math.min(length, responseData.length));
+            // try to parse out the size of the remote file
+            const res = response.headers.get('content-range');
+            const sizeMatch = /\/(\d+)$/.exec(res || '');
+            if (sizeMatch && sizeMatch[1]) {
+                this._stat = { size: parseInt(sizeMatch[1], 10) };
+            }
+            return { bytesRead: bytesCopied, buffer };
+        }
+        if (response.status === 200) {
+            throw new Error('${this.url} fetch returned status 200, expected 206');
+        }
+        // TODO: try harder here to gather more information about what the problem is
+        throw new Error(`HTTP ${response.status} fetching ${this.url}`);
+    }
+    async readFile(options = {}) {
+        let encoding;
+        let opts;
+        if (typeof options === 'string') {
+            encoding = options;
+            opts = {};
+        }
+        else {
+            encoding = options.encoding;
+            opts = options;
+            delete opts.encoding;
+        }
+        const { headers = {}, signal, overrides = {} } = opts;
+        const args = {
+            headers,
+            method: 'GET',
+            redirect: 'follow',
+            mode: 'cors',
+            signal,
+            ...this.baseOverrides,
+            ...overrides,
+        };
+        const response = await this.fetch(this.url, args);
+        if (!response) {
+            throw new Error('generic-filehandle failed to fetch');
+        }
+        if (response.status !== 200) {
+            throw Object.assign(new Error(`HTTP ${response.status} fetching ${this.url}`), {
+                status: response.status,
+            });
+        }
+        if (encoding === 'utf8') {
+            return response.text();
+        }
+        if (encoding) {
+            throw new Error(`unsupported encoding: ${encoding}`);
+        }
+        return this.getBufferFromResponse(response);
+    }
+    async stat() {
+        if (!this._stat) {
+            const buf = buffer/* Buffer */.lW.allocUnsafe(10);
+            await this.read(buf, 0, 10, 0);
+            if (!this._stat) {
+                throw new Error(`unable to determine size of file at ${this.url}`);
+            }
+        }
+        return this._stat;
+    }
+    async close() {
+        return;
+    }
+}
+//# sourceMappingURL=remoteFile.js.map
+;// CONCATENATED MODULE: ./node_modules/generic-filehandle/esm/blobFile.js
+
+// Using this you can "await" the file like a normal promise
+// https://blog.shovonhasan.com/using-promises-with-filereader/
+function readBlobAsArrayBuffer(blob) {
+    const fileReader = new FileReader();
+    return new Promise((resolve, reject) => {
+        fileReader.onerror = () => {
+            fileReader.abort();
+            reject(new Error('problem reading blob'));
+        };
+        fileReader.onabort = () => {
+            reject(new Error('blob reading was aborted'));
+        };
+        fileReader.onload = () => {
+            if (fileReader.result && typeof fileReader.result !== 'string') {
+                resolve(fileReader.result);
+            }
+            else {
+                reject(new Error('unknown error reading blob'));
+            }
+        };
+        fileReader.readAsArrayBuffer(blob);
+    });
+}
+function readBlobAsText(blob) {
+    const fileReader = new FileReader();
+    return new Promise((resolve, reject) => {
+        fileReader.onerror = () => {
+            fileReader.abort();
+            reject(new Error('problem reading blob'));
+        };
+        fileReader.onabort = () => {
+            reject(new Error('blob reading was aborted'));
+        };
+        fileReader.onload = () => {
+            if (fileReader.result && typeof fileReader.result === 'string') {
+                resolve(fileReader.result);
+            }
+            else {
+                reject(new Error('unknown error reading blob'));
+            }
+        };
+        fileReader.readAsText(blob);
+    });
+}
+/**
+ * Blob of binary data fetched from a local file (with FileReader).
+ *
+ * Adapted by Robert Buels and Garrett Stevens from the BlobFetchable object in
+ * the Dalliance Genome Explorer, which is copyright Thomas Down 2006-2011.
+ */
+class BlobFile {
+    constructor(blob) {
+        this.blob = blob;
+        this.size = blob.size;
+    }
+    async read(buffer, offset = 0, length, position = 0) {
+        // short-circuit a read of 0 bytes here, because browsers actually sometimes
+        // crash if you try to read 0 bytes from a local file!
+        if (!length) {
+            return { bytesRead: 0, buffer };
+        }
+        const start = position;
+        const end = start + length;
+        const result = await readBlobAsArrayBuffer(this.blob.slice(start, end));
+        const resultBuffer = Buffer.from(result);
+        const bytesCopied = resultBuffer.copy(buffer, offset);
+        return { bytesRead: bytesCopied, buffer: resultBuffer };
+    }
+    async readFile(options) {
+        let encoding;
+        if (typeof options === 'string') {
+            encoding = options;
+        }
+        else {
+            encoding = options && options.encoding;
+        }
+        if (encoding === 'utf8') {
+            return readBlobAsText(this.blob);
+        }
+        if (encoding) {
+            throw new Error(`unsupported encoding: ${encoding}`);
+        }
+        const result = await readBlobAsArrayBuffer(this.blob);
+        return Buffer.from(result);
+    }
+    async stat() {
+        return { size: this.size };
+    }
+    async close() {
+        return;
+    }
+}
+//# sourceMappingURL=blobFile.js.map
+;// CONCATENATED MODULE: ./node_modules/generic-filehandle/esm/index.js
+
+
+
+
+function fromUrl(source, opts = {}) {
+    return new RemoteFile(source, opts);
+}
+function esm_open(maybeUrl, maybePath, maybeFilehandle, opts = {}) {
+    if (maybeFilehandle !== undefined) {
+        return maybeFilehandle;
+    }
+    if (maybeUrl !== undefined) {
+        return fromUrl(maybeUrl, opts);
+    }
+    if (maybePath !== undefined) {
+        return new LocalFile(maybePath, opts);
+    }
+    throw new Error('no url, path, or filehandle provided, cannot open');
+}
+
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
@@ -13356,6 +14313,17 @@ try {
 /******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
 /******/ 	})();
 /******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be in strict mode.
@@ -15747,636 +16715,13 @@ var node_modules_buffer = __webpack_require__(764);
 // EXTERNAL MODULE: ./node_modules/buffer-crc32/index.js
 var buffer_crc32 = __webpack_require__(779);
 var buffer_crc32_default = /*#__PURE__*/__webpack_require__.n(buffer_crc32);
-// EXTERNAL MODULE: ./localFile (ignored)
-var localFile_ignored_ = __webpack_require__(67);
-var localFile_ignored_default = /*#__PURE__*/__webpack_require__.n(localFile_ignored_);
-;// CONCATENATED MODULE: ./node_modules/generic-filehandle/esm/remoteFile.js
-
-class remoteFile_RemoteFile {
-    async getBufferFromResponse(response) {
-        if (typeof response.buffer === 'function') {
-            return response.buffer();
-        }
-        else if (typeof response.arrayBuffer === 'function') {
-            const resp = await response.arrayBuffer();
-            return node_modules_buffer/* Buffer */.lW.from(resp);
-        }
-        else {
-            throw new TypeError('invalid HTTP response object, has no buffer method, and no arrayBuffer method');
-        }
-    }
-    constructor(source, opts = {}) {
-        this.baseOverrides = {};
-        this.url = source;
-        const fetch = opts.fetch || globalThis.fetch.bind(globalThis);
-        if (!fetch) {
-            throw new TypeError(`no fetch function supplied, and none found in global environment`);
-        }
-        if (opts.overrides) {
-            this.baseOverrides = opts.overrides;
-        }
-        this.fetchImplementation = fetch;
-    }
-    async fetch(input, init) {
-        let response;
-        try {
-            response = await this.fetchImplementation(input, init);
-        }
-        catch (e) {
-            if (`${e}`.includes('Failed to fetch')) {
-                // refetch to to help work around a chrome bug (discussed in
-                // generic-filehandle issue #72) in which the chrome cache returns a
-                // CORS error for content in its cache.  see also
-                // https://github.com/GMOD/jbrowse-components/pull/1511
-                console.warn(`generic-filehandle: refetching ${input} to attempt to work around chrome CORS header caching bug`);
-                response = await this.fetchImplementation(input, {
-                    ...init,
-                    cache: 'reload',
-                });
-            }
-            else {
-                throw e;
-            }
-        }
-        return response;
-    }
-    async read(buffer, offset = 0, length, position = 0, opts = {}) {
-        const { headers = {}, signal, overrides = {} } = opts;
-        if (length < Infinity) {
-            headers.range = `bytes=${position}-${position + length}`;
-        }
-        else if (length === Infinity && position !== 0) {
-            headers.range = `bytes=${position}-`;
-        }
-        const args = {
-            ...this.baseOverrides,
-            ...overrides,
-            headers: {
-                ...headers,
-                ...overrides.headers,
-                ...this.baseOverrides.headers,
-            },
-            method: 'GET',
-            redirect: 'follow',
-            mode: 'cors',
-            signal,
-        };
-        const response = await this.fetch(this.url, args);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status} ${response.statusText} ${this.url}`);
-        }
-        if ((response.status === 200 && position === 0) ||
-            response.status === 206) {
-            const responseData = await this.getBufferFromResponse(response);
-            const bytesCopied = responseData.copy(buffer, offset, 0, Math.min(length, responseData.length));
-            // try to parse out the size of the remote file
-            const res = response.headers.get('content-range');
-            const sizeMatch = /\/(\d+)$/.exec(res || '');
-            if (sizeMatch && sizeMatch[1]) {
-                this._stat = { size: parseInt(sizeMatch[1], 10) };
-            }
-            return { bytesRead: bytesCopied, buffer };
-        }
-        if (response.status === 200) {
-            throw new Error('${this.url} fetch returned status 200, expected 206');
-        }
-        // TODO: try harder here to gather more information about what the problem is
-        throw new Error(`HTTP ${response.status} fetching ${this.url}`);
-    }
-    async readFile(options = {}) {
-        let encoding;
-        let opts;
-        if (typeof options === 'string') {
-            encoding = options;
-            opts = {};
-        }
-        else {
-            encoding = options.encoding;
-            opts = options;
-            delete opts.encoding;
-        }
-        const { headers = {}, signal, overrides = {} } = opts;
-        const args = {
-            headers,
-            method: 'GET',
-            redirect: 'follow',
-            mode: 'cors',
-            signal,
-            ...this.baseOverrides,
-            ...overrides,
-        };
-        const response = await this.fetch(this.url, args);
-        if (!response) {
-            throw new Error('generic-filehandle failed to fetch');
-        }
-        if (response.status !== 200) {
-            throw Object.assign(new Error(`HTTP ${response.status} fetching ${this.url}`), {
-                status: response.status,
-            });
-        }
-        if (encoding === 'utf8') {
-            return response.text();
-        }
-        if (encoding) {
-            throw new Error(`unsupported encoding: ${encoding}`);
-        }
-        return this.getBufferFromResponse(response);
-    }
-    async stat() {
-        if (!this._stat) {
-            const buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(10);
-            await this.read(buf, 0, 10, 0);
-            if (!this._stat) {
-                throw new Error(`unable to determine size of file at ${this.url}`);
-            }
-        }
-        return this._stat;
-    }
-    async close() {
-        return;
-    }
-}
-//# sourceMappingURL=remoteFile.js.map
-;// CONCATENATED MODULE: ./node_modules/generic-filehandle/esm/blobFile.js
-
-// Using this you can "await" the file like a normal promise
-// https://blog.shovonhasan.com/using-promises-with-filereader/
-function readBlobAsArrayBuffer(blob) {
-    const fileReader = new FileReader();
-    return new Promise((resolve, reject) => {
-        fileReader.onerror = () => {
-            fileReader.abort();
-            reject(new Error('problem reading blob'));
-        };
-        fileReader.onabort = () => {
-            reject(new Error('blob reading was aborted'));
-        };
-        fileReader.onload = () => {
-            if (fileReader.result && typeof fileReader.result !== 'string') {
-                resolve(fileReader.result);
-            }
-            else {
-                reject(new Error('unknown error reading blob'));
-            }
-        };
-        fileReader.readAsArrayBuffer(blob);
-    });
-}
-function readBlobAsText(blob) {
-    const fileReader = new FileReader();
-    return new Promise((resolve, reject) => {
-        fileReader.onerror = () => {
-            fileReader.abort();
-            reject(new Error('problem reading blob'));
-        };
-        fileReader.onabort = () => {
-            reject(new Error('blob reading was aborted'));
-        };
-        fileReader.onload = () => {
-            if (fileReader.result && typeof fileReader.result === 'string') {
-                resolve(fileReader.result);
-            }
-            else {
-                reject(new Error('unknown error reading blob'));
-            }
-        };
-        fileReader.readAsText(blob);
-    });
-}
-/**
- * Blob of binary data fetched from a local file (with FileReader).
- *
- * Adapted by Robert Buels and Garrett Stevens from the BlobFetchable object in
- * the Dalliance Genome Explorer, which is copyright Thomas Down 2006-2011.
- */
-class BlobFile {
-    constructor(blob) {
-        this.blob = blob;
-        this.size = blob.size;
-    }
-    async read(buffer, offset = 0, length, position = 0) {
-        // short-circuit a read of 0 bytes here, because browsers actually sometimes
-        // crash if you try to read 0 bytes from a local file!
-        if (!length) {
-            return { bytesRead: 0, buffer };
-        }
-        const start = position;
-        const end = start + length;
-        const result = await readBlobAsArrayBuffer(this.blob.slice(start, end));
-        const resultBuffer = Buffer.from(result);
-        const bytesCopied = resultBuffer.copy(buffer, offset);
-        return { bytesRead: bytesCopied, buffer: resultBuffer };
-    }
-    async readFile(options) {
-        let encoding;
-        if (typeof options === 'string') {
-            encoding = options;
-        }
-        else {
-            encoding = options && options.encoding;
-        }
-        if (encoding === 'utf8') {
-            return readBlobAsText(this.blob);
-        }
-        if (encoding) {
-            throw new Error(`unsupported encoding: ${encoding}`);
-        }
-        const result = await readBlobAsArrayBuffer(this.blob);
-        return Buffer.from(result);
-    }
-    async stat() {
-        return { size: this.size };
-    }
-    async close() {
-        return;
-    }
-}
-//# sourceMappingURL=blobFile.js.map
-;// CONCATENATED MODULE: ./node_modules/generic-filehandle/esm/index.js
-
-
-
-
-function fromUrl(source, opts = {}) {
-    return new RemoteFile(source, opts);
-}
-function esm_open(maybeUrl, maybePath, maybeFilehandle, opts = {}) {
-    if (maybeFilehandle !== undefined) {
-        return maybeFilehandle;
-    }
-    if (maybeUrl !== undefined) {
-        return fromUrl(maybeUrl, opts);
-    }
-    if (maybePath !== undefined) {
-        return new LocalFile(maybePath, opts);
-    }
-    throw new Error('no url, path, or filehandle provided, cannot open');
-}
-
-//# sourceMappingURL=index.js.map
-// EXTERNAL MODULE: ./node_modules/pako/index.js
-var pako = __webpack_require__(591);
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/unzip-pako.js
-
-//@ts-ignore
-
-// browserify-zlib, which is the zlib shim used by default in webpacked code,
-// does not properly uncompress bgzf chunks that contain more than
-// one bgzf block, so export an unzip function that uses pako directly
-// if we are running in a browser.
-async function unzip_pako_unzip(inputData) {
-    try {
-        let strm;
-        let pos = 0;
-        let i = 0;
-        const chunks = [];
-        let totalSize = 0;
-        let inflator;
-        do {
-            const remainingInput = inputData.subarray(pos);
-            inflator = new pako.Inflate();
-            ({ strm } = inflator);
-            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
-            if (inflator.err) {
-                throw new Error(inflator.msg);
-            }
-            pos += strm.next_in;
-            chunks[i] = inflator.result;
-            totalSize += chunks[i].length;
-            i += 1;
-        } while (strm.avail_in);
-        const result = new Uint8Array(totalSize);
-        for (let i = 0, offset = 0; i < chunks.length; i++) {
-            result.set(chunks[i], offset);
-            offset += chunks[i].length;
-        }
-        return node_modules_buffer/* Buffer */.lW.from(result);
-    }
-    catch (e) {
-        //cleanup error message
-        if (`${e}`.match(/incorrect header check/)) {
-            throw new Error('problem decompressing block: incorrect gzip header check');
-        }
-        throw e;
-    }
-}
-// similar to pakounzip, except it does extra counting
-// to return the positions of compressed and decompressed
-// data offsets
-async function unzipChunk(inputData) {
-    try {
-        let strm;
-        let cpos = 0;
-        let dpos = 0;
-        const blocks = [];
-        const cpositions = [];
-        const dpositions = [];
-        do {
-            const remainingInput = inputData.slice(cpos);
-            const inflator = new Inflate();
-            ({ strm } = inflator);
-            inflator.push(remainingInput, Z_SYNC_FLUSH);
-            if (inflator.err) {
-                throw new Error(inflator.msg);
-            }
-            const buffer = Buffer.from(inflator.result);
-            blocks.push(buffer);
-            cpositions.push(cpos);
-            dpositions.push(dpos);
-            cpos += strm.next_in;
-            dpos += buffer.length;
-        } while (strm.avail_in);
-        const buffer = Buffer.concat(blocks);
-        return { buffer, cpositions, dpositions };
-    }
-    catch (e) {
-        //cleanup error message
-        if (`${e}`.match(/incorrect header check/)) {
-            throw new Error('problem decompressing block: incorrect gzip header check');
-        }
-        throw e;
-    }
-}
-// similar to unzipChunk above but slices (0,minv.dataPosition) and
-// (maxv.dataPosition,end) off
-async function unzipChunkSlice(inputData, chunk) {
-    try {
-        let strm;
-        const { minv, maxv } = chunk;
-        let cpos = minv.blockPosition;
-        let dpos = minv.dataPosition;
-        const chunks = [];
-        const cpositions = [];
-        const dpositions = [];
-        let totalSize = 0;
-        let i = 0;
-        do {
-            const remainingInput = inputData.subarray(cpos - minv.blockPosition);
-            const inflator = new pako.Inflate();
-            ({ strm } = inflator);
-            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
-            if (inflator.err) {
-                throw new Error(inflator.msg);
-            }
-            const buffer = inflator.result;
-            chunks.push(buffer);
-            let len = buffer.length;
-            cpositions.push(cpos);
-            dpositions.push(dpos);
-            if (chunks.length === 1 && minv.dataPosition) {
-                // this is the first chunk, trim it
-                chunks[0] = chunks[0].subarray(minv.dataPosition);
-                len = chunks[0].length;
-            }
-            const origCpos = cpos;
-            cpos += strm.next_in;
-            dpos += len;
-            if (origCpos >= maxv.blockPosition) {
-                // this is the last chunk, trim it and stop decompressing
-                // note if it is the same block is minv it subtracts that already
-                // trimmed part of the slice length
-                chunks[i] = chunks[i].subarray(0, maxv.blockPosition === minv.blockPosition
-                    ? maxv.dataPosition - minv.dataPosition + 1
-                    : maxv.dataPosition + 1);
-                cpositions.push(cpos);
-                dpositions.push(dpos);
-                totalSize += chunks[i].length;
-                break;
-            }
-            totalSize += chunks[i].length;
-            i++;
-        } while (strm.avail_in);
-        const result = new Uint8Array(totalSize);
-        for (let i = 0, offset = 0; i < chunks.length; i++) {
-            result.set(chunks[i], offset);
-            offset += chunks[i].length;
-        }
-        const buffer = node_modules_buffer/* Buffer */.lW.from(result);
-        return { buffer, cpositions, dpositions };
-    }
-    catch (e) {
-        //cleanup error message
-        if (`${e}`.match(/incorrect header check/)) {
-            throw new Error('problem decompressing block: incorrect gzip header check');
-        }
-        throw e;
-    }
-}
-function nodeUnzip() {
-    throw new Error('nodeUnzip not implemented.');
-}
-
-//# sourceMappingURL=unzip-pako.js.map
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/gziIndex.js
-
-
-
-// const COMPRESSED_POSITION = 0
-const UNCOMPRESSED_POSITION = 1;
-class gziIndex_GziIndex {
-    constructor({ filehandle, path, }) {
-        if (filehandle) {
-            this.filehandle = filehandle;
-        }
-        else if (path) {
-            this.filehandle = new LocalFile(path);
-        }
-        else {
-            throw new TypeError('either filehandle or path must be defined');
-        }
-    }
-    _readLongWithOverflow(buf, offset = 0, unsigned = true) {
-        //@ts-ignore
-        const long = Long.fromBytesLE(buf.slice(offset, offset + 8), unsigned);
-        if (long.greaterThan(Number.MAX_SAFE_INTEGER) ||
-            long.lessThan(Number.MIN_SAFE_INTEGER)) {
-            throw new TypeError('integer overflow');
-        }
-        return long.toNumber();
-    }
-    _getIndex() {
-        if (!this.index) {
-            this.index = this._readIndex();
-        }
-        return this.index;
-    }
-    async _readIndex() {
-        let buf = Buffer.allocUnsafe(8);
-        await this.filehandle.read(buf, 0, 8, 0);
-        const numEntries = this._readLongWithOverflow(buf, 0, true);
-        if (!numEntries) {
-            return [[0, 0]];
-        }
-        const entries = new Array(numEntries + 1);
-        entries[0] = [0, 0];
-        // TODO rewrite this to make an index-index that stays in memory
-        const bufSize = 8 * 2 * numEntries;
-        if (bufSize > Number.MAX_SAFE_INTEGER) {
-            throw new TypeError('integer overflow');
-        }
-        buf = Buffer.allocUnsafe(bufSize);
-        await this.filehandle.read(buf, 0, bufSize, 8);
-        for (let entryNumber = 0; entryNumber < numEntries; entryNumber += 1) {
-            const compressedPosition = this._readLongWithOverflow(buf, entryNumber * 16);
-            const uncompressedPosition = this._readLongWithOverflow(buf, entryNumber * 16 + 8);
-            entries[entryNumber + 1] = [compressedPosition, uncompressedPosition];
-        }
-        return entries;
-    }
-    async getLastBlock() {
-        const entries = await this._getIndex();
-        if (!entries.length) {
-            return undefined;
-        }
-        return entries[entries.length - 1];
-    }
-    async getRelevantBlocksForRead(length, position) {
-        const endPosition = position + length;
-        if (length === 0) {
-            return [];
-        }
-        const entries = await this._getIndex();
-        const relevant = [];
-        // binary search to find the block that the
-        // read starts in and extend forward from that
-        const compare = (entry, nextEntry) => {
-            const uncompressedPosition = entry[UNCOMPRESSED_POSITION];
-            const nextUncompressedPosition = nextEntry
-                ? nextEntry[UNCOMPRESSED_POSITION]
-                : Infinity;
-            // block overlaps read start
-            if (uncompressedPosition <= position &&
-                nextUncompressedPosition > position) {
-                return 0;
-                // block is before read start
-            }
-            if (uncompressedPosition < position) {
-                return -1;
-            }
-            // block is after read start
-            return 1;
-        };
-        let lowerBound = 0;
-        let upperBound = entries.length - 1;
-        let searchPosition = Math.floor(entries.length / 2);
-        let comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
-        while (comparison !== 0) {
-            if (comparison > 0) {
-                upperBound = searchPosition - 1;
-            }
-            else if (comparison < 0) {
-                lowerBound = searchPosition + 1;
-            }
-            searchPosition = Math.ceil((upperBound - lowerBound) / 2) + lowerBound;
-            comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
-        }
-        // here's where we read forward
-        relevant.push(entries[searchPosition]);
-        let i = searchPosition + 1;
-        for (; i < entries.length; i += 1) {
-            relevant.push(entries[i]);
-            if (entries[i][UNCOMPRESSED_POSITION] >= endPosition) {
-                break;
-            }
-        }
-        if (relevant[relevant.length - 1][UNCOMPRESSED_POSITION] < endPosition) {
-            relevant.push([]);
-        }
-        return relevant;
-    }
-}
-//# sourceMappingURL=gziIndex.js.map
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/bgzFilehandle.js
-
-
-// locals
-
-
-class BgzFilehandle {
-    constructor({ filehandle, path, gziFilehandle, gziPath, }) {
-        if (filehandle) {
-            this.filehandle = filehandle;
-        }
-        else if (path) {
-            this.filehandle = new LocalFile(path);
-        }
-        else {
-            throw new TypeError('either filehandle or path must be defined');
-        }
-        if (!gziFilehandle && !gziPath && !path) {
-            throw new TypeError('either gziFilehandle or gziPath must be defined');
-        }
-        this.gzi = new GziIndex({
-            filehandle: gziFilehandle,
-            path: !gziFilehandle && !gziPath && path ? gziPath : `${path}.gzi`,
-        });
-    }
-    async stat() {
-        const compressedStat = await this.filehandle.stat();
-        return Object.assign(compressedStat, {
-            size: await this.getUncompressedFileSize(),
-            blocks: undefined,
-            blksize: undefined,
-        });
-    }
-    async getUncompressedFileSize() {
-        // read the last block's ISIZE (see gzip RFC),
-        // and add it to its uncompressedPosition
-        const [, uncompressedPosition] = await this.gzi.getLastBlock();
-        const { size } = await this.filehandle.stat();
-        const buf = Buffer.allocUnsafe(4);
-        // note: there should be a 28-byte EOF marker (an empty block) at
-        // the end of the file, so we skip backward past that
-        const { bytesRead } = await this.filehandle.read(buf, 0, 4, size - 28 - 4);
-        if (bytesRead !== 4) {
-            throw new Error('read error');
-        }
-        const lastBlockUncompressedSize = buf.readUInt32LE(0);
-        return uncompressedPosition + lastBlockUncompressedSize;
-    }
-    async _readAndUncompressBlock(blockBuffer, [compressedPosition], [nextCompressedPosition]) {
-        let next = nextCompressedPosition;
-        if (!next) {
-            next = (await this.filehandle.stat()).size;
-        }
-        // read the compressed data into the block buffer
-        const blockCompressedLength = next - compressedPosition;
-        await this.filehandle.read(blockBuffer, 0, blockCompressedLength, compressedPosition);
-        // uncompress it
-        const unzippedBuffer = await unzip(blockBuffer.slice(0, blockCompressedLength));
-        return unzippedBuffer;
-    }
-    async read(buf, offset, length, position) {
-        // get the block positions for this read
-        const blockPositions = await this.gzi.getRelevantBlocksForRead(length, position);
-        const blockBuffer = Buffer.allocUnsafe(32768 * 2);
-        // uncompress the blocks and read from them one at a time to keep memory usage down
-        let destinationOffset = offset;
-        let bytesRead = 0;
-        for (let blockNum = 0; blockNum < blockPositions.length - 1; blockNum += 1) {
-            // eslint-disable-next-line no-await-in-loop
-            const uncompressedBuffer = await this._readAndUncompressBlock(blockBuffer, blockPositions[blockNum], blockPositions[blockNum + 1]);
-            const [, uncompressedPosition] = blockPositions[blockNum];
-            const sourceOffset = uncompressedPosition >= position ? 0 : position - uncompressedPosition;
-            const sourceEnd = Math.min(position + length, uncompressedPosition + uncompressedBuffer.length) - uncompressedPosition;
-            if (sourceOffset >= 0 && sourceOffset < uncompressedBuffer.length) {
-                uncompressedBuffer.copy(buf, destinationOffset, sourceOffset, sourceEnd);
-                destinationOffset += sourceEnd - sourceOffset;
-                bytesRead += sourceEnd - sourceOffset;
-            }
-        }
-        return { bytesRead, buffer: buf };
-    }
-}
-//# sourceMappingURL=bgzFilehandle.js.map
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js
-
-
-
-//# sourceMappingURL=index.js.map
+// EXTERNAL MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js + 3 modules
+var esm = __webpack_require__(290);
+// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
+var generic_filehandle_esm = __webpack_require__(949);
 // EXTERNAL MODULE: ./node_modules/abortable-promise-cache/esm/index.js
-var esm = __webpack_require__(105);
-var esm_default = /*#__PURE__*/__webpack_require__.n(esm);
+var abortable_promise_cache_esm = __webpack_require__(105);
+var esm_default = /*#__PURE__*/__webpack_require__.n(abortable_promise_cache_esm);
 // EXTERNAL MODULE: ./node_modules/quick-lru/index.js
 var quick_lru = __webpack_require__(269);
 var quick_lru_default = /*#__PURE__*/__webpack_require__.n(quick_lru);
@@ -16442,7 +16787,7 @@ class CSI extends IndexFile {
     // fetch and parse the index
     async _parse(opts) {
         const buffer = await this.filehandle.readFile(opts);
-        const bytes = await unzip_pako_unzip(buffer);
+        const bytes = await (0,esm/* unzip */.Ri)(buffer);
         let csiVersion;
         // check TBI magic numbers
         if (bytes.readUInt32LE(0) === CSI1_MAGIC) {
@@ -17220,10 +17565,10 @@ class bamFile_BamFile {
             this.bam = bamFilehandle;
         }
         else if (bamPath) {
-            this.bam = new (localFile_ignored_default())(bamPath);
+            this.bam = new generic_filehandle_esm/* LocalFile */.S9(bamPath);
         }
         else if (bamUrl) {
-            this.bam = new remoteFile_RemoteFile(bamUrl);
+            this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl);
         }
         else if (htsget) {
             this.htsget = true;
@@ -17236,25 +17581,25 @@ class bamFile_BamFile {
             this.index = new CSI({ filehandle: csiFilehandle });
         }
         else if (csiPath) {
-            this.index = new CSI({ filehandle: new (localFile_ignored_default())(csiPath) });
+            this.index = new CSI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(csiPath) });
         }
         else if (csiUrl) {
-            this.index = new CSI({ filehandle: new remoteFile_RemoteFile(csiUrl) });
+            this.index = new CSI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(csiUrl) });
         }
         else if (baiFilehandle) {
             this.index = new BAI({ filehandle: baiFilehandle });
         }
         else if (baiPath) {
-            this.index = new BAI({ filehandle: new (localFile_ignored_default())(baiPath) });
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(baiPath) });
         }
         else if (baiUrl) {
-            this.index = new BAI({ filehandle: new remoteFile_RemoteFile(baiUrl) });
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
         }
         else if (bamPath) {
-            this.index = new BAI({ filehandle: new (localFile_ignored_default())(`${bamPath}.bai`) });
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(`${bamPath}.bai`) });
         }
         else if (bamUrl) {
-            this.index = new BAI({ filehandle: new remoteFile_RemoteFile(`${bamUrl}.bai`) });
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
         }
         else if (htsget) {
             this.htsget = true;
@@ -17285,7 +17630,7 @@ class bamFile_BamFile {
         else {
             buffer = (await this.bam.readFile(opts));
         }
-        const uncba = await unzip_pako_unzip(buffer);
+        const uncba = await (0,esm/* unzip */.Ri)(buffer);
         if (uncba.readInt32LE(0) !== bamFile_BAM_MAGIC) {
             throw new Error('Not a BAM file');
         }
@@ -17320,7 +17665,7 @@ class bamFile_BamFile {
         if (!bytesRead) {
             throw new Error('Error reading refseqs from header');
         }
-        const uncba = await unzip_pako_unzip(buffer.subarray(0, Math.min(bytesRead, refSeqBytes)));
+        const uncba = await (0,esm/* unzip */.Ri)(buffer.subarray(0, Math.min(bytesRead, refSeqBytes)));
         const nRef = uncba.readInt32LE(start);
         let p = start + 4;
         const chrToIndex = {};
@@ -17482,7 +17827,7 @@ class bamFile_BamFile {
     }
     async _readChunk({ chunk, opts }) {
         const buffer = await this._readRegion(chunk.minv.blockPosition, chunk.fetchedSize(), opts);
-        const { buffer: data, cpositions, dpositions, } = await unzipChunkSlice(buffer, chunk);
+        const { buffer: data, cpositions, dpositions, } = await (0,esm/* unzipChunkSlice */.y$)(buffer, chunk);
         return { data, cpositions, dpositions, chunk };
     }
     async readBamFeatures(ba, cpositions, dpositions, chunk) {
@@ -19003,8 +19348,8 @@ function ChromosomeInfo(filepath, success) {
     }
   });
 }
-// EXTERNAL MODULE: ./node_modules/@greenelab/hclust/build/hclust.min.js
-var hclust_min = __webpack_require__(152);
+// EXTERNAL MODULE: ./node_modules/apr144-hclust/build/hclust.min.js
+var hclust_min = __webpack_require__(803);
 ;// CONCATENATED MODULE: ./src/bam-fetcher-worker.js
 
 
@@ -19391,14 +19736,14 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
 
   if (fastaUrl && faiUrl) {
     // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
-    const remoteFasta = new remoteFile_RemoteFile(fastaUrl);
-    const remoteFai = new remoteFile_RemoteFile(faiUrl);
-    // const { IndexedFasta } = require('@gmod/indexedfasta');
-    // sequenceFiles[fastaUrl] = new IndexedFasta({
-    //   fasta: remoteFasta,
-    //   fai: remoteFai,
-    // });
-    // console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
+    const remoteFasta = new generic_filehandle_esm/* RemoteFile */.kC(fastaUrl);
+    const remoteFai = new generic_filehandle_esm/* RemoteFile */.kC(faiUrl);
+    const { IndexedFasta } = __webpack_require__(805);
+    sequenceFiles[fastaUrl] = new IndexedFasta({
+      fasta: remoteFasta,
+      fai: remoteFai,
+    });
+    console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
   }
 
   if (chromSizesUrl) {
@@ -20122,7 +20467,7 @@ const exportSegmentsAsBED12 = (
         }
         break;
       case 'Jaccard':
-        distanceFnToCall = hclust_min.jaccardDistance;
+        distanceFnToCall = hclust_min/* jaccardDistance */.eN;
         for (let i = 0; i < nReads; ++i) {
           const segment = segmentList[i];
           const segmentLength = segment.to - segment.from;
@@ -20478,7 +20823,7 @@ const renderSegments = (
         }
         break;
       case 'Jaccard':
-        distanceFnToCall = hclust_min.jaccardDistance;
+        distanceFnToCall = hclust_min/* jaccardDistance */.eN;
         for (let i = 0; i < nReads; ++i) {
           const segment = segmentList[i];
           const segmentLength = segment.to - segment.from;

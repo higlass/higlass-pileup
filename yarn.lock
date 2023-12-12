@@ -1009,7 +1009,7 @@
   resolved "https://registry.npmjs.org/@eslint/js/-/js-8.52.0.tgz"
   integrity sha512-mjZVbpaeMZludF2fsWLD0Z9gCref1Tk4i9+wddjRvpUNqqcndPkBD09N/Mapey0b3jaXbLm2kICwFv2E64QinA==
 
-"@gmod/bgzf-filehandle@^1.4.4":
+"@gmod/bgzf-filehandle@^1.4.0", "@gmod/bgzf-filehandle@^1.4.4":
   version "1.4.7"
   resolved "https://registry.npmjs.org/@gmod/bgzf-filehandle/-/bgzf-filehandle-1.4.7.tgz"
   integrity sha512-f/oXwWwsBe4nYN82mQ+Sz++/zH6EOyBCRqxFdv04SBkreQvilf3cql6F8ZAMMBq1f/abzBc0U0zJIMF9CLM7QQ==
@@ -1018,11 +1018,6 @@
     generic-filehandle "^3.0.0"
     long "^4.0.0"
     pako "^1.0.11"
-
-"@greenelab/hclust@git+https://alexpreynolds@github.com/alexpreynolds/hclust.git#methylation":
-  version "0.0.0-dev"
-  resolved "git+https://alexpreynolds@github.com/alexpreynolds/hclust.git"
-  integrity sha512-bCmAETVv0A3Ao8pC1A3pzXHTFjzwkYbh64q4kjiua01Dy5mFTCoHpZJvRDBes+i88EdFAV9dF188b3KLU/ALpQ==
 
 "@humanwhocodes/config-array@^0.11.13":
   version "0.11.13"
@@ -1569,6 +1564,20 @@ apr144-bam@2.0.0-rs:
     generic-filehandle "^3.0.0"
     long "^4.0.0"
     quick-lru "^4.0.0"
+
+apr144-hclust@^0.0.1:
+  version "0.0.1"
+  resolved "https://registry.npmjs.org/apr144-hclust/-/apr144-hclust-0.0.1.tgz"
+  integrity sha512-+X7xHFz/KtNvx761lOG/+mPxYls3urA5KjoPYRko8BdPJOQvbZwjluw7E/CRhnWS6gmhIsG6MH86AHThaqmFpw==
+
+apr144-indexedfasta@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.npmjs.org/apr144-indexedfasta/-/apr144-indexedfasta-2.1.0.tgz"
+  integrity sha512-1o8KSmUiwaGVgW+cNVi//KFJSnBftxhIva9QWvpEdEF7JwuTCw54E8z7uwdqRpXcY6QRkQX63HTzE0f1Tz4Evw==
+  dependencies:
+    "@gmod/bgzf-filehandle" "^1.4.0"
+    buffer "^6.0.3"
+    generic-filehandle "^3.0.0"
 
 argparse@^2.0.1:
   version "2.0.1"

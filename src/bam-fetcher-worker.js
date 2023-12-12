@@ -8,7 +8,7 @@ import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 // import BAMDataFetcher from './bam-fetcher';
-import { clusterData, euclideanDistance, jaccardDistance, averageDistance } from '@greenelab/hclust';
+import { clusterData, euclideanDistance, jaccardDistance, averageDistance } from 'apr144-hclust';
 import { RemoteFile } from 'generic-filehandle';
 
 function currTime() {
@@ -385,12 +385,12 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
     // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
     const remoteFasta = new RemoteFile(fastaUrl);
     const remoteFai = new RemoteFile(faiUrl);
-    // const { IndexedFasta } = require('@gmod/indexedfasta');
-    // sequenceFiles[fastaUrl] = new IndexedFasta({
-    //   fasta: remoteFasta,
-    //   fai: remoteFai,
-    // });
-    // console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
+    const { IndexedFasta } = require('apr144-indexedfasta');
+    sequenceFiles[fastaUrl] = new IndexedFasta({
+      fasta: remoteFasta,
+      fai: remoteFai,
+    });
+    console.log(`set up sequence files | ${JSON.stringify(sequenceFiles)}`);
   }
 
   if (chromSizesUrl) {
