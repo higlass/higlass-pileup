@@ -623,7 +623,7 @@ const tile = async (uid, z, x) => {
                 //     tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
                 //   );
                 // }
-                // console.log(`records ${JSON.stringify(records.length)}`);
+                // console.log(`records retrieved ${JSON.stringify(records.length)} | ${uid}.${z}.${x}`);
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
@@ -696,7 +696,7 @@ const tile = async (uid, z, x) => {
                 //     tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
                 //   );
                 // }
-                // console.log(`records ${JSON.stringify(records.length)}`);
+                // console.log(`records retrieved ${JSON.stringify(records.length)} | ${uid}.${z}.${x}`);
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
@@ -987,6 +987,8 @@ function segmentsToRows(segments, optionsIn) {
   for (let i = 0; i < occupiedSpaceInRows.length; i++) {
     outputRows[i] = newSegments.filter((x) => x.row === i);
   }
+
+  // console.log(`outputRows ${JSON.stringify(outputRows.length)} | segmentsInRows ${JSON.stringify(segments.length)}`);
 
   return outputRows;
 }
@@ -1724,6 +1726,8 @@ const renderSegments = (
     let yTop;
     let yBottom;
 
+    // let pileupSegmentsDrawn = 0;
+
     rows.map((row, i) => {
       yTop = yScale(i);
       const height = yScale.bandwidth();
@@ -1742,6 +1746,7 @@ const renderSegments = (
         }
         else {
           addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+          // pileupSegmentsDrawn += 1;
         }
 
         if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
@@ -2060,6 +2065,8 @@ const renderSegments = (
         }
       });
     });
+
+    // console.log(`pileupSegmentsDrawn ${pileupSegmentsDrawn}`);
   }
 
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
