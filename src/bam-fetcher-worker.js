@@ -1810,6 +1810,7 @@ const renderSegments = (
           // console.log(`rendering events with ML ranges [${minProbabilityThreshold}, ${maxProbabilityThreshold})`);
 
           let mmSegmentColor = null;
+          // console.log(`segment.methylationOffsets ${JSON.stringify(segment.methylationOffsets)}`);
           for (const mo of segment.methylationOffsets) {
             const offsets = mo.offsets;
             const probabilities = mo.probabilities;
@@ -1882,13 +1883,25 @@ const renderSegments = (
               //   addRect(xLeft, yTop, offsetWidth, height, mmSegmentColor);
               // }
 
-              const offsetWidth = 1;
+              // const offsetWidth = 1;
+              // offsets
+              //   .filter((d, i) => probabilities[i] >= minProbabilityThreshold && probabilities[i] < maxProbabilityThreshold)
+              //   .map(filteredOffset => {
+              //     xLeft = xScale(segment.from + filteredOffset);
+              //     addRect(xLeft, yTop, offsetWidth, height, mmSegmentColor);
+              //   })
+
+              const width = Math.max(1, xScale(offsetLength) - xScale(0));
               offsets
                 .filter((d, i) => probabilities[i] >= minProbabilityThreshold && probabilities[i] < maxProbabilityThreshold)
                 .map(filteredOffset => {
+                  // if (mmSegmentColor === PILEUP_COLOR_IXS.MM_M5C_FOR) {
+                  //   console.log(`segment.from + filteredOffset - chrOffset ${segment.from + filteredOffset - segment.chrOffset} | filteredOffset ${filteredOffset} | segment.from ${segment.from} | segment.chrOffset ${segment.chrOffset}`);
+                  // }
                   xLeft = xScale(segment.from + filteredOffset);
-                  addRect(xLeft, yTop, offsetWidth, height, mmSegmentColor);
-                })
+                  xRight = xLeft + width;
+                  addRect(xLeft, yTop, width, height, mmSegmentColor);
+                });
             }
           }
         }
