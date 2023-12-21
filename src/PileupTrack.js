@@ -1235,15 +1235,16 @@ varying vec4 vColor;
                   //   `;
                   // }
 
-                  const readNameLabel = (this.options.methylation) ? 'Name' : (this.options.indexDHS) ? 'Index DHS' : 'Name';
-                  const readNameValue = read.readName;
-                  output += `<div class="track-mouseover-menu-table-item">
-                    <label for="readName" class="track-mouseover-menu-table-item-label">${readNameLabel}</label>
-                    <div name="readName" class="track-mouseover-menu-table-item-value">${readNameValue}</div>
-                  </div>`;
-
                   if (this.options.indexDHS) {
                     const readNameLabel = 'Index DHS';
+                    const readNameValue = read.readName;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readName" class="track-mouseover-menu-table-item-label">${readNameLabel}</label>
+                      <div name="readName" class="track-mouseover-menu-table-item-value">${readNameValue}</div>
+                    </div>`;
+                  }
+                  else {
+                    const readNameLabel = 'Name';
                     const readNameValue = read.readName;
                     output += `<div class="track-mouseover-menu-table-item">
                       <label for="readName" class="track-mouseover-menu-table-item-label">${readNameLabel}</label>

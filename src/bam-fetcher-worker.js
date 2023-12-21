@@ -1719,7 +1719,9 @@ const renderSegments = (
     const d = range(0, rows.length);
     const r = [group.start, group.end];
 
-    const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
+    // const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
+    const fiberPadding = (trackOptions && trackOptions.indexDHS) ? 0.25 : (trackOptions && trackOptions.methylation && trackOptions.methylation.hasOwnProperty('fiberPadding')) ? trackOptions.methylation.fiberPadding : 0.25;
+    const yScale = scaleBand().domain(d).range(r).paddingInner(fiberPadding);
 
     let xLeft;
     let xRight;

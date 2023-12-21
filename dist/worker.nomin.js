@@ -18348,16 +18348,6 @@ const getMethylationOffsets = (segment, seq) => {
         }
       };
 
-      // if (mo.unmodifiedBase === 'C') {
-      //   // console.log(`modifiedOffsets ${JSON.stringify(modifiedOffsets, null, 2)}`);
-      //   // console.log(`seq ${seq}`);
-      //   // console.log(`seq.length ${seq.length}`);
-      //   console.log(`seq[0:10] ${seq.slice(0, 10)}`);
-      //   console.log(`seq[100:110] ${seq.slice(100, 110)}`);
-      //   console.log(`seq[1000:1010] ${seq.slice(1000, 1010)}`);
-      //   console.log(`seq[2240:2250] ${seq.slice(2240, 2250)}`);
-      // }
-
       mo.offsets = modifiedOffsets;
       mo.probabilities = modifiedProbabilities;
 
@@ -21088,7 +21078,9 @@ const renderSegments = (
     const d = range(0, rows.length);
     const r = [group.start, group.end];
 
-    const yScale = band().domain(d).range(r).paddingInner(0.2);
+    // const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
+    const fiberPadding = (trackOptions && trackOptions.indexDHS) ? 0.25 : (trackOptions && trackOptions.methylation && trackOptions.methylation.hasOwnProperty('fiberPadding')) ? trackOptions.methylation.fiberPadding : 0.25;
+    const yScale = band().domain(d).range(r).paddingInner(fiberPadding);
 
     let xLeft;
     let xRight;
