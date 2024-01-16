@@ -19957,7 +19957,13 @@ const tile = async (uid, z, x) => {
           // fetch from the start until the end of the chromosome
           recordPromises.push(
             bamFile
-              .getRecordsForRangeSample(
+              // .getRecordsForRangeSample(
+              //   chromName,
+              //   minX - chromStart,
+              //   chromEnd - chromStart,
+              //   fetchOptions
+              // )
+              .getRecordsForRange(
                 chromName,
                 minX - chromStart,
                 chromEnd - chromStart,
@@ -20030,7 +20036,13 @@ const tile = async (uid, z, x) => {
           // the end of the region is within this chromosome
           recordPromises.push(
             bamFile
-              .getRecordsForRangeSample(
+              // .getRecordsForRangeSample(
+              //   chromName, 
+              //   startPos, 
+              //   endPos, 
+              //   fetchOptions
+              // )
+              .getRecordsForRange(
                 chromName, 
                 startPos, 
                 endPos, 
