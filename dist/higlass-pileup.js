@@ -5004,7 +5004,7 @@ var PileupTrack = function PileupTrack(HGC) {
 
                       if (this.options.indexDHS) {
                         var readNameLabel = 'Index DHS';
-                        var readNameValue = read.readName;
+                        var readNameValue = "".concat(read.readName, " | ").concat(this.options.name);
                         output += "<div class=\"track-mouseover-menu-table-item\">\n                      <label for=\"readName\" class=\"track-mouseover-menu-table-item-label\">".concat(readNameLabel, "</label>\n                      <div name=\"readName\" class=\"track-mouseover-menu-table-item-value\">").concat(readNameValue, "</div>\n                    </div>");
                       } else {
                         var _readNameLabel = 'Name';
