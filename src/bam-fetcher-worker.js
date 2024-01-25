@@ -1289,6 +1289,7 @@ const renderSegments = (
   prevRows,
   trackOptions,
   clusterDataObj,
+  sortedClusterDataObj,
 ) => {
 
   const allSegments = {};
@@ -1379,7 +1380,7 @@ const renderSegments = (
 
   prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterDataObj) {
+  if (areMatesRequired(trackOptions) && !clusterDataObj && !sortedClusterDataObj) {
     // At this point reads are colored correctly, but we only want to align those reads that
     // are within the visible tiles - not mates that are far away, as this can mess up the alignment
     let tileMinPos = Number.MAX_VALUE;
@@ -1428,7 +1429,7 @@ const renderSegments = (
   }
 
   // calculate the the rows of reads for each group
-  if (clusterDataObj && trackOptions.methylation) {
+  if (clusterDataObj && !sortedClusterDataObj && trackOptions.methylation) {
     // const chromName = clusterDataObj.range.left.chrom;
     const chromStart = clusterDataObj.range.left.start;
     const chromEnd = clusterDataObj.range.right.stop;
@@ -1532,12 +1533,13 @@ const renderSegments = (
         linkage: averageDistance,
       });
 
-      // console.log(`order ${order}`);
+      console.log(`order ${order}`);
       const orderedSegments = order.map(i => {
         const trueRowIdx = trueRow[i];
         const segment = segmentList[trueRowIdx];
         return [segment];
       })
+      console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
       for (let key of Object.keys(grouped)) {
         const rows = orderedSegments;
         grouped[key] = {};
@@ -1553,6 +1555,204 @@ const renderSegments = (
         grouped[key].rows = rows;
       }
     }
+  }
+  else if (!clusterDataObj && sortedClusterDataObj && trackOptions.methylation) {
+    console.log(`sortedClusterDataObj ${JSON.stringify(sortedClusterDataObj)}`);
+    // const chromName = clusterDataObj.range.left.chrom;
+    const chromStart = sortedClusterDataObj.range.left.start;
+    const chromEnd = sortedClusterDataObj.range.right.stop;
+    const distanceFn = sortedClusterDataObj.distanceFn;
+    let distanceFnToCall = null;
+    const eventVecLen = chromEnd - chromStart;
+    const nReads = segmentList.length;
+    const data = new Array();
+    let allowedRowIdx = 0;
+    const trueRow = {};
+
+    switch (distanceFn) {
+      case 'Euclidean':
+        distanceFnToCall = euclideanDistance;
+        for (let i = 0; i < nReads; ++i) {
+          const segment = segmentList[i];
+          const segmentLength = segment.to - segment.from;
+          const eventVec = new Array(eventVecLen).fill(-255);
+          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          // clean up clustering
+          for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
+            if (coverIdx === eventVecLen) break;
+            eventVec[coverIdx] = 0;
+          }
+          const mos = segment.methylationOffsets;
+          // a read may end upstream or start downstream of clusterDataObj.range bounds 
+          // but still be in segmentList[], so we filter it
+          let eventVecNotModified = true; 
+          for (const mo of mos) {
+            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+                if (modOffset >= 0 && modOffset < eventVecLen) {
+                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value in [1, 255], presumably
+                  eventVecNotModified = false;
+                }
+              })
+            }
+          }
+          if (!eventVecNotModified) {
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
+          }
+        }
+        break;
+      case 'Jaccard':
+        distanceFnToCall = jaccardDistance;
+        for (let i = 0; i < nReads; ++i) {
+          const segment = segmentList[i];
+          const segmentLength = segment.to - segment.from;
+          const eventVec = new Array(eventVecLen).fill(0);
+          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          const mos = segment.methylationOffsets;
+          // a read may end upstream or start downstream of clusterDataObj.range bounds 
+          // but still be in segmentList[], so we filter it
+          let eventVecNotModified = true; 
+          for (const mo of mos) {
+            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+                if (modOffset >= 0 && modOffset < eventVecLen) {
+                  eventVec[modOffset] = 1;
+                  eventVecNotModified = false;
+                }
+              })
+            }
+          }
+          if (!eventVecNotModified) {
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
+          }
+        }
+        break;
+      default:
+        throw new Error("Render cluster data object is missing distance function");
+        break;
+    }
+
+    // once we have the data, we sort it in descending order by the 
+    // values referenced by the column index specified by the 
+    // sortedClusterDataObj.posn value
+
+    const indexedData = data.map((row, index) => [row, index]);
+    // console.log(`indexedData ${JSON.stringify(indexedData)}`);
+
+    const colIdx = sortedClusterDataObj.posn;
+    // console.log(`colIdx ${colIdx}`);
+
+    indexedData.sort((rowA, rowB) => {
+      if (rowA[0][colIdx] === rowB[0][colIdx]) { return 0; }
+      else { return (rowA[0][colIdx] > rowB[0][colIdx]) ? -1 : 1; }
+    });
+
+    const sortedData = indexedData.map((row) => row[0]);
+    const sortedIndices = indexedData.map((row) => row[1]);
+
+    // for (let i = 0; i < sortedData.length; ++i) {
+    //   console.log(`sortedData[${i}][${colIdx}] ${sortedData[i][colIdx]} | sortedIndices[${i}] ${sortedIndices[i]} | trueRow[${sortedIndices[i]}] ${trueRow[sortedIndices[i]]}`);
+    // }
+
+    // console.log(`sortedData ${JSON.stringify(sortedData)}`);
+    // console.log(`sortedIndices ${JSON.stringify(sortedIndices)}`);
+
+    // next, we group the data by the value in the sorted column
+
+    const groupedData = [];
+    const groupedIndices = [];
+    let groupIdx = -1;
+    let prev = sortedData[0][colIdx];
+    for (let i = 0; i < sortedData.length; ++i) {
+      const curr = sortedData[i][colIdx];
+      if (i === 0 || curr !== prev) {
+        groupIdx++;
+        groupedData[groupIdx] = [];
+        groupedIndices[groupIdx] = [];
+      }
+      groupedData[groupIdx].push(sortedData[i]);
+      groupedIndices[groupIdx].push(sortedIndices[i]);
+    }
+    const numGroups = groupIdx + 1;
+
+    // console.log(`groupIdx ${groupIdx}`);
+    // console.log(`groupedIndices ${JSON.stringify(groupedIndices)}`);
+    // console.log(`groupedData[0][0][${colIdx}] ${JSON.stringify(groupedData[0][0][colIdx])} | ${groupedIndices[0][0]}`);
+    // console.log(`groupedData[0][1][${colIdx}] ${JSON.stringify(groupedData[0][1][colIdx])} | ${groupedIndices[0][1]}`);
+    // console.log(`groupedData[1][0][${colIdx}] ${JSON.stringify(groupedData[1][0][colIdx])} | ${groupedIndices[1][0]}`);
+
+    /*
+    groupIdx               135
+    groupedIndices         [[65,107],[43],[8],...,[134],[135]]
+    groupedData[0][0][37]  253 | 65
+    groupedData[0][1][37]  253 | 107
+    groupedData[1][0][37]  251 | 43
+    */
+
+    // finally, we cluster each group separately, and append the clustered
+    // data to the existing grouped object
+
+    if (numGroups > 0) {
+      const orderedSegmentsArr = [];
+      for (let i = 0; i < numGroups; ++i) {
+        if (groupedData[i].length === 1) {
+          const trueRowIdx = trueRow[groupedIndices[i][0]];
+          const segment = segmentList[trueRowIdx];
+          const orderedSegments = [[segment]];
+          orderedSegmentsArr.push(orderedSegments);
+        }
+        else {
+          const { clusters, distances, order, clustersGivenK } = clusterData({
+            data: groupedData[i],
+            distance: distanceFnToCall,
+            linkage: averageDistance,
+          });
+          const orderedSegments = order.map(i => {
+            // const trueRowIdx = trueRow[i];
+            const trueRowIdx = trueRow[groupedIndices[i][0]];
+            const segment = segmentList[trueRowIdx];
+            return [segment];
+          });
+          orderedSegmentsArr.push(orderedSegments);
+        }
+      }
+      console.log(`numGroups ${numGroups}`);
+      console.log(`orderedSegmentsArr.length ${orderedSegmentsArr.length}`);
+      let rowOfRowsIdx = 0;
+      for (let key of Object.keys(grouped)) {
+        const rowsOfRows = orderedSegmentsArr;
+        grouped[key] = {};
+        if (rowOfRowsIdx === 0) {
+          grouped[key].rows = [];
+        }
+        for (let rowOfRowsIdx = 0; rowOfRowsIdx < rowsOfRows.length; ++rowOfRowsIdx) {
+          for (let rowIdx = 0; rowIdx < rowsOfRows[rowOfRowsIdx].length; ++rowIdx) {
+            console.log(`adding group ${rowOfRowsIdx} row ${rowIdx}`);
+            grouped[key].rows.push(rowsOfRows[rowOfRowsIdx][rowIdx]);
+          }
+        }
+        // rowOfRowsIdx++;
+      }
+    }
+    else {
+      for (let key of Object.keys(grouped)) {
+        const rows = segmentsToRows(grouped[key], {
+          prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        });
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
+    }
+
+    // for (let key of Object.keys(grouped)) {
+    //   const rows = segmentsToRows(grouped[key], {
+    //     prevRows: (prevRows[key] && prevRows[key].rows) || [],
+    //   });
+    //   grouped[key] = {};
+    //   grouped[key].rows = rows;
+    // }
   }
   else {
     for (let key of Object.keys(grouped)) {
