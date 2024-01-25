@@ -1533,13 +1533,13 @@ const renderSegments = (
         linkage: averageDistance,
       });
 
-      console.log(`order ${order}`);
+      // console.log(`order ${order}`);
       const orderedSegments = order.map(i => {
         const trueRowIdx = trueRow[i];
         const segment = segmentList[trueRowIdx];
         return [segment];
       })
-      console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
+      // console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
       for (let key of Object.keys(grouped)) {
         const rows = orderedSegments;
         grouped[key] = {};
@@ -1718,8 +1718,8 @@ const renderSegments = (
           orderedSegmentsArr.push(orderedSegments);
         }
       }
-      console.log(`numGroups ${numGroups}`);
-      console.log(`orderedSegmentsArr.length ${orderedSegmentsArr.length}`);
+      // console.log(`numGroups ${numGroups}`);
+      // console.log(`orderedSegmentsArr.length ${orderedSegmentsArr.length}`);
       let rowOfRowsIdx = 0;
       for (let key of Object.keys(grouped)) {
         const rowsOfRows = orderedSegmentsArr;
@@ -1729,7 +1729,7 @@ const renderSegments = (
         }
         for (let rowOfRowsIdx = 0; rowOfRowsIdx < rowsOfRows.length; ++rowOfRowsIdx) {
           for (let rowIdx = 0; rowIdx < rowsOfRows[rowOfRowsIdx].length; ++rowIdx) {
-            console.log(`adding group ${rowOfRowsIdx} row ${rowIdx}`);
+            // console.log(`adding group ${rowOfRowsIdx} row ${rowIdx}`);
             grouped[key].rows.push(rowsOfRows[rowOfRowsIdx][rowIdx]);
           }
         }
