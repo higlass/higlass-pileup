@@ -1557,7 +1557,7 @@ const renderSegments = (
     }
   }
   else if (!clusterDataObj && sortedClusterDataObj && trackOptions.methylation) {
-    console.log(`sortedClusterDataObj ${JSON.stringify(sortedClusterDataObj)}`);
+    // console.log(`sortedClusterDataObj ${JSON.stringify(sortedClusterDataObj)}`);
     // const chromName = clusterDataObj.range.left.chrom;
     const chromStart = sortedClusterDataObj.range.left.start;
     const chromEnd = sortedClusterDataObj.range.right.stop;
@@ -1639,10 +1639,8 @@ const renderSegments = (
     // sortedClusterDataObj.posn value
 
     const indexedData = data.map((row, index) => [row, index]);
-    // console.log(`indexedData ${JSON.stringify(indexedData)}`);
 
     const colIdx = sortedClusterDataObj.posn;
-    // console.log(`colIdx ${colIdx}`);
 
     indexedData.sort((rowA, rowB) => {
       if (rowA[0][colIdx] === rowB[0][colIdx]) { return 0; }
@@ -1651,13 +1649,6 @@ const renderSegments = (
 
     const sortedData = indexedData.map((row) => row[0]);
     const sortedIndices = indexedData.map((row) => row[1]);
-
-    // for (let i = 0; i < sortedData.length; ++i) {
-    //   console.log(`sortedData[${i}][${colIdx}] ${sortedData[i][colIdx]} | sortedIndices[${i}] ${sortedIndices[i]} | trueRow[${sortedIndices[i]}] ${trueRow[sortedIndices[i]]}`);
-    // }
-
-    // console.log(`sortedData ${JSON.stringify(sortedData)}`);
-    // console.log(`sortedIndices ${JSON.stringify(sortedIndices)}`);
 
     // next, we group the data by the value in the sorted column
 
@@ -1677,63 +1668,34 @@ const renderSegments = (
     }
     const numGroups = groupIdx + 1;
 
-    // console.log(`groupIdx ${groupIdx}`);
-    // console.log(`groupedIndices ${JSON.stringify(groupedIndices)}`);
-    // console.log(`groupedData[0][0][${colIdx}] ${JSON.stringify(groupedData[0][0][colIdx])} | ${groupedIndices[0][0]}`);
-    // console.log(`groupedData[0][1][${colIdx}] ${JSON.stringify(groupedData[0][1][colIdx])} | ${groupedIndices[0][1]}`);
-    // console.log(`groupedData[1][0][${colIdx}] ${JSON.stringify(groupedData[1][0][colIdx])} | ${groupedIndices[1][0]}`);
-
-    /*
-    groupIdx               135
-    groupedIndices         [[65,107],[43],[8],...,[134],[135]]
-    groupedData[0][0][37]  253 | 65
-    groupedData[0][1][37]  253 | 107
-    groupedData[1][0][37]  251 | 43
-    */
-
     // finally, we cluster each group separately, and append the clustered
     // data to the existing grouped object
 
     if (numGroups > 0) {
       const orderedSegmentsArr = [];
-      for (let i = 0; i < numGroups; ++i) {
-        if (groupedData[i].length === 1) {
-          const trueRowIdx = trueRow[groupedIndices[i][0]];
+      for (let groupIdx = 0; groupIdx < numGroups; ++groupIdx) {
+        const { clusters, distances, order, clustersGivenK } = clusterData({
+          data: groupedData[groupIdx],
+          distance: distanceFnToCall,
+          linkage: averageDistance,
+        });
+        const indexGroup = groupedIndices[groupIdx];
+        const orderedSegments = order.map(o => {
+          const trueRowIdx = trueRow[indexGroup[o]];
           const segment = segmentList[trueRowIdx];
-          const orderedSegments = [[segment]];
-          orderedSegmentsArr.push(orderedSegments);
-        }
-        else {
-          const { clusters, distances, order, clustersGivenK } = clusterData({
-            data: groupedData[i],
-            distance: distanceFnToCall,
-            linkage: averageDistance,
-          });
-          const orderedSegments = order.map(i => {
-            // const trueRowIdx = trueRow[i];
-            const trueRowIdx = trueRow[groupedIndices[i][0]];
-            const segment = segmentList[trueRowIdx];
-            return [segment];
-          });
-          orderedSegmentsArr.push(orderedSegments);
-        }
+          return [segment];
+        });
+        orderedSegments.forEach((os) => orderedSegmentsArr.push(os));
       }
-      // console.log(`numGroups ${numGroups}`);
-      // console.log(`orderedSegmentsArr.length ${orderedSegmentsArr.length}`);
-      let rowOfRowsIdx = 0;
+      let orderedSegmentIdx = 0;
       for (let key of Object.keys(grouped)) {
-        const rowsOfRows = orderedSegmentsArr;
         grouped[key] = {};
-        if (rowOfRowsIdx === 0) {
+        if (orderedSegmentIdx === 0) {
           grouped[key].rows = [];
         }
-        for (let rowOfRowsIdx = 0; rowOfRowsIdx < rowsOfRows.length; ++rowOfRowsIdx) {
-          for (let rowIdx = 0; rowIdx < rowsOfRows[rowOfRowsIdx].length; ++rowIdx) {
-            // console.log(`adding group ${rowOfRowsIdx} row ${rowIdx}`);
-            grouped[key].rows.push(rowsOfRows[rowOfRowsIdx][rowIdx]);
-          }
+        for (let orderedSegmentIdx = 0; orderedSegmentIdx < orderedSegmentsArr.length; ++orderedSegmentIdx) {
+          grouped[key].rows.push(orderedSegmentsArr[orderedSegmentIdx]);
         }
-        // rowOfRowsIdx++;
       }
     }
     else {
