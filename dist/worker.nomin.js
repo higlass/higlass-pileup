@@ -16553,12 +16553,7 @@ class BAI extends IndexFile {
     }
     // fetch and parse the index
     async _parse(opts) {
-        const bytes = (await this.filehandle
-            .readFile(opts)
-            .catch(console.error));
-        if (!bytes) {
-            throw new Error('Empty file');
-        }
+        const bytes = (await this.filehandle.readFile(opts));
         // check BAI magic numbers
         if (bytes.readUInt32LE(0) !== BAI_MAGIC) {
             throw new Error('Not a BAI file');
@@ -17598,25 +17593,13 @@ class bamFile_BamFile {
             this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(baiPath) });
         }
         else if (baiUrl) {
-            try {
-                this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
-            }
-            catch (e) {
-                console.log(`Unable to fetch BAI file: ${e.message}`);
-                this.index = undefined;
-            }
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
         }
         else if (bamPath) {
             this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(`${bamPath}.bai`) });
         }
         else if (bamUrl) {
-            try {
-                this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
-            }
-            catch (e) {
-                console.log(`Unable to fetch BAI file: ${e.message}`);
-                this.index = undefined;
-            }
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
         }
         else if (htsget) {
             this.htsget = true;
@@ -17631,11 +17614,7 @@ class bamFile_BamFile {
         if (!this.index) {
             return;
         }
-        const indexData = await this.index.parse(opts).catch(console.error);
-        if (!indexData) {
-            // throw new Error('Error reading index')
-            return;
-        }
+        const indexData = await this.index.parse(opts);
         const ret = indexData.firstDataLine
             ? indexData.firstDataLine.blockPosition + 65535
             : undefined;
@@ -17646,13 +17625,10 @@ class bamFile_BamFile {
             if (!res.bytesRead) {
                 throw new Error('Error reading header');
             }
-            if (!res.buffer) {
-                throw new Error('Error reading buffer');
-            }
             buffer = res.buffer.subarray(0, Math.min(res.bytesRead, ret));
         }
         else {
-            buffer = (await this.bam.readFile(opts).catch(console.error));
+            buffer = (await this.bam.readFile(opts));
         }
         const uncba = await (0,esm/* unzip */.Ri)(buffer);
         if (uncba.readInt32LE(0) !== bamFile_BAM_MAGIC) {
@@ -17675,7 +17651,7 @@ class bamFile_BamFile {
         return this.headerP;
     }
     async getHeaderText(opts = {}) {
-        await this.getHeader(opts).catch(console.error);
+        await this.getHeader(opts);
         return this.header;
     }
     // the full length of the refseq block is not given in advance so this grabs
@@ -17715,7 +17691,7 @@ class bamFile_BamFile {
         if (opts.maxSampleSize) {
             const allRecords = await gen2array(this.streamRecordsForRange(chr, min, max, opts));
             const resSize = +opts.maxSampleSize;
-            // console.warn(`resSize ${resSize} allRecords.length ${allRecords.length}`)
+            console.warn(`resSize ${resSize} allRecords.length ${allRecords.length}`);
             if (resSize < allRecords.length) {
                 const res = new (reservoir_default())(resSize);
                 for (const record of allRecords) {
@@ -17750,7 +17726,7 @@ class bamFile_BamFile {
     }
     async *streamRecordsForRange(chr, min, max, opts) {
         var _a;
-        await this.getHeader(opts).catch(e => console.error(e));
+        await this.getHeader(opts);
         const chrId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[chr];
         if (chrId === undefined || !this.index) {
             yield [];
