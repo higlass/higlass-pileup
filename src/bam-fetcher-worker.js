@@ -1655,66 +1655,71 @@ const renderSegments = (
     const groupedData = [];
     const groupedIndices = [];
     let groupIdx = -1;
-    let prev = sortedData[0][colIdx];
-    for (let i = 0; i < sortedData.length; ++i) {
-      const curr = sortedData[i][colIdx];
-      if (i === 0 || curr !== prev) {
-        groupIdx++;
-        groupedData[groupIdx] = [];
-        groupedIndices[groupIdx] = [];
-      }
-      groupedData[groupIdx].push(sortedData[i]);
-      groupedIndices[groupIdx].push(sortedIndices[i]);
-    }
-    const numGroups = groupIdx + 1;
-
-    // finally, we cluster each group separately, and append the clustered
-    // data to the existing grouped object
-
-    if (numGroups > 0) {
-      const orderedSegmentsArr = [];
-      for (let groupIdx = 0; groupIdx < numGroups; ++groupIdx) {
-        const { clusters, distances, order, clustersGivenK } = clusterData({
-          data: groupedData[groupIdx],
-          distance: distanceFnToCall,
-          linkage: averageDistance,
-        });
-        const indexGroup = groupedIndices[groupIdx];
-        const orderedSegments = order.map(o => {
-          const trueRowIdx = trueRow[indexGroup[o]];
-          const segment = segmentList[trueRowIdx];
-          return [segment];
-        });
-        orderedSegments.forEach((os) => orderedSegmentsArr.push(os));
-      }
-      let orderedSegmentIdx = 0;
-      for (let key of Object.keys(grouped)) {
-        grouped[key] = {};
-        if (orderedSegmentIdx === 0) {
-          grouped[key].rows = [];
+    try {
+      let prev = sortedData[0][colIdx];
+      for (let i = 0; i < sortedData.length; ++i) {
+        const curr = sortedData[i][colIdx];
+        if (i === 0 || curr !== prev) {
+          groupIdx++;
+          groupedData[groupIdx] = [];
+          groupedIndices[groupIdx] = [];
         }
-        for (let orderedSegmentIdx = 0; orderedSegmentIdx < orderedSegmentsArr.length; ++orderedSegmentIdx) {
-          grouped[key].rows.push(orderedSegmentsArr[orderedSegmentIdx]);
+        groupedData[groupIdx].push(sortedData[i]);
+        groupedIndices[groupIdx].push(sortedIndices[i]);
+      }
+      const numGroups = groupIdx + 1;
+
+      // finally, we cluster each group separately, and append the clustered
+      // data to the existing grouped object
+
+      if (numGroups > 0) {
+        const orderedSegmentsArr = [];
+        for (let groupIdx = 0; groupIdx < numGroups; ++groupIdx) {
+          const { clusters, distances, order, clustersGivenK } = clusterData({
+            data: groupedData[groupIdx],
+            distance: distanceFnToCall,
+            linkage: averageDistance,
+          });
+          const indexGroup = groupedIndices[groupIdx];
+          const orderedSegments = order.map(o => {
+            const trueRowIdx = trueRow[indexGroup[o]];
+            const segment = segmentList[trueRowIdx];
+            return [segment];
+          });
+          orderedSegments.forEach((os) => orderedSegmentsArr.push(os));
+        }
+        let orderedSegmentIdx = 0;
+        for (let key of Object.keys(grouped)) {
+          grouped[key] = {};
+          if (orderedSegmentIdx === 0) {
+            grouped[key].rows = [];
+          }
+          for (let orderedSegmentIdx = 0; orderedSegmentIdx < orderedSegmentsArr.length; ++orderedSegmentIdx) {
+            grouped[key].rows.push(orderedSegmentsArr[orderedSegmentIdx]);
+          }
         }
       }
-    }
-    else {
-      for (let key of Object.keys(grouped)) {
-        const rows = segmentsToRows(grouped[key], {
-          prevRows: (prevRows[key] && prevRows[key].rows) || [],
-        });
-        grouped[key] = {};
-        grouped[key].rows = rows;
+      else {
+        for (let key of Object.keys(grouped)) {
+          const rows = segmentsToRows(grouped[key], {
+            prevRows: (prevRows[key] && prevRows[key].rows) || [],
+          });
+          grouped[key] = {};
+          grouped[key].rows = rows;
+        }
       }
-    }
 
-    // for (let key of Object.keys(grouped)) {
-    //   const rows = segmentsToRows(grouped[key], {
-    //     prevRows: (prevRows[key] && prevRows[key].rows) || [],
-    //   });
-    //   grouped[key] = {};
-    //   grouped[key].rows = rows;
-    // }
+      // for (let key of Object.keys(grouped)) {
+      //   const rows = segmentsToRows(grouped[key], {
+      //     prevRows: (prevRows[key] && prevRows[key].rows) || [],
+      //   });
+      //   grouped[key] = {};
+      //   grouped[key].rows = rows;
+      // }
+    }
+    catch (err) {
+      console.log(`Sorted data: ${JSON.stringify(sortedData[0])}`);
+    }
   }
   else {
     for (let key of Object.keys(grouped)) {
