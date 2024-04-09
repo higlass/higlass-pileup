@@ -21077,7 +21077,13 @@ const renderSegments = (
       // }
     }
     catch (err) {
-      console.log(`Sorted data: ${JSON.stringify(sortedData[0])}`);
+      for (let key of Object.keys(grouped)) {
+        const rows = segmentsToRows(grouped[key], {
+          prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        });
+        grouped[key] = {};
+        grouped[key].rows = rows;
+      }
     }
   }
   else {
