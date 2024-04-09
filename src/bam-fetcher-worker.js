@@ -1189,6 +1189,8 @@ const exportSegmentsAsBED12 = (
       }
     }
 
+    data.length = 0;
+
     const totalRows = Object.values(grouped)
       .map((x) => x.rows.length)
       .reduce((a, b) => a + b, 0);
@@ -1555,6 +1557,8 @@ const renderSegments = (
         grouped[key].rows = rows;
       }
     }
+
+    data.length = 0;
   }
   else if (!clusterDataObj && sortedClusterDataObj && trackOptions.methylation) {
     // console.log(`sortedClusterDataObj ${JSON.stringify(sortedClusterDataObj)}`);
@@ -1708,6 +1712,8 @@ const renderSegments = (
           grouped[key].rows = rows;
         }
       }
+
+      groupedData.length = 0;
 
       // for (let key of Object.keys(grouped)) {
       //   const rows = segmentsToRows(grouped[key], {
