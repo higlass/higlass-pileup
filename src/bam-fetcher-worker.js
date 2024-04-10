@@ -1189,7 +1189,7 @@ const exportSegmentsAsBED12 = (
       }
     }
 
-    data.length = 0;
+    // data.length = 0;
 
     const totalRows = Object.values(grouped)
       .map((x) => x.rows.length)
@@ -1558,7 +1558,7 @@ const renderSegments = (
       }
     }
 
-    data.length = 0;
+    // data.length = 0;
   }
   else if (!clusterDataObj && sortedClusterDataObj && trackOptions.methylation) {
     // console.log(`sortedClusterDataObj ${JSON.stringify(sortedClusterDataObj)}`);
@@ -1713,7 +1713,7 @@ const renderSegments = (
         }
       }
 
-      groupedData.length = 0;
+      // groupedData.length = 0;
 
       // for (let key of Object.keys(grouped)) {
       //   const rows = segmentsToRows(grouped[key], {
