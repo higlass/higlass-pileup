@@ -1638,6 +1638,167 @@ class FetchableSmallFasta {
 
 /***/ }),
 
+/***/ 501:
+/***/ (function(module, exports, __webpack_require__) {
+
+/* module decorator */ module = __webpack_require__.nmd(module);
+var __WEBPACK_AMD_DEFINE_RESULT__;/*! https://mths.be/base64 v1.0.0 by @mathias | MIT license */
+;(function(root) {
+
+	// Detect free variables `exports`.
+	var freeExports =  true && exports;
+
+	// Detect free variable `module`.
+	var freeModule =  true && module &&
+		module.exports == freeExports && module;
+
+	// Detect free variable `global`, from Node.js or Browserified code, and use
+	// it as `root`.
+	var freeGlobal = typeof __webpack_require__.g == 'object' && __webpack_require__.g;
+	if (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal) {
+		root = freeGlobal;
+	}
+
+	/*--------------------------------------------------------------------------*/
+
+	var InvalidCharacterError = function(message) {
+		this.message = message;
+	};
+	InvalidCharacterError.prototype = new Error;
+	InvalidCharacterError.prototype.name = 'InvalidCharacterError';
+
+	var error = function(message) {
+		// Note: the error messages used throughout this file match those used by
+		// the native `atob`/`btoa` implementation in Chromium.
+		throw new InvalidCharacterError(message);
+	};
+
+	var TABLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+	// http://whatwg.org/html/common-microsyntaxes.html#space-character
+	var REGEX_SPACE_CHARACTERS = /[\t\n\f\r ]/g;
+
+	// `decode` is designed to be fully compatible with `atob` as described in the
+	// HTML Standard. http://whatwg.org/html/webappapis.html#dom-windowbase64-atob
+	// The optimized base64-decoding algorithm used is based on @atk’s excellent
+	// implementation. https://gist.github.com/atk/1020396
+	var decode = function(input) {
+		input = String(input)
+			.replace(REGEX_SPACE_CHARACTERS, '');
+		var length = input.length;
+		if (length % 4 == 0) {
+			input = input.replace(/==?$/, '');
+			length = input.length;
+		}
+		if (
+			length % 4 == 1 ||
+			// http://whatwg.org/C#alphanumeric-ascii-characters
+			/[^+a-zA-Z0-9/]/.test(input)
+		) {
+			error(
+				'Invalid character: the string to be decoded is not correctly encoded.'
+			);
+		}
+		var bitCounter = 0;
+		var bitStorage;
+		var buffer;
+		var output = '';
+		var position = -1;
+		while (++position < length) {
+			buffer = TABLE.indexOf(input.charAt(position));
+			bitStorage = bitCounter % 4 ? bitStorage * 64 + buffer : buffer;
+			// Unless this is the first of a group of 4 characters…
+			if (bitCounter++ % 4) {
+				// …convert the first 8 bits to a single ASCII character.
+				output += String.fromCharCode(
+					0xFF & bitStorage >> (-2 * bitCounter & 6)
+				);
+			}
+		}
+		return output;
+	};
+
+	// `encode` is designed to be fully compatible with `btoa` as described in the
+	// HTML Standard: http://whatwg.org/html/webappapis.html#dom-windowbase64-btoa
+	var encode = function(input) {
+		input = String(input);
+		if (/[^\0-\xFF]/.test(input)) {
+			// Note: no need to special-case astral symbols here, as surrogates are
+			// matched, and the input is supposed to only contain ASCII anyway.
+			error(
+				'The string to be encoded contains characters outside of the ' +
+				'Latin1 range.'
+			);
+		}
+		var padding = input.length % 3;
+		var output = '';
+		var position = -1;
+		var a;
+		var b;
+		var c;
+		var buffer;
+		// Make sure any padding is handled outside of the loop.
+		var length = input.length - padding;
+
+		while (++position < length) {
+			// Read three bytes, i.e. 24 bits.
+			a = input.charCodeAt(position) << 16;
+			b = input.charCodeAt(++position) << 8;
+			c = input.charCodeAt(++position);
+			buffer = a + b + c;
+			// Turn the 24 bits into four chunks of 6 bits each, and append the
+			// matching character for each of them to the output.
+			output += (
+				TABLE.charAt(buffer >> 18 & 0x3F) +
+				TABLE.charAt(buffer >> 12 & 0x3F) +
+				TABLE.charAt(buffer >> 6 & 0x3F) +
+				TABLE.charAt(buffer & 0x3F)
+			);
+		}
+
+		if (padding == 2) {
+			a = input.charCodeAt(position) << 8;
+			b = input.charCodeAt(++position);
+			buffer = a + b;
+			output += (
+				TABLE.charAt(buffer >> 10) +
+				TABLE.charAt((buffer >> 4) & 0x3F) +
+				TABLE.charAt((buffer << 2) & 0x3F) +
+				'='
+			);
+		} else if (padding == 1) {
+			buffer = input.charCodeAt(position);
+			output += (
+				TABLE.charAt(buffer >> 2) +
+				TABLE.charAt((buffer << 4) & 0x3F) +
+				'=='
+			);
+		}
+
+		return output;
+	};
+
+	var base64 = {
+		'encode': encode,
+		'decode': decode,
+		'version': '1.0.0'
+	};
+
+	// Some AMD build optimizers, like r.js, check for specific condition patterns
+	// like the following:
+	if (
+		true
+	) {
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+			return base64;
+		}).call(exports, __webpack_require__, exports, module),
+		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}	else { var key; }
+
+}(this));
+
+
+/***/ }),
+
 /***/ 742:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -14238,6 +14399,13 @@ try {
 
 /***/ }),
 
+/***/ 124:
+/***/ (() => {
+
+/* (ignored) */
+
+/***/ }),
+
 /***/ 67:
 /***/ (() => {
 
@@ -14259,13 +14427,16 @@ try {
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
+/******/ 			id: moduleId,
+/******/ 			loaded: false,
 /******/ 			exports: {}
 /******/ 		};
 /******/ 	
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
 /******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
@@ -14321,6 +14492,15 @@ try {
 /******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
 /******/ 			}
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/node module decorator */
+/******/ 	(() => {
+/******/ 		__webpack_require__.nmd = (module) => {
+/******/ 			module.paths = [];
+/******/ 			if (!module.children) module.children = [];
+/******/ 			return module;
 /******/ 		};
 /******/ 	})();
 /******/ 	
@@ -16717,8 +16897,290 @@ var buffer_crc32 = __webpack_require__(779);
 var buffer_crc32_default = /*#__PURE__*/__webpack_require__.n(buffer_crc32);
 // EXTERNAL MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js + 3 modules
 var esm = __webpack_require__(290);
-// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
-var generic_filehandle_esm = __webpack_require__(949);
+// EXTERNAL MODULE: ./localFile (ignored)
+var localFile_ignored_ = __webpack_require__(124);
+var localFile_ignored_default = /*#__PURE__*/__webpack_require__.n(localFile_ignored_);
+// EXTERNAL MODULE: ./node_modules/base-64/base64.js
+var base64 = __webpack_require__(501);
+;// CONCATENATED MODULE: ./node_modules/apr144-generic-filehandle/esm/remoteFile.js
+
+
+class remoteFile_RemoteFile {
+    async getBufferFromResponse(response) {
+        if (typeof response.buffer === 'function') {
+            return response.buffer();
+        }
+        else if (typeof response.arrayBuffer === 'function') {
+            const resp = await response.arrayBuffer();
+            return node_modules_buffer/* Buffer */.lW.from(resp);
+        }
+        else {
+            throw new TypeError('invalid HTTP response object, has no buffer method, and no arrayBuffer method');
+        }
+    }
+    constructor(source, opts = {}) {
+        this.auth = {};
+        this.baseOverrides = {};
+        this.url = source;
+        this.auth = opts.auth || {};
+        const fetch = opts.fetch || globalThis.fetch.bind(globalThis);
+        if (!fetch) {
+            throw new TypeError(`no fetch function supplied, and none found in global environment`);
+        }
+        if (opts.overrides) {
+            this.baseOverrides = opts.overrides;
+        }
+        this.fetchImplementation = fetch;
+    }
+    async fetch(input, init) {
+        let response;
+        try {
+            response = await this.fetchImplementation(input, init);
+        }
+        catch (e) {
+            if (`${e}`.includes('Failed to fetch')) {
+                // refetch to to help work around a chrome bug (discussed in
+                // generic-filehandle issue #72) in which the chrome cache returns a
+                // CORS error for content in its cache.  see also
+                // https://github.com/GMOD/jbrowse-components/pull/1511
+                console.warn(`generic-filehandle: refetching ${input} to attempt to work around chrome CORS header caching bug`);
+                response = await this.fetchImplementation(input, {
+                    ...init,
+                    cache: 'reload',
+                });
+            }
+            else {
+                throw e;
+            }
+        }
+        return response;
+    }
+    async read(buffer, offset = 0, length, position = 0, opts = {}) {
+        const { headers = {}, signal, overrides = {} } = opts;
+        if (length < Infinity) {
+            headers.range = `bytes=${position}-${position + length}`;
+        }
+        else if (length === Infinity && position !== 0) {
+            headers.range = `bytes=${position}-`;
+        }
+        if (this.auth && this.auth.user && this.auth.password) {
+            headers.Authorization = `Basic ${(0,base64.encode)(this.auth.user + ":" + this.auth.password)}`;
+        }
+        const args = {
+            ...this.baseOverrides,
+            ...overrides,
+            headers: {
+                ...headers,
+                ...overrides.headers,
+                ...this.baseOverrides.headers,
+            },
+            method: 'GET',
+            redirect: 'follow',
+            mode: 'cors',
+            signal,
+        };
+        const response = await this.fetch(this.url, args);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText} ${this.url}`);
+        }
+        if ((response.status === 200 && position === 0) ||
+            response.status === 206) {
+            const responseData = await this.getBufferFromResponse(response);
+            const bytesCopied = responseData.copy(buffer, offset, 0, Math.min(length, responseData.length));
+            // try to parse out the size of the remote file
+            const res = response.headers.get('content-range');
+            const sizeMatch = /\/(\d+)$/.exec(res || '');
+            if (sizeMatch && sizeMatch[1]) {
+                this._stat = { size: parseInt(sizeMatch[1], 10) };
+            }
+            return { bytesRead: bytesCopied, buffer };
+        }
+        if (response.status === 200) {
+            throw new Error('${this.url} fetch returned status 200, expected 206');
+        }
+        if (response.status === 404) {
+            return { bytesRead: 0, buffer };
+        }
+        // TODO: try harder here to gather more information about what the problem is
+        throw new Error(`HTTP ${response.status} fetching ${this.url}`);
+    }
+    async readFile(options = {}) {
+        let encoding;
+        let opts;
+        if (typeof options === 'string') {
+            encoding = options;
+            opts = {};
+        }
+        else {
+            encoding = options.encoding;
+            opts = options;
+            delete opts.encoding;
+        }
+        const { headers = {}, signal, overrides = {} } = opts;
+        if (this.auth && this.auth.user && this.auth.password) {
+            headers.Authorization = `Basic ${(0,base64.encode)(this.auth.user + ":" + this.auth.password)}`;
+        }
+        const args = {
+            headers,
+            method: 'GET',
+            redirect: 'follow',
+            mode: 'cors',
+            signal,
+            ...this.baseOverrides,
+            ...overrides,
+        };
+        const response = await this.fetch(this.url, args);
+        if (!response) {
+            throw new Error('generic-filehandle failed to fetch');
+        }
+        if (response.status === 404) {
+            return node_modules_buffer/* Buffer */.lW.alloc(1);
+        }
+        if (response.status !== 200) {
+            throw Object.assign(new Error(`HTTP ${response.status} fetching ${this.url}`), {
+                status: response.status,
+            });
+        }
+        if (encoding === 'utf8') {
+            return response.text();
+        }
+        if (encoding) {
+            throw new Error(`unsupported encoding: ${encoding}`);
+        }
+        return this.getBufferFromResponse(response);
+    }
+    async stat() {
+        if (!this._stat) {
+            const buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(10);
+            await this.read(buf, 0, 10, 0);
+            if (!this._stat) {
+                throw new Error(`unable to determine size of file at ${this.url}`);
+            }
+        }
+        return this._stat;
+    }
+    async close() {
+        return;
+    }
+}
+//# sourceMappingURL=remoteFile.js.map
+;// CONCATENATED MODULE: ./node_modules/apr144-generic-filehandle/esm/blobFile.js
+
+// Using this you can "await" the file like a normal promise
+// https://blog.shovonhasan.com/using-promises-with-filereader/
+function readBlobAsArrayBuffer(blob) {
+    const fileReader = new FileReader();
+    return new Promise((resolve, reject) => {
+        fileReader.onerror = () => {
+            fileReader.abort();
+            reject(new Error('problem reading blob'));
+        };
+        fileReader.onabort = () => {
+            reject(new Error('blob reading was aborted'));
+        };
+        fileReader.onload = () => {
+            if (fileReader.result && typeof fileReader.result !== 'string') {
+                resolve(fileReader.result);
+            }
+            else {
+                reject(new Error('unknown error reading blob'));
+            }
+        };
+        fileReader.readAsArrayBuffer(blob);
+    });
+}
+function readBlobAsText(blob) {
+    const fileReader = new FileReader();
+    return new Promise((resolve, reject) => {
+        fileReader.onerror = () => {
+            fileReader.abort();
+            reject(new Error('problem reading blob'));
+        };
+        fileReader.onabort = () => {
+            reject(new Error('blob reading was aborted'));
+        };
+        fileReader.onload = () => {
+            if (fileReader.result && typeof fileReader.result === 'string') {
+                resolve(fileReader.result);
+            }
+            else {
+                reject(new Error('unknown error reading blob'));
+            }
+        };
+        fileReader.readAsText(blob);
+    });
+}
+/**
+ * Blob of binary data fetched from a local file (with FileReader).
+ *
+ * Adapted by Robert Buels and Garrett Stevens from the BlobFetchable object in
+ * the Dalliance Genome Explorer, which is copyright Thomas Down 2006-2011.
+ */
+class BlobFile {
+    constructor(blob) {
+        this.blob = blob;
+        this.size = blob.size;
+    }
+    async read(buffer, offset = 0, length, position = 0) {
+        // short-circuit a read of 0 bytes here, because browsers actually sometimes
+        // crash if you try to read 0 bytes from a local file!
+        if (!length) {
+            return { bytesRead: 0, buffer };
+        }
+        const start = position;
+        const end = start + length;
+        const result = await readBlobAsArrayBuffer(this.blob.slice(start, end));
+        const resultBuffer = Buffer.from(result);
+        const bytesCopied = resultBuffer.copy(buffer, offset);
+        return { bytesRead: bytesCopied, buffer: resultBuffer };
+    }
+    async readFile(options) {
+        let encoding;
+        if (typeof options === 'string') {
+            encoding = options;
+        }
+        else {
+            encoding = options && options.encoding;
+        }
+        if (encoding === 'utf8') {
+            return readBlobAsText(this.blob);
+        }
+        if (encoding) {
+            throw new Error(`unsupported encoding: ${encoding}`);
+        }
+        const result = await readBlobAsArrayBuffer(this.blob);
+        return Buffer.from(result);
+    }
+    async stat() {
+        return { size: this.size };
+    }
+    async close() {
+        return;
+    }
+}
+//# sourceMappingURL=blobFile.js.map
+;// CONCATENATED MODULE: ./node_modules/apr144-generic-filehandle/esm/index.js
+
+
+
+
+function fromUrl(source, opts = {}) {
+    return new RemoteFile(source, opts);
+}
+function esm_open(maybeUrl, maybePath, maybeFilehandle, opts = {}) {
+    if (maybeFilehandle !== undefined) {
+        return maybeFilehandle;
+    }
+    if (maybeUrl !== undefined) {
+        return fromUrl(maybeUrl, opts);
+    }
+    if (maybePath !== undefined) {
+        return new LocalFile(maybePath, opts);
+    }
+    throw new Error('no url, path, or filehandle provided, cannot open');
+}
+
+//# sourceMappingURL=index.js.map
 // EXTERNAL MODULE: ./node_modules/abortable-promise-cache/esm/index.js
 var abortable_promise_cache_esm = __webpack_require__(105);
 var esm_default = /*#__PURE__*/__webpack_require__.n(abortable_promise_cache_esm);
@@ -17565,10 +18027,21 @@ class bamFile_BamFile {
             this.bam = bamFilehandle;
         }
         else if (bamPath) {
-            this.bam = new generic_filehandle_esm/* LocalFile */.S9(bamPath);
+            this.bam = new (localFile_ignored_default())(bamPath);
         }
         else if (bamUrl) {
-            this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl);
+            const bamUrlObj = new URL(bamUrl);
+            const bamUrlUsername = bamUrlObj.username;
+            const bamUrlPassword = bamUrlObj.password;
+            if (bamUrlUsername && bamUrlPassword) {
+                bamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
+                this.bam = new remoteFile_RemoteFile(bamUrl, {
+                    auth: { user: bamUrlUsername, password: bamUrlPassword },
+                });
+            }
+            else {
+                this.bam = new remoteFile_RemoteFile(bamUrl);
+            }
         }
         else if (htsget) {
             this.htsget = true;
@@ -17581,25 +18054,67 @@ class bamFile_BamFile {
             this.index = new CSI({ filehandle: csiFilehandle });
         }
         else if (csiPath) {
-            this.index = new CSI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(csiPath) });
+            this.index = new CSI({ filehandle: new (localFile_ignored_default())(csiPath) });
         }
         else if (csiUrl) {
-            this.index = new CSI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(csiUrl) });
+            const csiUrlObj = new URL(csiUrl);
+            const csiUrlUsername = csiUrlObj.username;
+            const csiUrlPassword = csiUrlObj.password;
+            if (csiUrlUsername && csiUrlPassword) {
+                csiUrl = `${csiUrlObj.protocol}//${csiUrlObj.host}${csiUrlObj.pathname}${csiUrlObj.search}`;
+                this.index = new CSI({
+                    filehandle: new remoteFile_RemoteFile(csiUrl, {
+                        auth: { user: csiUrlUsername, password: csiUrlPassword },
+                    }),
+                });
+            }
+            else {
+                this.index = new CSI({ filehandle: new remoteFile_RemoteFile(csiUrl) });
+            }
         }
         else if (baiFilehandle) {
             this.index = new BAI({ filehandle: baiFilehandle });
         }
         else if (baiPath) {
-            this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(baiPath) });
+            this.index = new BAI({ filehandle: new (localFile_ignored_default())(baiPath) });
         }
         else if (baiUrl) {
-            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
+            console.log(`A1`);
+            const baiUrlObj = new URL(baiUrl);
+            const baiUrlUsername = baiUrlObj.username;
+            const baiUrlPassword = baiUrlObj.password;
+            if (baiUrlUsername && baiUrlPassword) {
+                console.log(`A2`);
+                baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
+                this.index = new BAI({
+                    filehandle: new remoteFile_RemoteFile(baiUrl, {
+                        auth: { user: baiUrlUsername, password: baiUrlPassword },
+                    }),
+                });
+            }
+            else {
+                console.log(`A3`);
+                this.index = new BAI({ filehandle: new remoteFile_RemoteFile(baiUrl) });
+            }
         }
         else if (bamPath) {
-            this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(`${bamPath}.bai`) });
+            this.index = new BAI({ filehandle: new (localFile_ignored_default())(`${bamPath}.bai`) });
         }
         else if (bamUrl) {
-            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
+            const bamOnlyUrlObj = new URL(bamUrl);
+            const bamOnlyUrlUsername = bamOnlyUrlObj.username;
+            const bamOnlyUrlPassword = bamOnlyUrlObj.password;
+            if (bamOnlyUrlUsername && bamOnlyUrlPassword) {
+                bamUrl = `${bamOnlyUrlObj.protocol}//${bamOnlyUrlObj.host}${bamOnlyUrlObj.pathname}${bamOnlyUrlObj.search}`;
+                this.index = new BAI({
+                    filehandle: new remoteFile_RemoteFile(`${bamUrl}.bai`, {
+                        auth: { user: bamOnlyUrlUsername, password: bamOnlyUrlPassword },
+                    }),
+                });
+            }
+            else {
+                this.index = new BAI({ filehandle: new remoteFile_RemoteFile(`${bamUrl}.bai`) });
+            }
         }
         else if (htsget) {
             this.htsget = true;
@@ -17690,8 +18205,9 @@ class bamFile_BamFile {
         }
         if (opts.maxSampleSize) {
             const allRecords = await gen2array(this.streamRecordsForRange(chr, min, max, opts));
+            console.log(`allRecords.length ${allRecords.length}`);
             const resSize = +opts.maxSampleSize;
-            console.warn(`resSize ${resSize} allRecords.length ${allRecords.length}`);
+            console.log(`resSize ${resSize}`);
             if (resSize < allRecords.length) {
                 const res = new (reservoir_default())(resSize);
                 for (const record of allRecords) {
@@ -19356,6 +19872,8 @@ function ChromosomeInfo(filepath, success) {
 }
 // EXTERNAL MODULE: ./node_modules/apr144-hclust/build/hclust.min.js
 var hclust_min = __webpack_require__(803);
+// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
+var generic_filehandle_esm = __webpack_require__(949);
 ;// CONCATENATED MODULE: ./src/bam-fetcher-worker.js
 
 
@@ -20548,7 +21066,7 @@ const exportSegmentsAsBED12 = (
       }
     }
 
-    data.length = 0;
+    // data.length = 0;
 
     const totalRows = Object.values(grouped)
       .map((x) => x.rows.length)
@@ -20917,7 +21435,7 @@ const renderSegments = (
       }
     }
 
-    data.length = 0;
+    // data.length = 0;
   }
   else if (!clusterDataObj && sortedClusterDataObj && trackOptions.methylation) {
     // console.log(`sortedClusterDataObj ${JSON.stringify(sortedClusterDataObj)}`);
@@ -21072,7 +21590,7 @@ const renderSegments = (
         }
       }
 
-      groupedData.length = 0;
+      // groupedData.length = 0;
 
       // for (let key of Object.keys(grouped)) {
       //   const rows = segmentsToRows(grouped[key], {
