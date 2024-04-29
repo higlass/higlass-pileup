@@ -17029,7 +17029,6 @@ class remoteFile_RemoteFile {
             ...this.baseOverrides,
             ...overrides,
         };
-        console.log(`headers: ${JSON.stringify(headers)}`);
         const response = await this.fetch(this.url, args);
         if (!response) {
             throw new Error('generic-filehandle failed to fetch');
@@ -18080,13 +18079,12 @@ class bamFile_BamFile {
             this.index = new BAI({ filehandle: new (localFile_ignored_default())(baiPath) });
         }
         else if (baiUrl) {
-            console.log(`A1`);
             const baiUrlObj = new URL(baiUrl);
             const baiUrlUsername = baiUrlObj.username;
             const baiUrlPassword = baiUrlObj.password;
             if (baiUrlUsername && baiUrlPassword) {
-                console.log(`A2 | ${baiUrlUsername} | ${baiUrlPassword}`);
                 baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
+                console.log(`baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`);
                 this.index = new BAI({
                     filehandle: new remoteFile_RemoteFile(baiUrl, {
                         auth: { user: baiUrlUsername, password: baiUrlPassword },
@@ -18094,7 +18092,6 @@ class bamFile_BamFile {
                 });
             }
             else {
-                console.log(`A3`);
                 this.index = new BAI({ filehandle: new remoteFile_RemoteFile(baiUrl) });
             }
         }
