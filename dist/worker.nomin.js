@@ -16733,6 +16733,7 @@ class BAI extends IndexFile {
     }
     // fetch and parse the index
     async _parse(opts) {
+        console.log(`BAI: ${JSON.stringify(opts)}`);
         const bytes = (await this.filehandle.readFile(opts));
         // check BAI magic numbers
         if (bytes.readUInt32LE(0) !== BAI_MAGIC) {

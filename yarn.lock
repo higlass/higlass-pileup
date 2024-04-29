@@ -1553,10 +1553,10 @@
     "normalize-path" "^3.0.0"
     "picomatch" "^2.0.4"
 
-"apr144-bam@2.0.0-rs-042624-005":
-  "integrity" "sha512-6svQqdGoG2fcy8SDKSA4XTXTNr53hxl9EdQGlRkaDsAXmyckkxLLBFr4s7F2EcTM+UkYMxSVE3Yj7I0h5Fwgrg=="
-  "resolved" "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs-042624-005.tgz"
-  "version" "2.0.0-rs-042624-005"
+"apr144-bam@2.0.0-rs-042624-006":
+  "integrity" "sha512-FQMew8ghFekJlaJrbhGpe5xAjEX2mYeeUivJgXKibA1F8R+KwYq8/qWp2qiST9fnfGzGas1IO+086SoVBs8YAA=="
+  "resolved" "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs-042624-006.tgz"
+  "version" "2.0.0-rs-042624-006"
   dependencies:
     "@gmod/bgzf-filehandle" "^1.4.4"
     "abortable-promise-cache" "^1.5.0"
