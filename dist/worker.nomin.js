@@ -16976,7 +16976,7 @@ class remoteFile_RemoteFile {
             },
             method: 'GET',
             redirect: 'follow',
-            mode: 'cors',
+            mode: 'no-cors',
             signal,
         };
         const response = await this.fetch(this.url, args);
@@ -17024,7 +17024,7 @@ class remoteFile_RemoteFile {
             headers,
             method: 'GET',
             redirect: 'follow',
-            mode: 'cors',
+            mode: 'no-cors',
             signal,
             ...this.baseOverrides,
             ...overrides,
@@ -18084,7 +18084,7 @@ class bamFile_BamFile {
             const baiUrlUsername = baiUrlObj.username;
             const baiUrlPassword = baiUrlObj.password;
             if (baiUrlUsername && baiUrlPassword) {
-                console.log(`A2`);
+                console.log(`A2 | ${baiUrlUsername} | ${baiUrlPassword}`);
                 baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
                 this.index = new BAI({
                     filehandle: new remoteFile_RemoteFile(baiUrl, {
