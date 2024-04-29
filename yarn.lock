@@ -1553,22 +1553,22 @@
     "normalize-path" "^3.0.0"
     "picomatch" "^2.0.4"
 
-"apr144-bam@2.0.0-rs-042624-003":
-  "integrity" "sha512-G3vJcwN+kuhL18Cj4lcTHtaR7256mMPCthdppQfU1Zmqo7OAstGquuaise30cfSHOX8NA+r6Wwae4R1G0wzLRg=="
-  "resolved" "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs-042624-003.tgz"
-  "version" "2.0.0-rs-042624-003"
+"apr144-bam@2.0.0-rs-042624-004":
+  "integrity" "sha512-H0KvyL32uK86McznRZXQJDGH8uFP22CHxS8kyEEXx/FrKlS1POzSGOitNBnQaHC5wbycw8gk0o54RNQJzF/R9Q=="
+  "resolved" "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs-042624-004.tgz"
+  "version" "2.0.0-rs-042624-004"
   dependencies:
     "@gmod/bgzf-filehandle" "^1.4.4"
     "abortable-promise-cache" "^1.5.0"
-    "apr144-generic-filehandle" "3.1.1-042624-001"
+    "apr144-generic-filehandle" "3.1.1-042624-002"
     "buffer-crc32" "^0.2.13"
     "long" "^4.0.0"
     "quick-lru" "^4.0.0"
 
-"apr144-generic-filehandle@3.1.1-042624-001":
-  "integrity" "sha512-IEdyEiE7B5QtU+1S2Xy7XcJv+gKXW9+6Fs9IxUbx7cxgx6qHDh5UaDCfdos6IPIO7cB7tWY5tmtGYgBCX0+vjQ=="
-  "resolved" "https://registry.npmjs.org/apr144-generic-filehandle/-/apr144-generic-filehandle-3.1.1-042624-001.tgz"
-  "version" "3.1.1-042624-001"
+"apr144-generic-filehandle@3.1.1-042624-002":
+  "integrity" "sha512-/qUk4+McklCPinwj3p3gv4r2ROiYIKjGtpNmmMAiqc17slyKeSbGoudXfJReLXe+a5T584qALoORwsLHNAWEYg=="
+  "resolved" "https://registry.npmjs.org/apr144-generic-filehandle/-/apr144-generic-filehandle-3.1.1-042624-002.tgz"
+  "version" "3.1.1-042624-002"
   dependencies:
     "base-64" "^1.0.0"
     "es6-promisify" "^6.1.1"
