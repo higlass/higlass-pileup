@@ -16942,8 +16942,8 @@ class remoteFile_RemoteFile {
         // }
         try {
             // console.log(`[generic-filehandle] [fetch (try)] headers ${JSON.stringify(headers)}`)
+            init = init || {};
             if (this.auth && this.auth.user && this.auth.password) {
-                init = init || {};
                 init.credentials = 'include';
                 init.headers = {};
                 init.headers.Authorization = `Basic ${(0,base64.encode)(this.auth.user + ":" + this.auth.password)}`;
@@ -16961,8 +16961,8 @@ class remoteFile_RemoteFile {
                 // https://github.com/GMOD/jbrowse-components/pull/1511
                 console.warn(`generic-filehandle: refetching ${input} to attempt to work around chrome CORS header caching bug`);
                 // console.log(`[generic-filehandle] [fetch (catch)] headers ${JSON.stringify(headers)}`)
-                if (init && this.auth && this.auth.user && this.auth.password) {
-                    init = init || {};
+                init = init || {};
+                if (this.auth && this.auth.user && this.auth.password) {
                     init.credentials = 'include';
                     init.headers = {};
                     init.headers.Authorization = `Basic ${(0,base64.encode)(this.auth.user + ":" + this.auth.password)}`;
