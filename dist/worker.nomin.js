@@ -16944,6 +16944,7 @@ class remoteFile_RemoteFile {
             // console.log(`[generic-filehandle] [fetch (try)] headers ${JSON.stringify(headers)}`)
             response = await this.fetchImplementation(input, {
                 ...init,
+                credentials: 'include',
                 // headers: headers,
             });
         }
@@ -17045,6 +17046,7 @@ class remoteFile_RemoteFile {
         if (this.auth && this.auth.user && this.auth.password) {
             headers.Authorization = `Basic ${(0,base64.encode)(this.auth.user + ":" + this.auth.password)}`;
             args.credentials = 'include';
+            console.log(`[generic-filehandle] [readFile] args ${JSON.stringify(args)}`);
         }
         const response = await this.fetch(this.url, args);
         if (!response) {
