@@ -16733,7 +16733,7 @@ class BAI extends IndexFile {
     }
     // fetch and parse the index
     async _parse(opts) {
-        console.log(`BAI: ${JSON.stringify(opts)}`);
+        // console.log(`BAI: ${JSON.stringify(opts)}`)
         const bytes = (await this.filehandle.readFile(opts));
         // check BAI magic numbers
         if (bytes.readUInt32LE(0) !== BAI_MAGIC) {
@@ -16932,11 +16932,20 @@ class remoteFile_RemoteFile {
             this.baseOverrides = opts.overrides;
         }
         this.fetchImplementation = fetch;
+        // console.log(`[generic-filehandle] [constructor] this.auth ${JSON.stringify(this.auth)}`)
     }
     async fetch(input, init) {
         let response;
+        // const headers: any = {}
+        // if (this.auth && this.auth.user && this.auth.password) {
+        //   headers.Authorization = `Basic ${encode(this.auth.user + ":" + this.auth.password)}`
+        // }
         try {
-            response = await this.fetchImplementation(input, init);
+            // console.log(`[generic-filehandle] [fetch (try)] headers ${JSON.stringify(headers)}`)
+            response = await this.fetchImplementation(input, {
+                ...init,
+                // headers: headers,
+            });
         }
         catch (e) {
             if (`${e}`.includes('Failed to fetch')) {
@@ -16945,8 +16954,10 @@ class remoteFile_RemoteFile {
                 // CORS error for content in its cache.  see also
                 // https://github.com/GMOD/jbrowse-components/pull/1511
                 console.warn(`generic-filehandle: refetching ${input} to attempt to work around chrome CORS header caching bug`);
+                // console.log(`[generic-filehandle] [fetch (catch)] headers ${JSON.stringify(headers)}`)
                 response = await this.fetchImplementation(input, {
                     ...init,
+                    // headers: headers,
                     cache: 'reload',
                 });
             }
@@ -17018,9 +17029,11 @@ class remoteFile_RemoteFile {
             delete opts.encoding;
         }
         const { headers = {}, signal, overrides = {} } = opts;
+        // console.log(`[generic-filehandle] [readFile] this.auth ${JSON.stringify(this.auth)}`)
         if (this.auth && this.auth.user && this.auth.password) {
             headers.Authorization = `Basic ${(0,base64.encode)(this.auth.user + ":" + this.auth.password)}`;
         }
+        // console.log(`[generic-filehandle] [readFile] headers ${JSON.stringify(headers)}`)
         const args = {
             headers,
             method: 'GET',
@@ -18085,7 +18098,9 @@ class bamFile_BamFile {
             const baiUrlPassword = baiUrlObj.password;
             if (baiUrlUsername && baiUrlPassword) {
                 baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
-                console.log(`baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`);
+                // console.log(
+                //   `baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`,
+                // )
                 this.index = new BAI({
                     filehandle: new remoteFile_RemoteFile(baiUrl, {
                         auth: { user: baiUrlUsername, password: baiUrlPassword },
