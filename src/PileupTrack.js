@@ -271,7 +271,6 @@ const PileupTrack = (HGC, ...args) => {
       }
 
       this.clusterData = null;
-      this.sortedClusterData = null;
       this.bed12ExportData = null;
 
       this.setUpShaderAndTextures(options);
@@ -464,7 +463,7 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "sorted-cluster-layout":
-            if ((!this.options.methylation) || (this.clusterData) || (this.sortedClusterData))
+            if ((!this.options.methylation) || (this.clusterData))
               break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
@@ -478,17 +477,12 @@ varying vec4 vColor;
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
-            this.sortedClusterData = {
-              range: data.range,
-              posn: data.indexPosn,
-              distanceFn: data.distanceFn,
-            };
             this.clusterData = null;
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
-            if ((!this.options.methylation) || (this.clusterData) || (this.sortedClusterData))
+            if ((!this.options.methylation) || (this.clusterData))
               break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
@@ -506,7 +500,6 @@ varying vec4 vColor;
               range: data.range, 
               distanceFn: data.distanceFn,
             };
-            this.sortedClusterData = null;
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
@@ -609,10 +602,6 @@ varying vec4 vColor;
               this.clusterData = null;
             }
 
-            if (this.sortedClusterData) {
-              this.sortedClusterData = null;
-            }
-
             if (this.bed12ExportData) {
               this.bed12ExportData = null;
             }
@@ -650,7 +639,6 @@ varying vec4 vColor;
               this.prevRows,
               this.options,
               this.clusterData,
-              this.sortedClusterData,
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
@@ -713,7 +701,6 @@ varying vec4 vColor;
             this.prevRows,
             this.options,
             this.clusterData,
-            this.sortedClusterData,
           )
           .then((toRender) => {
             // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
@@ -870,10 +857,6 @@ varying vec4 vColor;
 
             if (this.clusterData) {
               this.clusterData = null;
-            }
-
-            if (this.sortedClusterData) {
-              this.sortedClusterData = null;
             }
 
             if (this.bed12ExportData) {

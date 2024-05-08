@@ -4179,7 +4179,6 @@ var PileupTrack = function PileupTrack(HGC) {
           this.hideMousePosition = HGC.utils.showMousePosition(this, this.is2d, this.isShowGlobalMousePosition());
         }
         this.clusterData = null;
-        this.sortedClusterData = null;
         this.bed12ExportData = null;
         this.setUpShaderAndTextures(options);
       }
@@ -4350,7 +4349,7 @@ var PileupTrack = function PileupTrack(HGC) {
               this.prevOptions = Object.assign({}, this.options);
               break;
             case "sorted-cluster-layout":
-              if (!this.options.methylation || this.clusterData || this.sortedClusterData) break;
+              if (!this.options.methylation || this.clusterData) break;
               this.dataFetcher = new bam_fetcher(this.dataFetcher.dataConfig, this.options, this.worker, HGC);
               this.dataFetcher.track = this;
               this.prevRows = [];
@@ -4358,17 +4357,12 @@ var PileupTrack = function PileupTrack(HGC) {
               this.fetching.clear();
               this.refreshTiles();
               this.externalInit(this.options);
-              this.sortedClusterData = {
-                range: data.range,
-                posn: data.indexPosn,
-                distanceFn: data.distanceFn
-              };
               this.clusterData = null;
               this.updateExistingGraphics();
               this.prevOptions = Object.assign({}, this.options);
               break;
             case "cluster-layout":
-              if (!this.options.methylation || this.clusterData || this.sortedClusterData) break;
+              if (!this.options.methylation || this.clusterData) break;
               this.dataFetcher = new bam_fetcher(this.dataFetcher.dataConfig, this.options, this.worker, HGC);
               this.dataFetcher.track = this;
               this.prevRows = [];
@@ -4380,7 +4374,6 @@ var PileupTrack = function PileupTrack(HGC) {
                 range: data.range,
                 distanceFn: data.distanceFn
               };
-              this.sortedClusterData = null;
               this.updateExistingGraphics();
               this.prevOptions = Object.assign({}, this.options);
               break;
@@ -4451,9 +4444,6 @@ var PileupTrack = function PileupTrack(HGC) {
             if (_this3.clusterData) {
               _this3.clusterData = null;
             }
-            if (_this3.sortedClusterData) {
-              _this3.sortedClusterData = null;
-            }
             if (_this3.bed12ExportData) {
               _this3.bed12ExportData = null;
             }
@@ -4482,7 +4472,7 @@ var PileupTrack = function PileupTrack(HGC) {
           this.worker.then(function (tileFunctions) {
             tileFunctions.renderSegments(_this4.dataFetcher.uid, Object.values(_this4.fetchedTiles).map(function (x) {
               return x.remoteId;
-            }), _this4._xScale.domain(), _this4._xScale.range(), _this4.position, _this4.dimensions, _this4.prevRows, _this4.options, _this4.clusterData, _this4.sortedClusterData).then(function (toRender) {
+            }), _this4._xScale.domain(), _this4._xScale.range(), _this4.position, _this4.dimensions, _this4.prevRows, _this4.options, _this4.clusterData).then(function (toRender) {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
               if (_this4.segmentGraphics) {
                 _this4.pMain.removeChild(_this4.segmentGraphics);
@@ -4529,7 +4519,7 @@ var PileupTrack = function PileupTrack(HGC) {
         this.worker.then(function (tileFunctions) {
           tileFunctions.renderSegments(_this4.dataFetcher.uid, Object.values(_this4.fetchedTiles).map(function (x) {
             return x.remoteId;
-          }), _this4._xScale.domain(), _this4._xScale.range(), _this4.position, _this4.dimensions, _this4.prevRows, _this4.options, _this4.clusterData, _this4.sortedClusterData).then(function (toRender) {
+          }), _this4._xScale.domain(), _this4._xScale.range(), _this4.position, _this4.dimensions, _this4.prevRows, _this4.options, _this4.clusterData).then(function (toRender) {
             // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
 
             _this4.loadingText.visible = false;
@@ -4658,9 +4648,6 @@ var PileupTrack = function PileupTrack(HGC) {
             _this4.animate();
             if (_this4.clusterData) {
               _this4.clusterData = null;
-            }
-            if (_this4.sortedClusterData) {
-              _this4.sortedClusterData = null;
             }
             if (_this4.bed12ExportData) {
               _this4.bed12ExportData = null;
