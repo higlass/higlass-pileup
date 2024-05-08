@@ -21340,6 +21340,7 @@ const renderSegments = (
     // const chromName = clusterDataObj.range.left.chrom;
     const chromStart = clusterDataObj.range.left.start;
     const chromEnd = clusterDataObj.range.right.stop;
+    console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
     const distanceFn = clusterDataObj.distanceFn;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
