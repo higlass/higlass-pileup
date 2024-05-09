@@ -1431,14 +1431,15 @@ const renderSegments = (
 
   // calculate the the rows of reads for each group
   if (clusterDataObj && trackOptions.methylation) {
+    // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
     // const chromName = clusterDataObj.range.left.chrom;
     const chromStart = clusterDataObj.range.left.start;
     const chromEnd = clusterDataObj.range.right.stop;
-    console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
     const distanceFn = clusterDataObj.distanceFn;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
+    // console.log(`nReads ${JSON.stringify(nReads)}`);
     const data = new Array();
     let allowedRowIdx = 0;
     const trueRow = {};
@@ -1450,26 +1451,106 @@ const renderSegments = (
           const segment = segmentList[i];
           const segmentLength = segment.to - segment.from;
           const eventVec = new Array(eventVecLen).fill(-255);
-          const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
-          // clean up clustering
-          for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
-            if (coverIdx === eventVecLen) break;
-            eventVec[coverIdx] = 0;
+          const segmentStart = segment.from - segment.chrOffset;
+          const segmentEnd = segment.to - segment.chrOffset;
+          // const mos = segment.methylationOffsets;
+          // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)}`);
+          // if (segmentEnd < chromStart) {
+          // }
+          // else if ((segmentStart < chromStart) && (segmentEnd >= chromStart) && (segmentEnd <= chromEnd)) {
+            // const offsetStart = chromStart - segmentStart;
+            // for (const mo of mos) {
+            //   const offsets = mo.offsets;
+            //   const probabilities = mo.probabilities;
+            //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+            //     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+            //       const offset = offsets[offsetIdx];
+            //       const probability = probabilities[offsetIdx];
+            //       if (offset >= offsetStart) {
+            //         eventVec[offset - offsetStart] = parseInt(probability);
+            //       }
+            //     }
+            //   }
+            // }
+          // }
+          if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+            // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
+            const offsetStart = chromStart - segmentStart;
+            const offsetEnd = offsetStart + eventVecLen;
+            // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
+            const mos = segment.methylationOffsets;
+            for (const mo of mos) {
+              const offsets = mo.offsets;
+              const probabilities = mo.probabilities;
+              if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+                for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                  const offset = offsets[offsetIdx];
+                  const probability = probabilities[offsetIdx];
+                  if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                    eventVec[offset - offsetStart] = parseInt(probability);
+                  }
+                }
+              }
+            }
+            trueRow[allowedRowIdx] = i;
+            data[allowedRowIdx++] = eventVec;
           }
-          const mos = segment.methylationOffsets;
+          // else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+            // const offsetModifier = segmentStart - chromStart;
+            // for (const mo of mos) {
+            //   const offsets = mo.offsets;
+            //   const probabilities = mo.probabilities;
+            //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+            //     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+            //       const offset = offsets[offsetIdx];
+            //       const probability = parseInt(probabilities[offsetIdx]);
+            //       eventVec[offsetModifier + offset] = probability;
+            //     }
+            //   }
+            // }
+          // }
+          // else if ((segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+            // const offsetEnd = segmentEnd - chromEnd;
+            // for (const mo of mos) {
+            //   const offsets = mo.offsets;
+            //   const probabilities = mo.probabilities;
+            //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+            //     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+            //       const offset = offsets[offsetIdx];
+            //       const probability = probabilities[offsetIdx];
+            //       if (offset < offsetEnd) {
+            //         eventVec[offset] = parseInt(probability);
+            //       }
+            //       else {
+            //         break;
+            //       }
+            //     }
+            //   }
+            // }
+          // }
+          // else {}
+
+          // const offsetModifier = segment.start - chromStart; // segment.start not always equal to segment.from (can use different coord system)
+          // // clean up clustering
+          // for (let coverIdx = (offsetModifier < 0) ? 0 : offsetModifier; coverIdx < segmentLength + offsetModifier; ++coverIdx) {
+          //   if (coverIdx === eventVecLen) break;
+          //   eventVec[coverIdx] = 0;
+          // }
+          
+          // console.log(`mos ${JSON.stringify(mos)}`);
           // a read may end upstream or start downstream of clusterDataObj.range bounds 
           // but still be in segmentList[], so we filter it
-          let eventVecNotModified = true; 
-          for (const mo of mos) {
-            if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
-              mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
-                if (modOffset >= 0 && modOffset < eventVecLen) {
-                  eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value in [1, 255], presumably
-                  eventVecNotModified = false;
-                }
-              })
-            }
-          }
+          // let eventVecNotModified = true; 
+          // for (const mo of mos) {
+          //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
+          //     mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
+          //       if (modOffset >= 0 && modOffset < eventVecLen) {
+          //         eventVec[modOffset] = parseInt(mo.probabilities[moIdx]); // some value in [1, 255], presumably
+          //         eventVecNotModified = false;
+          //       }
+          //     })
+          //   }
+          // }
           // mos.forEach((mo) => {
           //   if (mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' || mo.unmodifiedBase === 'C') {
           //     mo.offsets.map(offset => offset + offsetModifier).forEach((modOffset, moIdx) => {
@@ -1480,10 +1561,10 @@ const renderSegments = (
           //     })
           //   }
           // })
-          if (!eventVecNotModified) {
-            trueRow[allowedRowIdx] = i;
-            data[allowedRowIdx++] = eventVec;
-          }
+          // if (!eventVecNotModified) {
+          //   trueRow[allowedRowIdx] = i;
+          //   data[allowedRowIdx++] = eventVec;
+          // }
         }
         break;
       case 'Jaccard':
