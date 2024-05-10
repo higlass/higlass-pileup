@@ -364,7 +364,7 @@ const DEFAULT_DATA_OPTIONS = {
   maxTileWidth: 2e5,
 }
 
-const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOptions) => {
+const init = async (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOptions) => {
   if (!options) {
     dataOptions[uid] = DEFAULT_DATA_OPTIONS;
   } else {
@@ -413,7 +413,7 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
       });
     }
 
-    bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
+    bamHeaders[bamUrl] = await bamFiles[bamUrl].getHeader();
   }
 
   if (fastaUrl && faiUrl) {
