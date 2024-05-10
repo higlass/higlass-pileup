@@ -372,12 +372,47 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
   }
 
   if (!bamFiles[bamUrl]) {
-    bamFiles[bamUrl] = new BamFile({
-      bamUrl,
-      baiUrl,
-    });
+    // bamFiles[bamUrl] = new BamFile({
+    //   bamUrl,
+    //   baiUrl,
+    // });
 
     // we have to fetch the header before we can fetch data
+    // bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
+
+    const bamUrlObj = new URL(bamUrl)
+    const bamUrlUsername = bamUrlObj.username
+    const bamUrlPassword = bamUrlObj.password
+    const cleanBamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
+    const cleanBaiUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}.bai${bamUrlObj.search}`;
+
+    if (bamUrlUsername && bamUrlPassword) {
+      bamFiles[bamUrl] = new BamFile({
+        bamFilehandle: new RemoteFile(cleanBamUrl, {
+          overrides: {
+            credentials: 'include',
+            headers: {
+              Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
+            },
+          },
+        }),
+        baiFilehandle: new RemoteFile(cleanBaiUrl, {
+          overrides: {
+            credentials: 'include',
+            headers: {
+              Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
+            },
+          },
+        }),
+      })
+    }
+    else {
+      bamFiles[bamUrl] = new BamFile({
+        bamUrl: bamUrl,
+        baiUrl: baiUrl,
+      });
+    }
+
     bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
   }
 
