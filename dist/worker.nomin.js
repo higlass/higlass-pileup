@@ -19264,7 +19264,7 @@ var hclust_min = __webpack_require__(803);
 
 // import BAMDataFetcher from './bam-fetcher';
 
-
+// import { RemoteFile } from 'generic-filehandle';
 
 function currTime() {
   const d = new Date();
@@ -19619,62 +19619,17 @@ const DEFAULT_DATA_OPTIONS = {
   maxTileWidth: 2e5,
 }
 
-const init = async (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOptions) => {
+const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOptions) => {
   if (!options) {
     dataOptions[uid] = DEFAULT_DATA_OPTIONS;
   } else {
     dataOptions[uid] = {...DEFAULT_DATA_OPTIONS, ...options}
   }
 
-  if (!bamFiles[bamUrl]) {
-    // bamFiles[bamUrl] = new BamFile({
-    //   bamUrl,
-    //   baiUrl,
-    // });
-
-    // we have to fetch the header before we can fetch data
-    // bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
-
-    const bamUrlObj = new URL(bamUrl)
-    const bamUrlUsername = bamUrlObj.username
-    const bamUrlPassword = bamUrlObj.password
-    const cleanBamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
-    const cleanBaiUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}.bai${bamUrlObj.search}`;
-
-    if (bamUrlUsername && bamUrlPassword) {
-      bamFiles[bamUrl] = new bamFile_BamFile({
-        bamFilehandle: new generic_filehandle_esm/* RemoteFile */.kC(cleanBamUrl, {
-          overrides: {
-            credentials: 'include',
-            headers: {
-              Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
-            },
-          },
-        }),
-        baiFilehandle: new generic_filehandle_esm/* RemoteFile */.kC(cleanBaiUrl, {
-          overrides: {
-            credentials: 'include',
-            headers: {
-              Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
-            },
-          },
-        }),
-      })
-    }
-    else {
-      bamFiles[bamUrl] = new bamFile_BamFile({
-        bamUrl: bamUrl,
-        baiUrl: baiUrl,
-      });
-    }
-
-    bamHeaders[bamUrl] = await bamFiles[bamUrl].getHeader();
-  }
-
   if (fastaUrl && faiUrl) {
     // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
-    const remoteFasta = new generic_filehandle_esm/* RemoteFile */.kC(fastaUrl);
-    const remoteFai = new generic_filehandle_esm/* RemoteFile */.kC(faiUrl);
+    const remoteFasta = new RemoteFile(fastaUrl);
+    const remoteFai = new RemoteFile(faiUrl);
     const { IndexedFasta } = __webpack_require__(805);
     sequenceFiles[fastaUrl] = new IndexedFasta({
       fasta: remoteFasta,
@@ -19691,6 +19646,51 @@ const init = async (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, option
       new Promise((resolve) => {
         ChromosomeInfo(chromSizesUrl, resolve);
       });
+  }
+
+  if (!bamFiles[bamUrl]) {
+    bamFiles[bamUrl] = new bamFile_BamFile({
+      bamUrl,
+      baiUrl,
+    });
+
+    // we have to fetch the header before we can fetch data
+    bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
+
+    // const bamUrlObj = new URL(bamUrl)
+    // const bamUrlUsername = bamUrlObj.username
+    // const bamUrlPassword = bamUrlObj.password
+    // const cleanBamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
+    // const cleanBaiUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}.bai${bamUrlObj.search}`;
+
+    // if (bamUrlUsername && bamUrlPassword) {
+    //   bamFiles[bamUrl] = new BamFile({
+    //     bamFilehandle: new RemoteFile(cleanBamUrl, {
+    //       overrides: {
+    //         credentials: 'include',
+    //         headers: {
+    //           Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
+    //         },
+    //       },
+    //     }),
+    //     baiFilehandle: new RemoteFile(cleanBaiUrl, {
+    //       overrides: {
+    //         credentials: 'include',
+    //         headers: {
+    //           Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
+    //         },
+    //       },
+    //     }),
+    //   })
+    // }
+    // else {
+    //   bamFiles[bamUrl] = new BamFile({
+    //     bamUrl: bamUrl,
+    //     baiUrl: baiUrl,
+    //   });
+    // }
+
+    // bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
   }
 
   dataConfs[uid] = {
