@@ -1553,25 +1553,17 @@
     "normalize-path" "^3.0.0"
     "picomatch" "^2.0.4"
 
-"apr144-bam@2.0.0-rs-042624-016":
-  "integrity" "sha512-L0vucNm4mP1STzr/pQAr8jqbdA+eOiPL4G0mJ3rytsrgwHKt5e7IZpMcxdf5nRD9kiPnNcz4/PWusUadKQA/Kw=="
-  "resolved" "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs-042624-016.tgz"
-  "version" "2.0.0-rs-042624-016"
+"apr144-bam@2.0.0-rs-042624-019":
+  "integrity" "sha512-38aZdrVsKJZPqsJuoxYH1yOTL9KOcqUV7N0KqgiA3bIw2ylsIGUbPl3anSHhyDpijtNwIgNFFr8CNZwk/FX1xQ=="
+  "resolved" "https://registry.npmjs.org/apr144-bam/-/apr144-bam-2.0.0-rs-042624-019.tgz"
+  "version" "2.0.0-rs-042624-019"
   dependencies:
     "@gmod/bgzf-filehandle" "^1.4.4"
     "abortable-promise-cache" "^1.5.0"
-    "apr144-generic-filehandle" "3.1.1-042624-012"
     "buffer-crc32" "^0.2.13"
+    "generic-filehandle" "^3.1.2"
     "long" "^4.0.0"
     "quick-lru" "^4.0.0"
-
-"apr144-generic-filehandle@3.1.1-042624-012":
-  "integrity" "sha512-PDoYKxgwNsoSU3t1EJzcLQque3k3cnR7h01RdHE/6a2rIoEJfabKSfQGpDjpREYunm0LlgtZWxLaAVhmKxl4eg=="
-  "resolved" "https://registry.npmjs.org/apr144-generic-filehandle/-/apr144-generic-filehandle-3.1.1-042624-012.tgz"
-  "version" "3.1.1-042624-012"
-  dependencies:
-    "base-64" "^1.0.0"
-    "es6-promisify" "^6.1.1"
 
 "apr144-hclust@^0.0.1":
   "integrity" "sha512-+X7xHFz/KtNvx761lOG/+mPxYls3urA5KjoPYRko8BdPJOQvbZwjluw7E/CRhnWS6gmhIsG6MH86AHThaqmFpw=="
@@ -1753,11 +1745,6 @@
   "integrity" "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw=="
   "resolved" "https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz"
   "version" "1.0.2"
-
-"base-64@^1.0.0":
-  "integrity" "sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg=="
-  "resolved" "https://registry.npmjs.org/base-64/-/base-64-1.0.0.tgz"
-  "version" "1.0.0"
 
 "base64-js@^1.3.1":
   "integrity" "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA=="
@@ -3038,10 +3025,10 @@
   "resolved" "https://registry.npmjs.org/functions-have-names/-/functions-have-names-1.2.3.tgz"
   "version" "1.2.3"
 
-"generic-filehandle@^3.0.0":
-  "integrity" "sha512-8fLkHgbnKlOWhJgPmvGm+0HclUkyCPM0WGZQOAWdebNsWbHZJi7pW/RAPp26fhqlVpgT5tHqVKWunf/r+HRoEw=="
-  "resolved" "https://registry.npmjs.org/generic-filehandle/-/generic-filehandle-3.1.1.tgz"
-  "version" "3.1.1"
+"generic-filehandle@^3.0.0", "generic-filehandle@^3.1.2":
+  "integrity" "sha512-GmN3k7xfuH3Nb545WLl2ybmle4VvXbwspXtYnQZ2MpSIDbuQUoMXb2RObPgbs4wU3ggOojpGTJxYHzh3jvDkfw=="
+  "resolved" "https://registry.npmjs.org/generic-filehandle/-/generic-filehandle-3.1.2.tgz"
+  "version" "3.1.2"
   dependencies:
     "es6-promisify" "^6.1.1"
 
