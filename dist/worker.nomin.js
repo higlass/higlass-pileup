@@ -1796,124 +1796,6 @@ function fromByteArray (uint8) {
 
 /***/ }),
 
-/***/ 779:
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-var Buffer = (__webpack_require__(764)/* .Buffer */ .lW);
-
-var CRC_TABLE = [
-  0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419,
-  0x706af48f, 0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4,
-  0xe0d5e91e, 0x97d2d988, 0x09b64c2b, 0x7eb17cbd, 0xe7b82d07,
-  0x90bf1d91, 0x1db71064, 0x6ab020f2, 0xf3b97148, 0x84be41de,
-  0x1adad47d, 0x6ddde4eb, 0xf4d4b551, 0x83d385c7, 0x136c9856,
-  0x646ba8c0, 0xfd62f97a, 0x8a65c9ec, 0x14015c4f, 0x63066cd9,
-  0xfa0f3d63, 0x8d080df5, 0x3b6e20c8, 0x4c69105e, 0xd56041e4,
-  0xa2677172, 0x3c03e4d1, 0x4b04d447, 0xd20d85fd, 0xa50ab56b,
-  0x35b5a8fa, 0x42b2986c, 0xdbbbc9d6, 0xacbcf940, 0x32d86ce3,
-  0x45df5c75, 0xdcd60dcf, 0xabd13d59, 0x26d930ac, 0x51de003a,
-  0xc8d75180, 0xbfd06116, 0x21b4f4b5, 0x56b3c423, 0xcfba9599,
-  0xb8bda50f, 0x2802b89e, 0x5f058808, 0xc60cd9b2, 0xb10be924,
-  0x2f6f7c87, 0x58684c11, 0xc1611dab, 0xb6662d3d, 0x76dc4190,
-  0x01db7106, 0x98d220bc, 0xefd5102a, 0x71b18589, 0x06b6b51f,
-  0x9fbfe4a5, 0xe8b8d433, 0x7807c9a2, 0x0f00f934, 0x9609a88e,
-  0xe10e9818, 0x7f6a0dbb, 0x086d3d2d, 0x91646c97, 0xe6635c01,
-  0x6b6b51f4, 0x1c6c6162, 0x856530d8, 0xf262004e, 0x6c0695ed,
-  0x1b01a57b, 0x8208f4c1, 0xf50fc457, 0x65b0d9c6, 0x12b7e950,
-  0x8bbeb8ea, 0xfcb9887c, 0x62dd1ddf, 0x15da2d49, 0x8cd37cf3,
-  0xfbd44c65, 0x4db26158, 0x3ab551ce, 0xa3bc0074, 0xd4bb30e2,
-  0x4adfa541, 0x3dd895d7, 0xa4d1c46d, 0xd3d6f4fb, 0x4369e96a,
-  0x346ed9fc, 0xad678846, 0xda60b8d0, 0x44042d73, 0x33031de5,
-  0xaa0a4c5f, 0xdd0d7cc9, 0x5005713c, 0x270241aa, 0xbe0b1010,
-  0xc90c2086, 0x5768b525, 0x206f85b3, 0xb966d409, 0xce61e49f,
-  0x5edef90e, 0x29d9c998, 0xb0d09822, 0xc7d7a8b4, 0x59b33d17,
-  0x2eb40d81, 0xb7bd5c3b, 0xc0ba6cad, 0xedb88320, 0x9abfb3b6,
-  0x03b6e20c, 0x74b1d29a, 0xead54739, 0x9dd277af, 0x04db2615,
-  0x73dc1683, 0xe3630b12, 0x94643b84, 0x0d6d6a3e, 0x7a6a5aa8,
-  0xe40ecf0b, 0x9309ff9d, 0x0a00ae27, 0x7d079eb1, 0xf00f9344,
-  0x8708a3d2, 0x1e01f268, 0x6906c2fe, 0xf762575d, 0x806567cb,
-  0x196c3671, 0x6e6b06e7, 0xfed41b76, 0x89d32be0, 0x10da7a5a,
-  0x67dd4acc, 0xf9b9df6f, 0x8ebeeff9, 0x17b7be43, 0x60b08ed5,
-  0xd6d6a3e8, 0xa1d1937e, 0x38d8c2c4, 0x4fdff252, 0xd1bb67f1,
-  0xa6bc5767, 0x3fb506dd, 0x48b2364b, 0xd80d2bda, 0xaf0a1b4c,
-  0x36034af6, 0x41047a60, 0xdf60efc3, 0xa867df55, 0x316e8eef,
-  0x4669be79, 0xcb61b38c, 0xbc66831a, 0x256fd2a0, 0x5268e236,
-  0xcc0c7795, 0xbb0b4703, 0x220216b9, 0x5505262f, 0xc5ba3bbe,
-  0xb2bd0b28, 0x2bb45a92, 0x5cb36a04, 0xc2d7ffa7, 0xb5d0cf31,
-  0x2cd99e8b, 0x5bdeae1d, 0x9b64c2b0, 0xec63f226, 0x756aa39c,
-  0x026d930a, 0x9c0906a9, 0xeb0e363f, 0x72076785, 0x05005713,
-  0x95bf4a82, 0xe2b87a14, 0x7bb12bae, 0x0cb61b38, 0x92d28e9b,
-  0xe5d5be0d, 0x7cdcefb7, 0x0bdbdf21, 0x86d3d2d4, 0xf1d4e242,
-  0x68ddb3f8, 0x1fda836e, 0x81be16cd, 0xf6b9265b, 0x6fb077e1,
-  0x18b74777, 0x88085ae6, 0xff0f6a70, 0x66063bca, 0x11010b5c,
-  0x8f659eff, 0xf862ae69, 0x616bffd3, 0x166ccf45, 0xa00ae278,
-  0xd70dd2ee, 0x4e048354, 0x3903b3c2, 0xa7672661, 0xd06016f7,
-  0x4969474d, 0x3e6e77db, 0xaed16a4a, 0xd9d65adc, 0x40df0b66,
-  0x37d83bf0, 0xa9bcae53, 0xdebb9ec5, 0x47b2cf7f, 0x30b5ffe9,
-  0xbdbdf21c, 0xcabac28a, 0x53b39330, 0x24b4a3a6, 0xbad03605,
-  0xcdd70693, 0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8,
-  0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b,
-  0x2d02ef8d
-];
-
-if (typeof Int32Array !== 'undefined') {
-  CRC_TABLE = new Int32Array(CRC_TABLE);
-}
-
-function ensureBuffer(input) {
-  if (Buffer.isBuffer(input)) {
-    return input;
-  }
-
-  var hasNewBufferAPI =
-      typeof Buffer.alloc === "function" &&
-      typeof Buffer.from === "function";
-
-  if (typeof input === "number") {
-    return hasNewBufferAPI ? Buffer.alloc(input) : new Buffer(input);
-  }
-  else if (typeof input === "string") {
-    return hasNewBufferAPI ? Buffer.from(input) : new Buffer(input);
-  }
-  else {
-    throw new Error("input must be buffer, number, or string, received " +
-                    typeof input);
-  }
-}
-
-function bufferizeInt(num) {
-  var tmp = ensureBuffer(4);
-  tmp.writeInt32BE(num, 0);
-  return tmp;
-}
-
-function _crc32(buf, previous) {
-  buf = ensureBuffer(buf);
-  if (Buffer.isBuffer(previous)) {
-    previous = previous.readUInt32BE(0);
-  }
-  var crc = ~~previous ^ -1;
-  for (var n = 0; n < buf.length; n++) {
-    crc = CRC_TABLE[(crc ^ buf[n]) & 0xff] ^ (crc >>> 8);
-  }
-  return (crc ^ -1);
-}
-
-function crc32() {
-  return bufferizeInt(_crc32.apply(null, arguments));
-}
-crc32.signed = function () {
-  return _crc32.apply(null, arguments);
-};
-crc32.unsigned = function () {
-  return _crc32.apply(null, arguments) >>> 0;
-};
-
-module.exports = crc32;
-
-
-/***/ }),
-
 /***/ 764:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
@@ -13991,241 +13873,6 @@ try {
 
 /***/ }),
 
-/***/ 46:
-/***/ (function(module) {
-
-(function (root, factory) {
-		"use strict";
-
-		if (true) {
-			module.exports = factory();
-		} else {}
-	}(this, function () {
-		"use strict";
-
-		// We use the same constant specified in [Vitt85]
-		var switchToAlgorithmZConstant = 22;
-
-		// `debug` was used to test for correctness of the more complicated
-		// algorithms, X and Z, by comparing their results to baseline R
-		var debug = "none";
-
-		function _Reservoir(reservoirSize, randomNumberGen) {
-			var rng = randomNumberGen || Math.random;
-
-			// `reservoirSize` must be a number between 1 and 2^32
-			var reservoirSize =
-				Math.max(1, (Math.floor(reservoirSize) >> 0) || 1);
-
-			// `totalItemCount` contains the total number of items 
-			// processed by `pushSome` against the reservoir
-			var totalItemCount = 0;
-
-			// `numToSkip` is the total number of elements to skip over
-			// before accepting one into the reservoir.
-			var numToSkip = -1;
-
-			// `currentAlgorithm` starts with algorithmX and switches to
-			// algorithmZ after `switchThreshold` items is reached
-			var currentAlgorithm = algorithmX;
-
-			// `switchThreshold` is the `totalItemCount` at which to switch
-			// over from algorithm X to Z
-			var switchThreshold = 
-				switchToAlgorithmZConstant * reservoirSize;
-
-			if(debug === "R") {
-				currentAlgorithm = algorithmR;
-			} else if(debug === "X") {
-				switchThreshold = Infinity;
-			} else if(debug === "Z") {
-				currentAlgorithm = algorithmZ;
-			}
-
-			// `algorithmXCount` is the number of items processed by algorithmX
-			//  ie. the `totalItemCount` minus `reservoirSize`
-			var algorithmXCount = 0;
-
-			// `W` is used in algorithmZ
-			var W = Math.exp(-Math.log(rng()) / reservoirSize);
-
-			// `evictNext` is used only by algorithmR
-			var evictNext = null;
-
-			// `targetArray` is the array to be returned by Reservoir()
-			var targetArray = [];
-
-			targetArray.pushSome = function() {
-				this.length = Math.min(this.length, reservoirSize);
-
-				for(var i = 0; i < arguments.length; i++) {
-					addSample.call(this, arguments[i]);
-				}
-
-				return this.length;
-			};
-
-			// `addSample` adds a single item at a time by using `numToSkip`
-			// to determine whether to include it in the reservoir
-			var addSample = function(sample) {
-				// Prefill the reservoir if it isn't full
-				if(totalItemCount < reservoirSize) {
-					this.push(sample);
-				} else {
-					if(numToSkip < 0) {
-						numToSkip = currentAlgorithm();
-					}
-					if(numToSkip === 0) {
-						replaceRandomSample(sample, this);
-					}
-					numToSkip--;
-				}
-				totalItemCount++;
-				return this;
-			};
-
-			// `replaceRandomSample` selects a single value from `reservoir`
-			// for eviction and replaces it with `sample`
-			function replaceRandomSample(sample, reservoir) {
-				// Typically, the new sample replaces the "evicted" sample
-				// but below we remove the evicted sample and push the
-				// new value to ensure that reservoir is sorted in the
-				// same order as the input data (ie. iterator or array).
-				var randomIndex;
-				if(evictNext !== null) {
-					randomIndex = evictNext;
-					evictNext = null;
-				} else {
-					randomIndex = Math.floor(rng() * reservoirSize);
-				}
-				reservoir.splice(randomIndex, 1);
-				reservoir.push(sample);
-			}
-
-			// From [Vitt85], "Algorithm R"
-			// Selects random elements from an unknown-length input.
-			// Has a time-complexity of:
-			//   O(N)
-			// Number of random numbers required:
-			//   N - n
-			// Where:
-			//   n = the size of the reservoir
-			//   N = the size of the input
-			function algorithmR() {
-				var localItemCount = totalItemCount + 1,
-				    randomValue = Math.floor(rng() * localItemCount),
-				    toSkip = 0;
-
-				while (randomValue >= reservoirSize) {
-					toSkip++;
-					localItemCount++;
-					randomValue = Math.floor(rng() * localItemCount);
-				}
-				evictNext = randomValue;
-				return toSkip;
-			}
-
-			// From [Vitt85], "Algorithm X"
-			// Selects random elements from an unknown-length input.
-			// Has a time-complexity of:
-			//   O(N)
-			// Number of random numbers required:
-			//   2 * n * ln( N / n )
-			// Where:
-			//   n = the size of the reservoir
-			//   N = the size of the input
-			function algorithmX() {
-				var localItemCount = totalItemCount,
-				    randomValue = rng(),
-				    toSkip = 0,
-				    quotient;
-
-				if (totalItemCount <= switchThreshold) {
-					localItemCount++;
-					algorithmXCount++;
-					quotient = algorithmXCount / localItemCount;
-
-					while (quotient > randomValue) {
-						toSkip++;
-						localItemCount++;
-						algorithmXCount++;
-						quotient = (quotient * algorithmXCount) / localItemCount;
-					}
-					return toSkip;
-				} else {
-					currentAlgorithm = algorithmZ;
-					return currentAlgorithm();
-				}
-			}
-
-			// From [Vitt85], "Algorithm Z"
-			// Selects random elements from an unknown-length input.
-			// Has a time-complexity of:
-			//   O(n(1 + log (N / n)))
-			// Number of random numbers required:
-			//   2 * n * ln( N / n )
-			// Where:
-			//   n = the size of the reservoir
-			//   N = the size of the input
-			function algorithmZ() {
-				var term = totalItemCount - reservoirSize + 1,
-				    denom,
-				    numer,
-				    numer_lim;
-
-				while(true) {
-					var randomValue = rng();
-					var x = totalItemCount * (W - 1);
-					var toSkip = Math.floor(x);
-
-					var subterm = ((totalItemCount + 1) / term);
-					subterm *= subterm;
-					var termSkip = term + toSkip;
-					var lhs = Math.exp(Math.log(((randomValue * subterm) * termSkip)/ (totalItemCount + x)) / reservoirSize); 
-					var rhs = (((totalItemCount + x) / termSkip) * term) / totalItemCount;
-
-					if(lhs <= rhs) {
-						W = rhs / lhs;
-						break;
-					}
-
-					var y = (((randomValue * (totalItemCount + 1)) / term) * (totalItemCount + toSkip + 1)) / (totalItemCount + x);
-
-					if(reservoirSize < toSkip) {
-						denom = totalItemCount;
-						numer_lim = term + toSkip;
-					} else {
-						denom = totalItemCount - reservoirSize + toSkip;
-						numer_lim = totalItemCount + 1;
-					}
-
-					for(numer = totalItemCount + toSkip; numer >= numer_lim; numer--) {
-						y = (y * numer) / denom;
-						denom--;
-					}
-
-					W = Math.exp(-Math.log(rng()) / reservoirSize);
-
-					if(Math.exp(Math.log(y) / reservoirSize) <= (totalItemCount + x) / totalItemCount) {
-						break;
-					}
-				}
-				return toSkip;
-			}
-			return targetArray;
-		}
-
-		return _Reservoir;
-
-		// REFERENCES
-		// [Vitt85] Vitter, Jeffery S. "Random Sampling with a Reservoir." ACM
-		//          Transactions on Mathematical Software, Vol. 11, No. 1, March
-		//          1985, pp. 37-57. Retrieved from
-		//          http://www.cs.umd.edu/~samir/498/vitter.pdf
-}));
-
-/***/ }),
-
 /***/ 67:
 /***/ (() => {
 
@@ -16310,7 +15957,7 @@ const expose = worker.expose
 const registerSerializer = worker.registerSerializer
 const Transfer = worker.Transfer
 
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/virtualOffset.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/virtualOffset.js
 class VirtualOffset {
     constructor(blockPosition, dataPosition) {
         this.blockPosition = blockPosition; // < offset of the compressed data block
@@ -16348,7 +15995,7 @@ function fromBytes(bytes, offset = 0, bigendian = false) {
         bytes[offset + 2], (bytes[offset + 1] << 8) | bytes[offset]);
 }
 //# sourceMappingURL=virtualOffset.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/chunk.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/chunk.js
 // little class representing a chunk in the index
 class Chunk {
     constructor(minv, maxv, bin, _fetchedSize) {
@@ -16358,7 +16005,7 @@ class Chunk {
         this._fetchedSize = _fetchedSize;
     }
     toUniqueString() {
-        return `${this.minv}..${this.maxv} (bin ${this.bin}, fetchedSize ${this.fetchedSize()})`;
+        return `${this.minv.toString()}..${this.maxv.toString()} (bin ${this.bin}, fetchedSize ${this.fetchedSize()})`;
     }
     toString() {
         return this.toUniqueString();
@@ -16379,7 +16026,7 @@ class Chunk {
 // EXTERNAL MODULE: ./node_modules/long/src/long.js
 var src_long = __webpack_require__(720);
 var long_default = /*#__PURE__*/__webpack_require__.n(src_long);
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/util.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/util.js
 
 function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -16498,7 +16145,7 @@ function parseNameBytes(namesBytes, renameRefSeq = s => s) {
     return { refNameToId, refIdToName };
 }
 //# sourceMappingURL=util.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/indexFile.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/indexFile.js
 class IndexFile {
     /**
      * @param {filehandle} filehandle
@@ -16510,7 +16157,7 @@ class IndexFile {
     }
 }
 //# sourceMappingURL=indexFile.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/bai.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/bai.js
 
 
 
@@ -16541,7 +16188,6 @@ class BAI extends IndexFile {
     }
     // fetch and parse the index
     async _parse(opts) {
-        // console.log(`BAI: ${JSON.stringify(opts)}`)
         const bytes = (await this.filehandle.readFile(opts));
         // check BAI magic numbers
         if (bytes.readUInt32LE(0) !== BAI_MAGIC) {
@@ -16701,9 +16347,312 @@ class BAI extends IndexFile {
 //# sourceMappingURL=bai.js.map
 // EXTERNAL MODULE: ./node_modules/buffer/index.js
 var node_modules_buffer = __webpack_require__(764);
-// EXTERNAL MODULE: ./node_modules/buffer-crc32/index.js
-var buffer_crc32 = __webpack_require__(779);
-var buffer_crc32_default = /*#__PURE__*/__webpack_require__.n(buffer_crc32);
+;// CONCATENATED MODULE: ./node_modules/buffer-crc32/dist/index.mjs
+function getDefaultExportFromCjs (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
+
+const CRC_TABLE = new Int32Array([
+  0,
+  1996959894,
+  3993919788,
+  2567524794,
+  124634137,
+  1886057615,
+  3915621685,
+  2657392035,
+  249268274,
+  2044508324,
+  3772115230,
+  2547177864,
+  162941995,
+  2125561021,
+  3887607047,
+  2428444049,
+  498536548,
+  1789927666,
+  4089016648,
+  2227061214,
+  450548861,
+  1843258603,
+  4107580753,
+  2211677639,
+  325883990,
+  1684777152,
+  4251122042,
+  2321926636,
+  335633487,
+  1661365465,
+  4195302755,
+  2366115317,
+  997073096,
+  1281953886,
+  3579855332,
+  2724688242,
+  1006888145,
+  1258607687,
+  3524101629,
+  2768942443,
+  901097722,
+  1119000684,
+  3686517206,
+  2898065728,
+  853044451,
+  1172266101,
+  3705015759,
+  2882616665,
+  651767980,
+  1373503546,
+  3369554304,
+  3218104598,
+  565507253,
+  1454621731,
+  3485111705,
+  3099436303,
+  671266974,
+  1594198024,
+  3322730930,
+  2970347812,
+  795835527,
+  1483230225,
+  3244367275,
+  3060149565,
+  1994146192,
+  31158534,
+  2563907772,
+  4023717930,
+  1907459465,
+  112637215,
+  2680153253,
+  3904427059,
+  2013776290,
+  251722036,
+  2517215374,
+  3775830040,
+  2137656763,
+  141376813,
+  2439277719,
+  3865271297,
+  1802195444,
+  476864866,
+  2238001368,
+  4066508878,
+  1812370925,
+  453092731,
+  2181625025,
+  4111451223,
+  1706088902,
+  314042704,
+  2344532202,
+  4240017532,
+  1658658271,
+  366619977,
+  2362670323,
+  4224994405,
+  1303535960,
+  984961486,
+  2747007092,
+  3569037538,
+  1256170817,
+  1037604311,
+  2765210733,
+  3554079995,
+  1131014506,
+  879679996,
+  2909243462,
+  3663771856,
+  1141124467,
+  855842277,
+  2852801631,
+  3708648649,
+  1342533948,
+  654459306,
+  3188396048,
+  3373015174,
+  1466479909,
+  544179635,
+  3110523913,
+  3462522015,
+  1591671054,
+  702138776,
+  2966460450,
+  3352799412,
+  1504918807,
+  783551873,
+  3082640443,
+  3233442989,
+  3988292384,
+  2596254646,
+  62317068,
+  1957810842,
+  3939845945,
+  2647816111,
+  81470997,
+  1943803523,
+  3814918930,
+  2489596804,
+  225274430,
+  2053790376,
+  3826175755,
+  2466906013,
+  167816743,
+  2097651377,
+  4027552580,
+  2265490386,
+  503444072,
+  1762050814,
+  4150417245,
+  2154129355,
+  426522225,
+  1852507879,
+  4275313526,
+  2312317920,
+  282753626,
+  1742555852,
+  4189708143,
+  2394877945,
+  397917763,
+  1622183637,
+  3604390888,
+  2714866558,
+  953729732,
+  1340076626,
+  3518719985,
+  2797360999,
+  1068828381,
+  1219638859,
+  3624741850,
+  2936675148,
+  906185462,
+  1090812512,
+  3747672003,
+  2825379669,
+  829329135,
+  1181335161,
+  3412177804,
+  3160834842,
+  628085408,
+  1382605366,
+  3423369109,
+  3138078467,
+  570562233,
+  1426400815,
+  3317316542,
+  2998733608,
+  733239954,
+  1555261956,
+  3268935591,
+  3050360625,
+  752459403,
+  1541320221,
+  2607071920,
+  3965973030,
+  1969922972,
+  40735498,
+  2617837225,
+  3943577151,
+  1913087877,
+  83908371,
+  2512341634,
+  3803740692,
+  2075208622,
+  213261112,
+  2463272603,
+  3855990285,
+  2094854071,
+  198958881,
+  2262029012,
+  4057260610,
+  1759359992,
+  534414190,
+  2176718541,
+  4139329115,
+  1873836001,
+  414664567,
+  2282248934,
+  4279200368,
+  1711684554,
+  285281116,
+  2405801727,
+  4167216745,
+  1634467795,
+  376229701,
+  2685067896,
+  3608007406,
+  1308918612,
+  956543938,
+  2808555105,
+  3495958263,
+  1231636301,
+  1047427035,
+  2932959818,
+  3654703836,
+  1088359270,
+  936918e3,
+  2847714899,
+  3736837829,
+  1202900863,
+  817233897,
+  3183342108,
+  3401237130,
+  1404277552,
+  615818150,
+  3134207493,
+  3453421203,
+  1423857449,
+  601450431,
+  3009837614,
+  3294710456,
+  1567103746,
+  711928724,
+  3020668471,
+  3272380065,
+  1510334235,
+  755167117
+]);
+function ensureBuffer(input) {
+  if (Buffer.isBuffer(input)) {
+    return input;
+  }
+  if (typeof input === "number") {
+    return Buffer.alloc(input);
+  } else if (typeof input === "string") {
+    return Buffer.from(input);
+  } else {
+    throw new Error("input must be buffer, number, or string, received " + typeof input);
+  }
+}
+function bufferizeInt(num) {
+  const tmp = ensureBuffer(4);
+  tmp.writeInt32BE(num, 0);
+  return tmp;
+}
+function _crc32(buf, previous) {
+  buf = ensureBuffer(buf);
+  if (Buffer.isBuffer(previous)) {
+    previous = previous.readUInt32BE(0);
+  }
+  let crc = ~~previous ^ -1;
+  for (var n = 0; n < buf.length; n++) {
+    crc = CRC_TABLE[(crc ^ buf[n]) & 255] ^ crc >>> 8;
+  }
+  return crc ^ -1;
+}
+function crc32() {
+  return bufferizeInt(_crc32.apply(null, arguments));
+}
+crc32.signed = function() {
+  return _crc32.apply(null, arguments);
+};
+crc32.unsigned = function() {
+  return _crc32.apply(null, arguments) >>> 0;
+};
+var bufferCrc32 = crc32;
+
+const index = /*@__PURE__*/getDefaultExportFromCjs(bufferCrc32);
+
+
+
 // EXTERNAL MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js + 3 modules
 var esm = __webpack_require__(290);
 // EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
@@ -16714,10 +16663,7 @@ var esm_default = /*#__PURE__*/__webpack_require__.n(abortable_promise_cache_esm
 // EXTERNAL MODULE: ./node_modules/quick-lru/index.js
 var quick_lru = __webpack_require__(269);
 var quick_lru_default = /*#__PURE__*/__webpack_require__.n(quick_lru);
-// EXTERNAL MODULE: ../../../node_modules/reservoir/reservoir.js
-var reservoir = __webpack_require__(46);
-var reservoir_default = /*#__PURE__*/__webpack_require__.n(reservoir);
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/csi.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/csi.js
 
 
 
@@ -16911,7 +16857,7 @@ class CSI extends IndexFile {
     }
 }
 //# sourceMappingURL=csi.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/constants.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/constants.js
 /* harmony default export */ const esm_constants = ({
     //  the read is paired in sequencing, no matter whether it is mapped in a pair
     BAM_FPAIRED: 1,
@@ -16939,8 +16885,7 @@ class CSI extends IndexFile {
     BAM_FSUPPLEMENTARY: 2048,
 });
 //# sourceMappingURL=constants.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/record.js
-/* eslint-disable @typescript-eslint/no-empty-function */
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/record.js
 
 const SEQRET_DECODER = '=ACMGRSVTWYHKDBN'.split('');
 const CIGAR_DECODER = 'MIDNSHP=X???????'.split('');
@@ -17000,7 +16945,7 @@ class BamRecord {
         }
         tags = tags.concat(this._tagList || []);
         for (const k of Object.keys(this.data)) {
-            if (k[0] !== '_' && k !== 'next_seq_id') {
+            if (!k.startsWith('_') && k !== 'next_seq_id') {
                 tags.push(k);
             }
         }
@@ -17368,7 +17313,6 @@ class BamRecord {
             return cigar;
         }
     }
-    _flags() { }
     length_on_ref() {
         if (this.data.length_on_ref) {
             return this.data.length_on_ref;
@@ -17467,7 +17411,7 @@ class BamRecord {
     toJSON() {
         const data = {};
         for (const k of Object.keys(this)) {
-            if (k.charAt(0) === '_' || k === 'bytes') {
+            if (k.startsWith('_') || k === 'bytes') {
                 continue;
             }
             //@ts-ignore
@@ -17477,7 +17421,7 @@ class BamRecord {
     }
 }
 //# sourceMappingURL=record.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/sam.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/sam.js
 function sam_parseHeaderText(text) {
     const lines = text.split(/\r?\n/);
     const data = [];
@@ -17487,7 +17431,9 @@ function sam_parseHeaderText(text) {
             data.push({
                 tag: tag.slice(1),
                 data: fields.map(f => {
-                    const [fieldTag, value] = f.split(':', 2);
+                    const r = f.indexOf(':');
+                    const fieldTag = f.slice(0, r);
+                    const value = f.slice(r + 1);
                     return { tag: fieldTag, value };
                 }),
             });
@@ -17496,8 +17442,7 @@ function sam_parseHeaderText(text) {
     return data;
 }
 //# sourceMappingURL=sam.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/bamFile.js
-
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/bamFile.js
 
 
 
@@ -17557,23 +17502,7 @@ class bamFile_BamFile {
             this.bam = new generic_filehandle_esm/* LocalFile */.S9(bamPath);
         }
         else if (bamUrl) {
-            const bamUrlObj = new URL(bamUrl);
-            const bamUrlUsername = bamUrlObj.username;
-            const bamUrlPassword = bamUrlObj.password;
-            if (bamUrlUsername && bamUrlPassword) {
-                bamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
-                this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl, {
-                    overrides: {
-                        credentials: 'include',
-                        headers: {
-                            Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
-                        },
-                    },
-                });
-            }
-            else {
-                this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl);
-            }
+            this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl);
         }
         else if (htsget) {
             this.htsget = true;
@@ -17589,25 +17518,7 @@ class bamFile_BamFile {
             this.index = new CSI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(csiPath) });
         }
         else if (csiUrl) {
-            const csiUrlObj = new URL(csiUrl);
-            const csiUrlUsername = csiUrlObj.username;
-            const csiUrlPassword = csiUrlObj.password;
-            if (csiUrlUsername && csiUrlPassword) {
-                csiUrl = `${csiUrlObj.protocol}//${csiUrlObj.host}${csiUrlObj.pathname}${csiUrlObj.search}`;
-                this.index = new CSI({
-                    filehandle: new generic_filehandle_esm/* RemoteFile */.kC(csiUrl, {
-                        overrides: {
-                            credentials: 'include',
-                            headers: {
-                                Authorization: 'Basic ' + btoa(csiUrlUsername + ':' + csiUrlPassword),
-                            },
-                        },
-                    }),
-                });
-            }
-            else {
-                this.index = new CSI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(csiUrl) });
-            }
+            this.index = new CSI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(csiUrl) });
         }
         else if (baiFilehandle) {
             this.index = new BAI({ filehandle: baiFilehandle });
@@ -17616,53 +17527,13 @@ class bamFile_BamFile {
             this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(baiPath) });
         }
         else if (baiUrl) {
-            const baiUrlObj = new URL(baiUrl);
-            const baiUrlUsername = baiUrlObj.username;
-            const baiUrlPassword = baiUrlObj.password;
-            if (baiUrlUsername && baiUrlPassword) {
-                baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
-                // console.log(
-                //   `baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`,
-                // )
-                this.index = new BAI({
-                    filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl, {
-                        overrides: {
-                            credentials: 'include',
-                            headers: {
-                                Authorization: 'Basic ' + btoa(baiUrlUsername + ':' + baiUrlPassword),
-                            },
-                        },
-                    }),
-                });
-            }
-            else {
-                this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
-            }
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
         }
         else if (bamPath) {
             this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(`${bamPath}.bai`) });
         }
         else if (bamUrl) {
-            const bamOnlyUrlObj = new URL(bamUrl);
-            const bamOnlyUrlUsername = bamOnlyUrlObj.username;
-            const bamOnlyUrlPassword = bamOnlyUrlObj.password;
-            if (bamOnlyUrlUsername && bamOnlyUrlPassword) {
-                bamUrl = `${bamOnlyUrlObj.protocol}//${bamOnlyUrlObj.host}${bamOnlyUrlObj.pathname}${bamOnlyUrlObj.search}`;
-                this.index = new BAI({
-                    filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`, {
-                        overrides: {
-                            credentials: 'include',
-                            headers: {
-                                Authorization: 'Basic ' +
-                                    btoa(bamOnlyUrlUsername + ':' + bamOnlyUrlPassword),
-                            },
-                        },
-                    }),
-                });
-            }
-            else {
-                this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
-            }
+            this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
         }
         else if (htsget) {
             this.htsget = true;
@@ -17691,7 +17562,7 @@ class bamFile_BamFile {
             buffer = res.buffer.subarray(0, Math.min(res.bytesRead, ret));
         }
         else {
-            buffer = (await this.bam.readFile(opts));
+            buffer = await this.bam.readFile(opts);
         }
         const uncba = await (0,esm/* unzip */.Ri)(buffer);
         if (uncba.readInt32LE(0) !== bamFile_BAM_MAGIC) {
@@ -17747,46 +17618,8 @@ class bamFile_BamFile {
         }
         return { chrToIndex, indexToChr };
     }
-    async getRecordsForRangeSample(chr, min, max, opts) {
-        if (!opts) {
-            return this.getRecordsForRange(chr, min, max, opts);
-        }
-        if (opts.maxSampleSize) {
-            const allRecords = await gen2array(this.streamRecordsForRange(chr, min, max, opts));
-            console.log(`allRecords.length ${allRecords.length}`);
-            const resSize = +opts.maxSampleSize;
-            console.log(`resSize ${resSize}`);
-            if (resSize < allRecords.length) {
-                const res = new (reservoir_default())(resSize);
-                for (const record of allRecords) {
-                    res.pushSome(record);
-                }
-                return res;
-            }
-            else {
-                return allRecords;
-            }
-        }
-        return this.getRecordsForRange(chr, min, max, opts);
-    }
     async getRecordsForRange(chr, min, max, opts) {
         return gen2array(this.streamRecordsForRange(chr, min, max, opts));
-    }
-    async streamRecordsForRangeSample(chr, min, max, opts) {
-        if (!opts) {
-            return this.getRecordsForRange(chr, min, max, opts);
-        }
-        if (opts.maxSampleSize) {
-            const resSize = +opts.maxSampleSize;
-            const res = new (reservoir_default())(resSize);
-            for await (const chunk of this.streamRecordsForRange(chr, min, max, opts)) {
-                for (const record of chunk) {
-                    res.pushSome(record);
-                }
-            }
-            return res;
-        }
-        return this.getRecordsForRange(chr, min, max, opts);
     }
     async *streamRecordsForRange(chr, min, max, opts) {
         var _a;
@@ -17947,7 +17780,7 @@ class bamFile_BamFile {
                             chunk.minv.dataPosition +
                             1
                         : // must be slice, not subarray for buffer polyfill on web
-                            buffer_crc32_default().signed(ba.slice(blockStart, blockEnd)),
+                            index.signed(ba.slice(blockStart, blockEnd)),
                 });
                 sink.push(feature);
                 if (this.yieldThreadTime && +Date.now() - last > this.yieldThreadTime) {
@@ -17991,7 +17824,7 @@ class bamFile_BamFile {
     }
 }
 //# sourceMappingURL=bamFile.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/htsget.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/htsget.js
 
 
 
@@ -18005,7 +17838,6 @@ async function concat(arr, opts) {
         else {
             //remove referer header, it is not even allowed to be specified
             // @ts-expect-error
-            //eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { referer, ...rest } = headers;
             const res = await fetch(url, {
                 ...opts,
@@ -18117,7 +17949,7 @@ class HtsgetFile extends (/* unused pure expression or super */ null && (BamFile
     }
 }
 //# sourceMappingURL=htsget.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/index.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/index.js
 
 
 

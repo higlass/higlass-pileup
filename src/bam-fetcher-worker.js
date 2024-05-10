@@ -2,7 +2,7 @@ import { group, range } from 'd3-array';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
-import { BamFile } from 'apr144-bam';
+import { BamFile } from '@gmod/bam'
 import { getSubstitutions, calculateInsertSize, areMatesRequired, getMethylationOffsets, hexToRGBRawTriplet, indexDHSColors } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
