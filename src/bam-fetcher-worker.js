@@ -9,7 +9,7 @@ import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 // import BAMDataFetcher from './bam-fetcher';
 import { clusterData, euclideanDistance, jaccardDistance, averageDistance } from 'apr144-hclust';
-// import { RemoteFile } from 'generic-filehandle';
+import { RemoteFile } from 'generic-filehandle';
 
 function currTime() {
   const d = new Date();

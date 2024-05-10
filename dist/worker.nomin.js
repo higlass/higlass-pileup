@@ -19264,7 +19264,7 @@ var hclust_min = __webpack_require__(803);
 
 // import BAMDataFetcher from './bam-fetcher';
 
-// import { RemoteFile } from 'generic-filehandle';
+
 
 function currTime() {
   const d = new Date();
@@ -19628,8 +19628,8 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
 
   if (fastaUrl && faiUrl) {
     // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
-    const remoteFasta = new RemoteFile(fastaUrl);
-    const remoteFai = new RemoteFile(faiUrl);
+    const remoteFasta = new generic_filehandle_esm/* RemoteFile */.kC(fastaUrl);
+    const remoteFai = new generic_filehandle_esm/* RemoteFile */.kC(faiUrl);
     const { IndexedFasta } = __webpack_require__(805);
     sequenceFiles[fastaUrl] = new IndexedFasta({
       fasta: remoteFasta,
