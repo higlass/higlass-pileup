@@ -26341,7 +26341,23 @@ class bamFile_BamFile {
             this.bam = new (localFile_ignored_default())(bamPath);
         }
         else if (bamUrl) {
-            this.bam = new remoteFile_RemoteFile(bamUrl);
+            const bamUrlObj = new URL(bamUrl);
+            const bamUrlUsername = bamUrlObj.username;
+            const bamUrlPassword = bamUrlObj.password;
+            if (bamUrlUsername && bamUrlPassword) {
+                bamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
+                this.bam = new remoteFile_RemoteFile(bamUrl, {
+                    overrides: {
+                        credentials: 'include',
+                        headers: {
+                            Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
+                        },
+                    },
+                });
+            }
+            else {
+                this.bam = new remoteFile_RemoteFile(bamUrl);
+            }
         }
         else if (htsget) {
             this.htsget = true;
@@ -26366,13 +26382,55 @@ class bamFile_BamFile {
             this.index = new BAI({ filehandle: new (localFile_ignored_default())(baiPath) });
         }
         else if (baiUrl) {
-            this.index = new BAI({ filehandle: new remoteFile_RemoteFile(baiUrl) });
+            const baiUrlObj = new URL(baiUrl);
+            const baiUrlUsername = baiUrlObj.username;
+            const baiUrlPassword = baiUrlObj.password;
+            if (baiUrlUsername && baiUrlPassword) {
+                baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
+                // console.log(
+                //   `baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`,
+                // )
+                this.index = new BAI({
+                    filehandle: new remoteFile_RemoteFile(baiUrl, {
+                        overrides: {
+                            credentials: 'include',
+                            headers: {
+                                Authorization: 'Basic ' + btoa(baiUrlUsername + ':' + baiUrlPassword),
+                            },
+                        },
+                    }),
+                });
+            }
+            else {
+                this.index = new BAI({ filehandle: new remoteFile_RemoteFile(baiUrl) });
+            }
         }
         else if (bamPath) {
             this.index = new BAI({ filehandle: new (localFile_ignored_default())(`${bamPath}.bai`) });
         }
         else if (bamUrl) {
-            this.index = new BAI({ filehandle: new remoteFile_RemoteFile(`${bamUrl}.bai`) });
+            const baiUrlObj = new URL(bamUrl);
+            const baiUrlUsername = baiUrlObj.username;
+            const baiUrlPassword = baiUrlObj.password;
+            if (baiUrlUsername && baiUrlPassword) {
+                const baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}.bai${baiUrlObj.search}`;
+                // console.log(
+                //   `baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`,
+                // )
+                this.index = new BAI({
+                    filehandle: new remoteFile_RemoteFile(baiUrl, {
+                        overrides: {
+                            credentials: 'include',
+                            headers: {
+                                Authorization: 'Basic ' + btoa(baiUrlUsername + ':' + baiUrlPassword),
+                            },
+                        },
+                    }),
+                });
+            }
+            else {
+                this.index = new BAI({ filehandle: new remoteFile_RemoteFile(`${bamUrl}.bai`) });
+            }
         }
         else if (htsget) {
             this.htsget = true;
