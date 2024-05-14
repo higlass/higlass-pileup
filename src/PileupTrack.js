@@ -462,25 +462,25 @@ varying vec4 vColor;
             // this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
-          case "sorted-cluster-layout":
-            if ((!this.options.methylation) || (this.clusterData))
-              break;
-            this.dataFetcher = new BAMDataFetcher(
-              this.dataFetcher.dataConfig,
-              this.options,
-              this.worker,
-              HGC,
-            );
-            this.dataFetcher.track = this;
-            this.prevRows = [];
-            this.removeTiles(Object.keys(this.fetchedTiles));
-            this.fetching.clear();
-            this.refreshTiles();
-            this.externalInit(this.options);
-            this.clusterData = null;
-            this.updateExistingGraphics();
-            this.prevOptions = Object.assign({}, this.options);
-            break;
+          // case "sorted-cluster-layout":
+          //   if ((!this.options.methylation) || (this.clusterData))
+          //     break;
+          //   this.dataFetcher = new BAMDataFetcher(
+          //     this.dataFetcher.dataConfig,
+          //     this.options,
+          //     this.worker,
+          //     HGC,
+          //   );
+          //   this.dataFetcher.track = this;
+          //   this.prevRows = [];
+          //   this.removeTiles(Object.keys(this.fetchedTiles));
+          //   this.fetching.clear();
+          //   this.refreshTiles();
+          //   this.externalInit(this.options);
+          //   this.clusterData = null;
+          //   this.updateExistingGraphics();
+          //   this.prevOptions = Object.assign({}, this.options);
+          //   break;
           case "cluster-layout":
             if ((!this.options.methylation) || (this.clusterData))
               break;
@@ -499,6 +499,7 @@ varying vec4 vColor;
             this.clusterData = {
               range: data.range, 
               distanceFn: data.distanceFn,
+              eventCategories: data.eventCategories,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
@@ -511,6 +512,7 @@ varying vec4 vColor;
             this.bed12ExportData = {
               range: data.range,
               distanceFn: data.distanceFn,
+              eventCategories: data.eventCategories,
               uid: this.id,
               name: bed12Name,
               colors: bed12Colors,
