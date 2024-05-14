@@ -29276,6 +29276,7 @@ const exportSegmentsAsBED12 = (
     const chromStart = bed12ExportDataObj.range.left.start;
     const chromEnd = bed12ExportDataObj.range.right.stop;
     const distanceFn = bed12ExportDataObj.distanceFn;
+    const eventCategories = bed12ExportDataObj.eventCategories;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
