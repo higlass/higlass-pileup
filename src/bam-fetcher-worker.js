@@ -1204,34 +1204,81 @@ const exportSegmentsAsBED12 = (
             }
             break;
           default:
-            throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for BED12 export`);
+            throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for BED12 export cluster matrix generation`);
             break;
         }
         break;
       case 'DBSCAN':
+        switch (distanceFn) {
+          case 'Euclidean':
+            distanceFnToCall = euclideanDistance;
+            for (let i = 0; i < nReads; ++i) {
+              const segment = segmentList[i];
+              const segmentLength = segment.to - segment.from;
+              const eventVec = new Array(eventVecLen).fill(-255);
+              const segmentStart = segment.from - segment.chrOffset;
+              const segmentEnd = segment.to - segment.chrOffset;
+              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
+                const offsetStart = chromStart - segmentStart;
+                const offsetEnd = offsetStart + eventVecLen;
+                // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
+                const mos = segment.methylationOffsets;
+                for (const mo of mos) {
+                  const offsets = mo.offsets;
+                  const probabilities = mo.probabilities;
+                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                      const offset = offsets[offsetIdx];
+                      const probability = probabilities[offsetIdx];
+                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                        eventVec[offset - offsetStart] = parseInt(probability);
+                      }
+                    }
+                  }
+                }
+                trueRow[allowedRowIdx] = i;
+                data[allowedRowIdx++] = eventVec;
+              }
+            }
+            break;
+          default:
+            throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for subregion cluster matrix construction`);
+            break;
+        }
+        break;
       default:
-        throw new Error(`Cluster method [${method}] is unknown or unsupported for BED12 export`);
+        throw new Error(`Cluster method [${method}] is unknown or unsupported for BED12 export cluster matrix generation`);
         break;
     }
 
     if (data.length > 0) {
-      const { clusters, distances, order, clustersGivenK } = clusterData({
-        data: data,
-        distance: distanceFnToCall,
-        linkage: averageDistance,
-        onProgress: null,
-      });
-
-      // console.log(`order ${order}`);
-      const orderedSegments = order.map(i => {
-        const trueRowIdx = trueRow[i];
-        const segment = segmentList[trueRowIdx];
-        return [segment];
-      })
-      for (let key of Object.keys(grouped)) {
-        const rows = orderedSegments;
-        grouped[key] = {};
-        grouped[key].rows = rows;
+      switch (method) {
+        case 'AGNES':
+          const { clusters, distances, order, clustersGivenK } = clusterData({
+            data: data,
+            distance: distanceFnToCall,
+            linkage: averageDistance,
+            onProgress: null,
+          });
+          // console.log(`order ${order}`);
+          const orderedSegments = order.map(i => {
+            const trueRowIdx = trueRow[i];
+            const segment = segmentList[trueRowIdx];
+            return [segment];
+          })
+          for (let key of Object.keys(grouped)) {
+            const rows = orderedSegments;
+            grouped[key] = {};
+            grouped[key].rows = rows;
+          }
+          break;
+        case 'DBSCAN':
+        default:
+          throw new Error(`Cluster method [${method}] is unknown or unsupported for BED12 export clustering`);
+          break;
       }
     }
     else {
@@ -1697,34 +1744,94 @@ const renderSegments = (
             }
             break;
           default:
-            throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for subregion clustering`);
+            throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for subregion cluster matrix construction`);
             break;
         }
         break;
       case 'DBSCAN':
+        switch (distanceFn) {
+          case 'Euclidean':
+            distanceFnToCall = euclideanDistance;
+            for (let i = 0; i < nReads; ++i) {
+              const segment = segmentList[i];
+              const segmentLength = segment.to - segment.from;
+              const eventVec = new Array(eventVecLen).fill(-255);
+              const segmentStart = segment.from - segment.chrOffset;
+              const segmentEnd = segment.to - segment.chrOffset;
+              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
+                const offsetStart = chromStart - segmentStart;
+                const offsetEnd = offsetStart + eventVecLen;
+                // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
+                const mos = segment.methylationOffsets;
+                for (const mo of mos) {
+                  const offsets = mo.offsets;
+                  const probabilities = mo.probabilities;
+                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                      const offset = offsets[offsetIdx];
+                      const probability = probabilities[offsetIdx];
+                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                        eventVec[offset - offsetStart] = parseInt(probability);
+                      }
+                    }
+                  }
+                }
+                trueRow[allowedRowIdx] = i;
+                data[allowedRowIdx++] = eventVec;
+              }
+            }
+            break;
+          default:
+            throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for subregion cluster matrix construction`);
+            break;
+        }
+        break;
       default:
-        throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion clustering`);
+        throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion cluster matrix construction`);
         break;
     }
 
     if (data.length > 0) {
-      const { clusters, distances, order, clustersGivenK } = clusterData({
-        data: data,
-        distance: distanceFnToCall,
-        linkage: averageDistance,
-      });
-
-      // console.log(`order ${order}`);
-      const orderedSegments = order.map(i => {
-        const trueRowIdx = trueRow[i];
-        const segment = segmentList[trueRowIdx];
-        return [segment];
-      })
-      // console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
-      for (let key of Object.keys(grouped)) {
-        const rows = orderedSegments;
-        grouped[key] = {};
-        grouped[key].rows = rows;
+      switch (method) {
+        case 'AGNES':
+          const { clusters, distances, order, clustersGivenK } = clusterData({
+            data: data,
+            distance: distanceFnToCall,
+            linkage: averageDistance,
+          });
+          // console.log(`order ${order}`);
+          const orderedSegments = order.map(i => {
+            const trueRowIdx = trueRow[i];
+            const segment = segmentList[trueRowIdx];
+            return [segment];
+          })
+          // console.log(`orderedSegments ${JSON.stringify(orderedSegments)}`);
+          for (let key of Object.keys(grouped)) {
+            const rows = orderedSegments;
+            grouped[key] = {};
+            grouped[key].rows = rows;
+          }
+          break;
+        case 'DBSCAN':
+          const result = dbscan({
+            dataset: data,
+            epsilon: 1,
+            minimumPoints: 2,
+          });
+          console.log(`result ${JSON.stringify(result)}`);
+          for (let key of Object.keys(grouped)) {
+            const rows = segmentsToRows(grouped[key], {
+              prevRows: (prevRows[key] && prevRows[key].rows) || [],
+            });
+            grouped[key] = {};
+            grouped[key].rows = rows;
+          }
+        default:
+          throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion clustering`);
+          break;
       }
     }
     else {
