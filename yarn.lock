@@ -1565,6 +1565,11 @@ apr144-bam@2.0.2-rs-051224-002:
     long "^4.0.0"
     quick-lru "^4.0.0"
 
+apr144-dbscan@1.1.1-51524:
+  version "1.1.1-51524"
+  resolved "https://registry.npmjs.org/apr144-dbscan/-/apr144-dbscan-1.1.1-51524.tgz"
+  integrity sha512-o1l1DA3KSB0OorpVeb7WWm4bOnLO4IK4+JDHxQInuCF+ATacDenuF1SRsKEwNAVjSWsv+gRpRRgnkv8/+Ia4ZQ==
+
 apr144-hclust@^0.0.1:
   version "0.0.1"
   resolved "https://registry.npmjs.org/apr144-hclust/-/apr144-hclust-0.0.1.tgz"

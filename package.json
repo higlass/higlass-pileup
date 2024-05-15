@@ -67,6 +67,7 @@
     "apr144-indexedfasta": "^2.1.0",
     "apr144-hclust": "^0.0.1",
     "apr144-bam": "2.0.2-rs-051224-002",
+    "apr144-dbscan": "1.1.1-51524",
     "generic-filehandle": "^3.1.2",
     "d3-array": "^2.3.1",
     "d3-dsv": "^1.1.1",

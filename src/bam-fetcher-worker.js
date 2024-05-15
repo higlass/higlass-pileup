@@ -11,6 +11,8 @@ import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 import { clusterData, euclideanDistance, jaccardDistance, averageDistance } from 'apr144-hclust';
 import { RemoteFile } from 'generic-filehandle';
 
+const dbscan = require('apr144-dbscan');
+
 function currTime() {
   const d = new Date();
   return d.getTime();
