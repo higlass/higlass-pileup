@@ -29459,7 +29459,7 @@ const exportSegmentsAsBED12 = (
       case 'DBSCAN':
         switch (distanceFn) {
           case 'Euclidean':
-            distanceFnToCall = hclust_min/* euclideanDistance */.WI;
+            distanceFnToCall = (a, b) => Math.hypot(...Object.keys(a).map(k => b[k] - a[k]));
             for (let i = 0; i < nReads; ++i) {
               const segment = segmentList[i];
               const segmentLength = segment.to - segment.from;
@@ -29524,6 +29524,21 @@ const exportSegmentsAsBED12 = (
           }
           break;
         case 'DBSCAN':
+          const result = dbscan({
+            dataset: data,
+            epsilon: 1,
+            minimumPoints: 2,
+            distanceFunction: distanceFnToCall,
+          });
+          console.log(`result ${JSON.stringify(result)}`);
+          for (let key of Object.keys(grouped)) {
+            const rows = segmentsToRows(grouped[key], {
+              prevRows: (prevRows[key] && prevRows[key].rows) || [],
+            });
+            grouped[key] = {};
+            grouped[key].rows = rows;
+          }
+          break;
         default:
           throw new Error(`Cluster method [${method}] is unknown or unsupported for BED12 export clustering`);
           break;
@@ -29999,7 +30014,7 @@ const renderSegments = (
       case 'DBSCAN':
         switch (distanceFn) {
           case 'Euclidean':
-            distanceFnToCall = hclust_min/* euclideanDistance */.WI;
+            distanceFnToCall = (a, b) => Math.hypot(...Object.keys(a).map(k => b[k] - a[k]));
             for (let i = 0; i < nReads; ++i) {
               const segment = segmentList[i];
               const segmentLength = segment.to - segment.from;
@@ -30068,6 +30083,7 @@ const renderSegments = (
             dataset: data,
             epsilon: 1,
             minimumPoints: 2,
+            distanceFunction: distanceFnToCall,
           });
           console.log(`result ${JSON.stringify(result)}`);
           for (let key of Object.keys(grouped)) {
@@ -30077,6 +30093,7 @@ const renderSegments = (
             grouped[key] = {};
             grouped[key].rows = rows;
           }
+          break;
         default:
           throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion clustering`);
           break;
