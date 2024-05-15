@@ -498,6 +498,7 @@ varying vec4 vColor;
             this.externalInit(this.options);
             this.clusterData = {
               range: data.range, 
+              method: data.method,
               distanceFn: data.distanceFn,
               eventCategories: data.eventCategories,
             };
@@ -511,6 +512,7 @@ varying vec4 vColor;
             const bed12Colors = this.options.methylation.colors;
             this.bed12ExportData = {
               range: data.range,
+              method: data.method,
               distanceFn: data.distanceFn,
               eventCategories: data.eventCategories,
               uid: this.id,
