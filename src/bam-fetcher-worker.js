@@ -2248,9 +2248,6 @@ const renderSegments = (
                 for (const highlightPosn of highlightPosns) {
                   if ((highlightPosn >= segment.from) && (highlightPosn <= segment.to)) {
                     xLeft = xScale(highlightPosn);
-                    if ((mmSegmentColor === PILEUP_COLOR_IXS.MM_M5C_REV) && trackOptions.methylation.alignCpGEvents) {
-                      xLeft -= highlightWidth;
-                    }
                     xRight = xLeft + highlightWidth;
                     addRect(xLeft, yTop, highlightWidth, height, highlightColor);
                   }
@@ -2293,6 +2290,9 @@ const renderSegments = (
                   //   console.log(`segment.from + filteredOffset - chrOffset ${segment.from + filteredOffset - segment.chrOffset} | filteredOffset ${filteredOffset} | segment.from ${segment.from} | segment.chrOffset ${segment.chrOffset}`);
                   // }
                   xLeft = xScale(segment.from + filteredOffset);
+                  if ((mmSegmentColor === PILEUP_COLOR_IXS.MM_M5C_REV) && trackOptions.methylation.alignCpGEvents) {
+                    xLeft -= width;
+                  }
                   xRight = xLeft + width;
                   addRect(xLeft, yTop, width, height, mmSegmentColor);
                 });
