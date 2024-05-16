@@ -501,6 +501,9 @@ varying vec4 vColor;
               method: data.method,
               distanceFn: data.distanceFn,
               eventCategories: data.eventCategories,
+              linkage: data.linkage,
+              epsilon: data.epsilon,
+              minimumPoints: data.minimumPoints,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
@@ -515,6 +518,9 @@ varying vec4 vColor;
               method: data.method,
               distanceFn: data.distanceFn,
               eventCategories: data.eventCategories,
+              linkage: data.linkage,
+              epsilon: data.epsilon,
+              minimumPoints: data.minimumPoints,
               uid: this.id,
               name: bed12Name,
               colors: bed12Colors,

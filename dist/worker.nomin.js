@@ -29374,6 +29374,9 @@ const exportSegmentsAsBED12 = (
     const method = bed12ExportDataObj.method;
     const distanceFn = bed12ExportDataObj.distanceFn;
     const eventCategories = bed12ExportDataObj.eventCategories;
+    const linkage = bed12ExportDataObj.linkage;
+    const epsilon = bed12ExportDataObj.epsilon;
+    const minimumPoints = bed12ExportDataObj.minimumPoints;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
@@ -29526,11 +29529,11 @@ const exportSegmentsAsBED12 = (
         case 'DBSCAN':
           const result = dbscan({
             dataset: data,
-            epsilon: 1,
-            minimumPoints: 2,
+            epsilon: epsilon,
+            minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
-          console.log(`result ${JSON.stringify(result)}`);
+          // console.log(`result ${JSON.stringify(result)}`);
           for (let key of Object.keys(grouped)) {
             const rows = segmentsToRows(grouped[key], {
               prevRows: (prevRows[key] && prevRows[key].rows) || [],
@@ -29803,6 +29806,9 @@ const renderSegments = (
     const method = clusterDataObj.method;
     const distanceFn = clusterDataObj.distanceFn;
     const eventCategories = clusterDataObj.eventCategories;
+    const linkage = clusterDataObj.linkage;
+    const epsilon = clusterDataObj.epsilon;
+    const minimumPoints = clusterDataObj.minimumPoints;
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
@@ -30081,8 +30087,8 @@ const renderSegments = (
         case 'DBSCAN':
           const result = dbscan({
             dataset: data,
-            epsilon: 1,
-            minimumPoints: 2,
+            epsilon: epsilon,
+            minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
           console.log(`result ${JSON.stringify(result)}`);
