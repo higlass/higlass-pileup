@@ -29527,19 +29527,50 @@ const exportSegmentsAsBED12 = (
           }
           break;
         case 'DBSCAN':
-          const result = dbscan({
+          function flatten(arr) {
+            const out = [];
+            const path = [];
+            for (let i = 0; i < arr.length; i++) {
+              const item = arr[i];
+              if (Array.isArray(item)) {
+                path.push(arr, i);
+                i = -1;
+                arr = item;
+                continue;
+              }
+              out.push(item);
+              while (i === arr.length - 1 && path.length)  i = path.pop(), arr = path.pop();
+            }
+            return out;
+          }
+          const results = dbscan({
             dataset: data,
             epsilon: epsilon,
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
           // console.log(`result ${JSON.stringify(result)}`);
-          for (let key of Object.keys(grouped)) {
-            const rows = segmentsToRows(grouped[key], {
-              prevRows: (prevRows[key] && prevRows[key].rows) || [],
+          if (results.clusters.length > 0) {
+            const order = flatten(results.clusters.concat(results.noise));
+            const orderedSegments = order.map(i => {
+              const trueRowIdx = trueRow[i];
+              const segment = segmentList[trueRowIdx];
+              return [segment];
             });
-            grouped[key] = {};
-            grouped[key].rows = rows;
+            for (let key of Object.keys(grouped)) {
+              const rows = orderedSegments;
+              grouped[key] = {};
+              grouped[key].rows = rows;
+            }
+          }
+          else {
+            for (let key of Object.keys(grouped)) {
+              const rows = segmentsToRows(grouped[key], {
+                prevRows: (prevRows[key] && prevRows[key].rows) || [],
+              });
+              grouped[key] = {};
+              grouped[key].rows = rows;
+            }
           }
           break;
         default:
@@ -30085,19 +30116,50 @@ const renderSegments = (
           }
           break;
         case 'DBSCAN':
-          const result = dbscan({
+          function flatten(arr) {
+            const out = [];
+            const path = [];
+            for (let i = 0; i < arr.length; i++) {
+              const item = arr[i];
+              if (Array.isArray(item)) {
+                path.push(arr, i);
+                i = -1;
+                arr = item;
+                continue;
+              }
+              out.push(item);
+              while (i === arr.length - 1 && path.length)  i = path.pop(), arr = path.pop();
+            }
+            return out;
+          }
+          const results = dbscan({
             dataset: data,
             epsilon: epsilon,
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
-          console.log(`result ${JSON.stringify(result)}`);
-          for (let key of Object.keys(grouped)) {
-            const rows = segmentsToRows(grouped[key], {
-              prevRows: (prevRows[key] && prevRows[key].rows) || [],
+          // console.log(`result ${JSON.stringify(result)}`);
+          if (results.clusters.length > 0) {
+            const order = flatten(results.clusters.concat(results.noise));
+            const orderedSegments = order.map(i => {
+              const trueRowIdx = trueRow[i];
+              const segment = segmentList[trueRowIdx];
+              return [segment];
             });
-            grouped[key] = {};
-            grouped[key].rows = rows;
+            for (let key of Object.keys(grouped)) {
+              const rows = orderedSegments;
+              grouped[key] = {};
+              grouped[key].rows = rows;
+            }
+          }
+          else {
+            for (let key of Object.keys(grouped)) {
+              const rows = segmentsToRows(grouped[key], {
+                prevRows: (prevRows[key] && prevRows[key].rows) || [],
+              });
+              grouped[key] = {};
+              grouped[key].rows = rows;
+            }
           }
           break;
         default:
