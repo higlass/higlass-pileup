@@ -504,6 +504,7 @@ varying vec4 vColor;
               linkage: data.linkage,
               epsilon: data.epsilon,
               minimumPoints: data.minimumPoints,
+              probabilityThresholdRange: data.probabilityThresholdRange,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
@@ -521,6 +522,7 @@ varying vec4 vColor;
               linkage: data.linkage,
               epsilon: data.epsilon,
               minimumPoints: data.minimumPoints,
+              probabilityThresholdRange: data.probabilityThresholdRange,
               uid: this.id,
               name: bed12Name,
               colors: bed12Colors,

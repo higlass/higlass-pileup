@@ -139,9 +139,10 @@ export const parseMD = (mdString, useCounts) => {
  * 
  * @param  {String} segment  Current segment
  * @param  {String} seq   Read sequence from bam file.
+ * @param  {Boolean} alignCpGEvents  Align stranded CpG events at the methylation offset level.
  * @return {Array}  Methylation offsets.
  */
-export const getMethylationOffsets = (segment, seq) => {
+export const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
   let methylationOffsets = [];
   const moSkeleton = {
     "unmodifiedBase" : "",
@@ -225,6 +226,15 @@ export const getMethylationOffsets = (segment, seq) => {
           offsets[nOffsets - i] = baseOffset; // reverse
           probabilities[nOffsets - i] = baseProbability;
           offset += 1;
+        }
+      }
+
+      //
+      // shift reverse-stranded CpG events upstream by one bases
+      //
+      if (mo.unmodifiedBase === 'C' && segment.strand === '-' && alignCpGEvents) {
+        for (let i = 0; i < nOffsets; ++i) {
+          offsets[i] -= 1;
         }
       }
 

@@ -27089,9 +27089,10 @@ const parseMD = (mdString, useCounts) => {
  * 
  * @param  {String} segment  Current segment
  * @param  {String} seq   Read sequence from bam file.
+ * @param  {Boolean} alignCpGEvents  Align stranded CpG events at the methylation offset level.
  * @return {Array}  Methylation offsets.
  */
-const getMethylationOffsets = (segment, seq) => {
+const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
   let methylationOffsets = [];
   const moSkeleton = {
     "unmodifiedBase" : "",
@@ -27175,6 +27176,15 @@ const getMethylationOffsets = (segment, seq) => {
           offsets[nOffsets - i] = baseOffset; // reverse
           probabilities[nOffsets - i] = baseProbability;
           offset += 1;
+        }
+      }
+
+      //
+      // shift reverse-stranded CpG events upstream by one bases
+      //
+      if (mo.unmodifiedBase === 'C' && segment.strand === '-' && alignCpGEvents) {
+        for (let i = 0; i < nOffsets; ++i) {
+          offsets[i] -= 1;
         }
       }
 
@@ -28365,7 +28375,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
   segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
   if (trackOptions.methylation) {
-    segment.methylationOffsets = getMethylationOffsets(segment, seq);
+    segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
   }
 
   if (trackOptions.indexDHS) {
@@ -29377,6 +29387,7 @@ const exportSegmentsAsBED12 = (
     const linkage = bed12ExportDataObj.linkage;
     const epsilon = bed12ExportDataObj.epsilon;
     const minimumPoints = bed12ExportDataObj.minimumPoints;
+    const probabilityThresholdRange = {min: bed12ExportDataObj.probabilityThresholdRange[0], max: bed12ExportDataObj.probabilityThresholdRange[1]};
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
@@ -29397,7 +29408,7 @@ const exportSegmentsAsBED12 = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
+                const offsetStart = chromStart - segmentStart - 1;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -29410,7 +29421,7 @@ const exportSegmentsAsBED12 = (
                     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
                       const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = parseInt(probability);
                       }
                     }
@@ -29431,7 +29442,7 @@ const exportSegmentsAsBED12 = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
+                const offsetStart = chromStart - segmentStart - 1;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -29443,7 +29454,8 @@ const exportSegmentsAsBED12 = (
                     || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
                     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                      const probability = probabilities[offsetIdx];
+                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = 1;
                       }
                     }
@@ -29471,7 +29483,7 @@ const exportSegmentsAsBED12 = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
+                const offsetStart = chromStart - segmentStart - 1;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -29484,7 +29496,7 @@ const exportSegmentsAsBED12 = (
                     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
                       const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = parseInt(probability);
                       }
                     }
@@ -29840,6 +29852,8 @@ const renderSegments = (
     const linkage = clusterDataObj.linkage;
     const epsilon = clusterDataObj.epsilon;
     const minimumPoints = clusterDataObj.minimumPoints;
+    const probabilityThresholdRange = {min: clusterDataObj.probabilityThresholdRange[0], max: clusterDataObj.probabilityThresholdRange[1]};
+    // console.log(`probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)}`);
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
@@ -29883,7 +29897,7 @@ const renderSegments = (
               // }
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
+                const offsetStart = chromStart - segmentStart - 1;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -29896,7 +29910,7 @@ const renderSegments = (
                     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
                       const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = parseInt(probability);
                       }
                     }
@@ -29991,7 +30005,7 @@ const renderSegments = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
+                const offsetStart = chromStart - segmentStart - 1;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -30003,7 +30017,8 @@ const renderSegments = (
                     || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
                     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                      const probability = probabilities[offsetIdx];
+                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = 1;
                       }
                     }
@@ -30060,7 +30075,7 @@ const renderSegments = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
+                const offsetStart = chromStart - segmentStart - 1;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -30073,7 +30088,7 @@ const renderSegments = (
                     for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
                       const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd)) {
+                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = parseInt(probability);
                       }
                     }
@@ -30097,6 +30112,7 @@ const renderSegments = (
     if (data.length > 0) {
       switch (method) {
         case 'AGNES':
+          // console.log(`data ${JSON.stringify(data)}`);
           const { clusters, distances, order, clustersGivenK } = (0,hclust_min/* clusterData */.eM)({
             data: data,
             distance: distanceFnToCall,
@@ -30538,9 +30554,10 @@ const renderSegments = (
                   //   console.log(`segment.from + filteredOffset - chrOffset ${segment.from + filteredOffset - segment.chrOffset} | filteredOffset ${filteredOffset} | segment.from ${segment.from} | segment.chrOffset ${segment.chrOffset}`);
                   // }
                   xLeft = xScale(segment.from + filteredOffset);
-                  if ((mmSegmentColor === PILEUP_COLOR_IXS.MM_M5C_REV) && trackOptions.methylation.alignCpGEvents) {
-                    xLeft -= width;
-                  }
+                  // if ((mmSegmentColor === PILEUP_COLOR_IXS.MM_M5C_FOR) && trackOptions.methylation.alignCpGEvents && segment.strand === '-') {
+                    // console.log(`segment.from + filteredOffset - chrOffset ${segment.from + filteredOffset - segment.chrOffset} | filteredOffset ${filteredOffset} | segment.from ${segment.from} | segment.chrOffset ${segment.chrOffset} | segment.strand ${segment.strand}`);
+                  //   xLeft -= width;
+                  // }
                   xRight = xLeft + width;
                   addRect(xLeft, yTop, width, height, mmSegmentColor);
                 });
