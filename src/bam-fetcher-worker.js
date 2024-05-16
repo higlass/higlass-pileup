@@ -2248,6 +2248,9 @@ const renderSegments = (
                 for (const highlightPosn of highlightPosns) {
                   if ((highlightPosn >= segment.from) && (highlightPosn <= segment.to)) {
                     xLeft = xScale(highlightPosn);
+                    if ((mmSegmentColor === PILEUP_COLOR_IXS.MM_M5C_REV) && trackOptions.methylation.alignCpGEvents) {
+                      xLeft -= highlightWidth;
+                    }
                     xRight = xLeft + highlightWidth;
                     addRect(xLeft, yTop, highlightWidth, height, highlightColor);
                   }
