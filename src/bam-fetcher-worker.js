@@ -1150,7 +1150,7 @@ const exportSegmentsAsBED12 = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart - 1;
+                const offsetStart = chromStart - segmentStart;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -1184,7 +1184,7 @@ const exportSegmentsAsBED12 = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart - 1;
+                const offsetStart = chromStart - segmentStart;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -1225,7 +1225,7 @@ const exportSegmentsAsBED12 = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart - 1;
+                const offsetStart = chromStart - segmentStart;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -1235,10 +1235,10 @@ const exportSegmentsAsBED12 = (
                   if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
                     || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
                     || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                    for (let offsetIdx = 0; offsetIdx <= offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
                       const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                      if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
                         eventVec[offset - offsetStart] = parseInt(probability);
                       }
                     }
@@ -1329,7 +1329,6 @@ const exportSegmentsAsBED12 = (
           break;
         default:
           throw new Error(`Cluster method [${method}] is unknown or unsupported for BED12 export clustering`);
-          break;
       }
     }
     else {
@@ -1582,6 +1581,8 @@ const renderSegments = (
     grouped = { null: segmentList };
   }
 
+  let clusterResultsToExport = null;
+
   // calculate the the rows of reads for each group
   if (clusterDataObj && trackOptions.methylation) {
     // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
@@ -1639,7 +1640,7 @@ const renderSegments = (
               // }
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart - 1;
+                const offsetStart = chromStart - segmentStart;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -1747,7 +1748,7 @@ const renderSegments = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart - 1;
+                const offsetStart = chromStart - segmentStart;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -1802,7 +1803,6 @@ const renderSegments = (
             break;
           default:
             throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for subregion cluster matrix construction`);
-            break;
         }
         break;
       case 'DBSCAN':
@@ -1817,7 +1817,7 @@ const renderSegments = (
               const segmentEnd = segment.to - segment.chrOffset;
               if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                 // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart - 1;
+                const offsetStart = chromStart - segmentStart;
                 const offsetEnd = offsetStart + eventVecLen;
                 // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
                 const mos = segment.methylationOffsets;
@@ -1827,7 +1827,7 @@ const renderSegments = (
                   if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
                     || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
                     || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                    for (let offsetIdx = 0; offsetIdx <= offsets.length; offsetIdx++) {
                       const offset = offsets[offsetIdx];
                       const probability = probabilities[offsetIdx];
                       if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
@@ -1843,12 +1843,10 @@ const renderSegments = (
             break;
           default:
             throw new Error(`Cluster distance function [${distanceFn}] is unknown or unsupported for subregion cluster matrix construction`);
-            break;
         }
         break;
       default:
         throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion cluster matrix construction`);
-        break;
     }
 
     if (data.length > 0) {
@@ -1860,6 +1858,7 @@ const renderSegments = (
             distance: distanceFnToCall,
             linkage: averageDistance,
           });
+          clusterResultsToExport = clusters;
           // console.log(`order ${order}`);
           const orderedSegments = order.map(i => {
             const trueRowIdx = trueRow[i];
@@ -1896,6 +1895,7 @@ const renderSegments = (
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
+          clusterResultsToExport = results;
           // console.log(`result ${JSON.stringify(result)}`);
           if (results.clusters.length > 0) {
             const order = flatten(results.clusters.concat(results.noise));
@@ -1922,7 +1922,6 @@ const renderSegments = (
           break;
         default:
           throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion clustering`);
-          break;
       }
     }
     else {
@@ -2497,6 +2496,7 @@ const renderSegments = (
     ixBuffer,
     xScaleDomain: domain,
     xScaleRange: scaleRange,
+    clusterResultsToExport: clusterResultsToExport,
   };
 
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);

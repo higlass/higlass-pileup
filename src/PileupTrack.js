@@ -717,6 +717,16 @@ varying vec4 vColor;
           .then((toRender) => {
             // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
 
+            if (toRender.clusterResultsToExport) {
+              this.bc.postMessage({
+                state: 'export_subregion_clustering_results',
+                msg: 'Completed subregion clustering', 
+                uid: this.id,
+                data: toRender.clusterResultsToExport,
+              });
+              console.log(`export_subregion_clustering_end | ${this.id}`);
+            }
+
             this.loadingText.visible = false;
 
             for (const fetchedTileKey of fetchedTileKeys) {
@@ -884,7 +894,7 @@ varying vec4 vColor;
               elapsedTime: elapsedTimeC,
             };
             // console.log(`${JSON.stringify(msg)}`);
-            this.bc.postMessage(msg);
+            // this.bc.postMessage(msg);
           });
         // .catch(err => {
         //   // console.log('err:', err);
