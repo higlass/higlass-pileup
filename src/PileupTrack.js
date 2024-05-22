@@ -724,7 +724,7 @@ varying vec4 vColor;
                 uid: this.id,
                 data: toRender.clusterResultsToExport,
               });
-              console.log(`export_subregion_clustering_end | ${this.id}`);
+              // console.log(`export_subregion_clustering_end | ${this.id}`);
             }
 
             this.loadingText.visible = false;

@@ -64,29 +64,30 @@
     "reinstall": "npm run clean && npm install"
   },
   "dependencies": {
-    "apr144-indexedfasta": "^2.1.0",
-    "apr144-hclust": "^0.0.1",
     "apr144-bam": "2.0.2-rs-051224-002",
     "apr144-dbscan": "1.1.1-51524",
-    "generic-filehandle": "^3.1.2",
+    "apr144-hclust": "^0.0.1",
+    "apr144-indexedfasta": "^2.1.0",
+    "buffer": "^6.0.3",
     "d3-array": "^2.3.1",
     "d3-dsv": "^1.1.1",
     "d3-format": "^3.0.1",
     "d3-request": "^1.0.6",
     "d3-scale": "^3.0.1",
+    "generic-filehandle": "^3.1.2",
     "higlass-register": "^0.1.0",
     "lru-cache": "^6.0.0",
     "raw-loader": "^4.0.2",
-    "threads": "v1.7.0",
-    "buffer": "^6.0.3"
+    "threads": "v1.7.0"
   },
   "comments": {
-    "dependencies" : {
+    "dependencies": {
       "apr144-bam": "2.0.0-rs-042624-019",
       "@gmod/indexedfasta": "^2.1.0 | file:../indexedfasta-js",
       "@greenelab/hclust": "git+https://alexpreynolds@github.com/alexpreynolds/hclust.git#methylation",
       "apr144-hclust": "^0.0.1",
-      "apr144-indexedfasta": "^2.1.0"
+      "apr144-indexedfasta": "^2.1.0",
+      "apr144-hdbscanjs": "^1.0.12-52124"
     }
   }
 }
