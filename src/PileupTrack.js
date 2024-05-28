@@ -232,9 +232,6 @@ const PileupTrack = (HGC, ...args) => {
     // Some of the initialization code is factored out, so that we can 
     // reset/reinitialize if an option change requires it
     externalInit(options) {
-
-      
-
       // we scale the entire view up until a certain point
       // at which point we redraw everything to get rid of
       // artifacts
@@ -505,6 +502,7 @@ varying vec4 vColor;
               epsilon: data.epsilon,
               minimumPoints: data.minimumPoints,
               probabilityThresholdRange: data.probabilityThresholdRange,
+              eventOverlapType: data.eventOverlapType,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
@@ -523,6 +521,7 @@ varying vec4 vColor;
               epsilon: data.epsilon,
               minimumPoints: data.minimumPoints,
               probabilityThresholdRange: data.probabilityThresholdRange,
+              eventOverlapType: data.eventOverlapType,
               uid: this.id,
               name: bed12Name,
               colors: bed12Colors,

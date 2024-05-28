@@ -1148,88 +1148,117 @@ const exportSegmentsAsBED12 = (
               const eventVec = new Array(eventVecLen).fill(-255);
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
-              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = offsetStart + eventVecLen;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = parseInt(probability);
+              switch (eventOverlapType) {
+                case 'Full':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
-                const offsetModifier = segmentStart - chromStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offsetModifier + offset] = probability;
+                  break;
+                case 'Partial':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = segmentEnd - segmentStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = probability;
+                  else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+                    const offsetModifier = segmentStart - chromStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offsetModifier + offset] = probability;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
-                const offsetStart = segmentStart - chromStart;
-                const offsetEnd = chromEnd - segmentStart + offsetStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset] = probability;
+                  else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = segmentEnd - segmentStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = probability;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
+                  else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+                    const offsetStart = segmentStart - chromStart;
+                    const offsetEnd = chromEnd - segmentStart + offsetStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                default:
+                  throw new Error(`Event overlap type [${eventOverlapType}] is unknown or unsupported for cluster matrix generation`);
               }
             }
             break;
@@ -1241,88 +1270,117 @@ const exportSegmentsAsBED12 = (
               const eventVec = new Array(eventVecLen).fill(0);
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
-              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = offsetStart + eventVecLen;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = 1;
+              switch (eventOverlapType) {
+                case 'Full':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
-                const offsetModifier = segmentStart - chromStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offsetModifier + offset] = 1;
+                  break;
+                case 'Partial':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = segmentEnd - segmentStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = 1;
+                  else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+                    const offsetModifier = segmentStart - chromStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offsetModifier + offset] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
-                const offsetStart = segmentStart - chromStart;
-                const offsetEnd = chromEnd - segmentStart + offsetStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset] = 1;
+                  else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = segmentEnd - segmentStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
+                  else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+                    const offsetStart = segmentStart - chromStart;
+                    const offsetEnd = chromEnd - segmentStart + offsetStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset] = 1;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                default:
+                  throw new Error(`Event overlap type [${eventOverlapType}] is unknown or unsupported for cluster matrix generation`);
               }
             }
             break;
@@ -1341,29 +1399,117 @@ const exportSegmentsAsBED12 = (
               const eventVec = new Array(eventVecLen).fill(-255);
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
-              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
-                // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = offsetStart + eventVecLen;
-                // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
-                const mos = segment.methylationOffsets;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx <= offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = parseInt(probability);
+              switch (eventOverlapType) {
+                case 'Full':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
+                  break;
+                case 'Partial':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+                    const offsetModifier = segmentStart - chromStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offsetModifier + offset] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = segmentEnd - segmentStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+                    const offsetStart = segmentStart - chromStart;
+                    const offsetEnd = chromEnd - segmentStart + offsetStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                default:
+                  throw new Error(`Event overlap type [${eventOverlapType}] is unknown or unsupported for cluster matrix generation`);
               }
             }
             break;
@@ -1714,6 +1860,7 @@ const renderSegments = (
     const epsilon = clusterDataObj.epsilon;
     const minimumPoints = clusterDataObj.minimumPoints;
     const probabilityThresholdRange = {min: clusterDataObj.probabilityThresholdRange[0], max: clusterDataObj.probabilityThresholdRange[1]};
+    const eventOverlapType = clusterDataObj.eventOverlapType;
     // console.log(`probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)}`);
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
@@ -1740,89 +1887,117 @@ const renderSegments = (
               const mos = segment.methylationOffsets;
               
               // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
-
-              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = offsetStart + eventVecLen;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = parseInt(probability);
+              switch (eventOverlapType) {
+                case 'Full':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
-                const offsetModifier = segmentStart - chromStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offsetModifier + offset] = probability;
+                  break;
+                case 'Partial':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = segmentEnd - segmentStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = probability;
+                  else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+                    const offsetModifier = segmentStart - chromStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offsetModifier + offset] = probability;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
-                const offsetStart = segmentStart - chromStart;
-                const offsetEnd = chromEnd - segmentStart + offsetStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset] = probability;
+                  else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = segmentEnd - segmentStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = probability;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
+                  else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+                    const offsetStart = segmentStart - chromStart;
+                    const offsetEnd = chromEnd - segmentStart + offsetStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                default:
+                  throw new Error(`Event overlap type [${eventOverlapType}] is unknown or unsupported for cluster matrix generation`);
               }
             }
             break;
@@ -1836,88 +2011,117 @@ const renderSegments = (
               const segmentEnd = segment.to - segment.chrOffset;
               const mos = segment.methylationOffsets;
 
-              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = offsetStart + eventVecLen;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = 1;
+              switch (eventOverlapType) {
+                case 'Full':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
-                const offsetModifier = segmentStart - chromStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offsetModifier + offset] = 1;
+                  break;
+                case 'Partial':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = segmentEnd - segmentStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = 1;
+                  else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+                    const offsetModifier = segmentStart - chromStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offsetModifier + offset] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
-                const offsetStart = segmentStart - chromStart;
-                const offsetEnd = chromEnd - segmentStart + offsetStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset] = 1;
+                  else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = segmentEnd - segmentStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
+                  else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+                    const offsetStart = segmentStart - chromStart;
+                    const offsetEnd = chromEnd - segmentStart + offsetStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset] = 1;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                default:
+                  throw new Error(`Event overlap type [${eventOverlapType}] is unknown or unsupported for cluster matrix generation`);
               }
             }
             break;
@@ -1937,50 +2141,117 @@ const renderSegments = (
               const segmentEnd = segment.to - segment.chrOffset;
               const mos = segment.methylationOffsets;
 
-              if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
-                // console.log(`B | ${trackOptions.name} | ${JSON.stringify(segmentStart)} < ${JSON.stringify(chromStart)} | ${JSON.stringify(segmentEnd)} > ${JSON.stringify(chromEnd)}`);
-                const offsetStart = chromStart - segmentStart;
-                const offsetEnd = offsetStart + eventVecLen;
-                // console.log(`offsetStart ${JSON.stringify(offsetStart)} | offsetEnd ${JSON.stringify(offsetEnd)}`);
-                // const mos = segment.methylationOffsets;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = probabilities[offsetIdx];
-                      if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offset - offsetStart] = parseInt(probability);
+              switch (eventOverlapType) {
+                case 'Full':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
-              }
-              else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
-                // console.log(`C | ${trackOptions.name} | ${JSON.stringify(segmentStart)} >= ${JSON.stringify(chromStart)} | ${JSON.stringify(segmentEnd)} <= ${JSON.stringify(chromEnd)}`);
-                const offsetModifier = segmentStart - chromStart;
-                for (const mo of mos) {
-                  const offsets = mo.offsets;
-                  const probabilities = mo.probabilities;
-                  if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
-                    || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                    || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                    for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                      const offset = offsets[offsetIdx];
-                      const probability = parseInt(probabilities[offsetIdx]);
-                      if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
-                        eventVec[offsetModifier + offset] = probability;
+                  break;
+                case 'Partial':
+                  if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
                       }
                     }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
                   }
-                }
-                trueRow[allowedRowIdx] = i;
-                data[allowedRowIdx++] = eventVec;
+                  else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
+                    const offsetModifier = segmentStart - chromStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offsetModifier + offset < eventVecLen) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offsetModifier + offset] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = segmentEnd - segmentStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
+                    const offsetStart = segmentStart - chromStart;
+                    const offsetEnd = chromEnd - segmentStart + offsetStart;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = parseInt(probabilities[offsetIdx]);
+                          if ((offset >= offsetStart) && (offset < offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset] = probability;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                default:
+                  throw new Error(`Event overlap type [${eventOverlapType}] is unknown or unsupported for cluster matrix generation`);
               }
             }
             break;
