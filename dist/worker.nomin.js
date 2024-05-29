@@ -29407,7 +29407,7 @@ const exportSegmentsAsBED12 = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               switch (eventOverlapType) {
-                case 'Full':
+                case 'Full region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -29430,7 +29430,7 @@ const exportSegmentsAsBED12 = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial':
+                case 'Partial region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -29529,7 +29529,7 @@ const exportSegmentsAsBED12 = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               switch (eventOverlapType) {
-                case 'Full':
+                case 'Full region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -29552,7 +29552,7 @@ const exportSegmentsAsBED12 = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial':
+                case 'Partial region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -29658,7 +29658,7 @@ const exportSegmentsAsBED12 = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               switch (eventOverlapType) {
-                case 'Full':
+                case 'Full region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -29681,7 +29681,7 @@ const exportSegmentsAsBED12 = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial':
+                case 'Partial region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -30111,6 +30111,8 @@ const renderSegments = (
     // const chromName = clusterDataObj.range.left.chrom;
     const chromStart = clusterDataObj.range.left.start;
     const chromEnd = clusterDataObj.range.right.stop;
+    const viewportChromStart = clusterDataObj.viewportRange.left.start;
+    const viewportChromEnd = clusterDataObj.viewportRange.right.stop;
     const method = clusterDataObj.method;
     const distanceFn = clusterDataObj.distanceFn;
     const eventCategories = clusterDataObj.eventCategories;
@@ -30146,7 +30148,30 @@ const renderSegments = (
               
               // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
               switch (eventOverlapType) {
-                case 'Full':
+                case 'Full viewport':
+                  if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                case 'Full region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -30169,7 +30194,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial':
+                case 'Partial region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -30270,7 +30295,30 @@ const renderSegments = (
               const mos = segment.methylationOffsets;
 
               switch (eventOverlapType) {
-                case 'Full':
+                case 'Full viewport':
+                  if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = 1;
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                case 'Full region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -30293,7 +30341,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial':
+                case 'Partial region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -30400,7 +30448,30 @@ const renderSegments = (
               const mos = segment.methylationOffsets;
 
               switch (eventOverlapType) {
-                case 'Full':
+                case 'Full viewport':
+                  if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                    const offsetStart = chromStart - segmentStart;
+                    const offsetEnd = offsetStart + eventVecLen;
+                    for (const mo of mos) {
+                      const offsets = mo.offsets;
+                      const probabilities = mo.probabilities;
+                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A') 
+                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                          const offset = offsets[offsetIdx];
+                          const probability = probabilities[offsetIdx];
+                          if ((offset >= offsetStart) && (offset <= offsetEnd) && (probabilityThresholdRange.min <= probability && probabilityThresholdRange.max >= probability)) {
+                            eventVec[offset - offsetStart] = parseInt(probability);
+                          }
+                        }
+                      }
+                    }
+                    trueRow[allowedRowIdx] = i;
+                    data[allowedRowIdx++] = eventVec;
+                  }
+                  break;
+                case 'Full region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -30423,7 +30494,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial':
+                case 'Partial region':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
