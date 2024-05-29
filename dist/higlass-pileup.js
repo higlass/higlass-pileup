@@ -4388,6 +4388,7 @@ var PileupTrack = function PileupTrack(HGC) {
               this.externalInit(this.options);
               this.clusterData = {
                 range: data.range,
+                viewportRange: data.viewportRange,
                 method: data.method,
                 distanceFn: data.distanceFn,
                 eventCategories: data.eventCategories,
