@@ -481,8 +481,8 @@ varying vec4 vColor;
           //   break;
           case "cluster-reorder-data":
             if (this.id === data.uid) {
-              // if ((!this.options.methylation) || (this.clusterReorderData))
-              //   break;
+              if ((!this.options.methylation) || (this.clusterReorderData && this.clusterReorderData.uid === data.uid))
+                break;
               // this.dataFetcher = new BAMDataFetcher(
               //   this.dataFetcher.dataConfig,
               //   this.options,
