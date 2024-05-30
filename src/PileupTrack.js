@@ -267,6 +267,7 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
+      this.clusterReorderData = null;
       this.clusterData = null;
       this.bed12ExportData = null;
 
@@ -478,6 +479,31 @@ varying vec4 vColor;
           //   this.updateExistingGraphics();
           //   this.prevOptions = Object.assign({}, this.options);
           //   break;
+          case "cluster-reorder-data":
+            if (this.id === data.uid) {
+              // if ((!this.options.methylation) || (this.clusterReorderData))
+              //   break;
+              // this.dataFetcher = new BAMDataFetcher(
+              //   this.dataFetcher.dataConfig,
+              //   this.options,
+              //   this.worker,
+              //   HGC,
+              // );
+              // this.dataFetcher.track = this;
+              // this.prevRows = [];
+              // this.removeTiles(Object.keys(this.fetchedTiles));
+              // this.fetching.clear();
+              // this.refreshTiles();
+              // this.externalInit(this.options);
+              this.clusterReorderData = {
+                uid: data.uid,
+                order: data.order,
+              }
+              console.log(`cluster-reorder-data | ${this.id} | ${JSON.stringify(this.clusterReorderData)}`);
+              // this.updateExistingGraphics();
+              // this.prevOptions = Object.assign({}, this.options);
+            }
+            break;
           case "cluster-layout":
             if ((!this.options.methylation) || (this.clusterData))
               break;
@@ -610,6 +636,10 @@ varying vec4 vColor;
           .then((toExport) => {
             // console.log(`toExport ${JSON.stringify(toExport)}`);
 
+            if (this.clusterReorderData) {
+              this.clusterReorderData = null;
+            }
+
             if (this.clusterData) {
               this.clusterData = null;
             }
@@ -651,6 +681,7 @@ varying vec4 vColor;
               this.prevRows,
               this.options,
               this.clusterData,
+              this.clusterReorderData,
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
@@ -713,9 +744,13 @@ varying vec4 vColor;
             this.prevRows,
             this.options,
             this.clusterData,
+            this.clusterReorderData,
           )
           .then((toRender) => {
             // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
+
+            if (!toRender)
+              return;
 
             if (toRender.clusterResultsToExport) {
               this.bc.postMessage({
@@ -876,6 +911,10 @@ varying vec4 vColor;
 
             this.draw();
             this.animate();
+
+            if (this.clusterReorderData) {
+              this.clusterReorderData = null;
+            }
 
             if (this.clusterData) {
               this.clusterData = null;

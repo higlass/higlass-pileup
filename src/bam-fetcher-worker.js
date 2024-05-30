@@ -1707,7 +1707,12 @@ const renderSegments = (
   prevRows,
   trackOptions,
   clusterDataObj,
+  clusterReorderDataObj,
 ) => {
+  
+  if (clusterReorderDataObj) {
+    console.log(`clusterReorderDataObj (A) ${JSON.stringify(clusterReorderDataObj)}`);
+  }
 
   const allSegments = {};
   // const allSequences = {};
@@ -2420,6 +2425,9 @@ const renderSegments = (
     }
 
     // data.length = 0;
+  }
+  else if (clusterReorderDataObj && trackOptions.methylation) {
+    // console.log(`clusterReorderDataObj ${JSON.stringify(clusterReorderDataObj)}`);
   }
   else {
     for (let key of Object.keys(grouped)) {
