@@ -460,28 +460,9 @@ varying vec4 vColor;
             // this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
-          // case "sorted-cluster-layout":
-          //   if ((!this.options.methylation) || (this.clusterData))
-          //     break;
-          //   this.dataFetcher = new BAMDataFetcher(
-          //     this.dataFetcher.dataConfig,
-          //     this.options,
-          //     this.worker,
-          //     HGC,
-          //   );
-          //   this.dataFetcher.track = this;
-          //   this.prevRows = [];
-          //   this.removeTiles(Object.keys(this.fetchedTiles));
-          //   this.fetching.clear();
-          //   this.refreshTiles();
-          //   this.externalInit(this.options);
-          //   this.clusterData = null;
-          //   this.updateExistingGraphics();
-          //   this.prevOptions = Object.assign({}, this.options);
-          //   break;
           case "cluster-reorder-data":
             if (this.id === data.uid) {
-              if ((!this.options.methylation) || (this.clusterReorderData && this.clusterReorderData.uid === data.uid))
+              if ((!this.options.methylation) || (this.clusterReorderData && this.clusterReorderData.uid === data.uid && !this.clusterData))
                 break;
               this.dataFetcher = new BAMDataFetcher(
                 this.dataFetcher.dataConfig,
@@ -512,13 +493,13 @@ varying vec4 vColor;
                 probabilityThresholdRange: data.probabilityThresholdRange,
                 eventOverlapType: data.eventOverlapType,
               }
-              console.log(`cluster-reorder-data | ${this.id} | ${JSON.stringify(this.clusterReorderData)}`);
+              // console.log(`cluster-reorder-data | ${this.id} | ${data.uid} | ${JSON.stringify(this.clusterReorderData)}`);
               this.updateExistingGraphics();
               this.prevOptions = Object.assign({}, this.options);
             }
             break;
           case "cluster-layout":
-            if ((!this.options.methylation) || (this.clusterData))
+            if ((!this.options.methylation) || (this.clusterData && !this.clusterReorderData))
               break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
@@ -672,6 +653,7 @@ varying vec4 vColor;
     }
 
     updateExistingGraphics() {
+      // console.log(`updateExistingGraphics (start) | ${this.id}`);
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
         this.loadingText.text = 'Rendering...';
@@ -682,6 +664,7 @@ varying vec4 vColor;
         });
       } 
       else {
+        // console.log(`updateExistingGraphics (A) | ${this.id}`);
         this.worker.then((tileFunctions) => {
           tileFunctions
             .renderSegments(
@@ -698,9 +681,9 @@ varying vec4 vColor;
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
-              if (this.clusterReorderData) {
-                this.clusterReorderData = null;
-              }
+              // if (this.clusterReorderData) {
+              //   this.clusterReorderData = null;
+              // }
               if (
                 this.segmentGraphics
               ) {
@@ -723,6 +706,7 @@ varying vec4 vColor;
         return;
       }
 
+      // console.log(`updateExistingGraphics (B1) | ${this.id}`);
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
         this.updateLoadingText();
@@ -730,10 +714,12 @@ varying vec4 vColor;
       }
 
       // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
+      // console.log(`updateExistingGraphics (B2) | ${this.id}`);
       if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
         return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
+      // console.log(`updateExistingGraphics (B2+) | ${this.id}`);
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
 
@@ -748,9 +734,9 @@ varying vec4 vColor;
 
       this.updateLoadingText();
 
+      // console.log(`updateExistingGraphics (B3) | ${this.id}`);
       // if (this.clusterReorderData) {
-      //   console.log(`clearing clusterReorderData`);
-      //   this.clusterReorderData = null;
+      //   console.log(`clusterReorderData exists`);
       // }
 
       this.worker.then((tileFunctions) => {
@@ -780,7 +766,7 @@ varying vec4 vColor;
                 uid: this.id,
                 data: toRender.clusterResultsToExport,
               });
-              // console.log(`export_subregion_clustering_end | ${this.id}`);
+              // console.log(`export_subregion_clustering_end | ${this.id} | ${toRender.clusterResultsToExport}`);
             }
 
             this.loadingText.visible = false;

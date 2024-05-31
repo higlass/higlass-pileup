@@ -1854,11 +1854,15 @@ const renderSegments = (
   let clusterResultsToExport = null;
 
   // calculate the the rows of reads for each group
+  // if (trackOptions && trackOptions.methylation) {
+  //   // console.log(`clusterReorderDataObj exists ${JSON.stringify((clusterReorderDataObj))}`);
+  // }
   if ((clusterDataObj || clusterReorderDataObj) && trackOptions.methylation) {
     // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
     // const chromName = clusterDataObj.range.left.chrom;
 
-    const clusterDataObjToUse = (clusterDataObj) ? clusterDataObj : clusterReorderDataObj;
+    const clusterDataObjToUse = (clusterReorderDataObj) ? clusterReorderDataObj : clusterDataObj;
+    // console.log(`using ${(clusterReorderDataObj) ? 'clusterReorderDataObj' : 'clusterDataObj'} for row ordering`);
 
     const reorderIndexList = (clusterReorderDataObj) ? clusterReorderDataObj.order : null;
     const chromStart = clusterDataObjToUse.range.left.start;
@@ -2354,10 +2358,10 @@ const renderSegments = (
             distance: distanceFnToCall,
             linkage: averageDistance,
           });
-          clusterResultsToExport = (clusterDataObj) ? clusters : null;
+          clusterResultsToExport = (clusterReorderDataObj) ? null : clusters;
           // console.log(`order ${order}`);
-          const rowOrdering = (clusterDataObj) ? order : reorderIndexList;
-          console.log(`using ${(clusterDataObj) ? 'clusterDataObj' : 'clusterReorderDataObj'} for row ordering`);
+          // const rowOrdering = (clusterDataObj) ? order : (JSON.stringify(reorderIndexList.sort()) === JSON.stringify(order.sort())) ? reorderIndexList : order;
+          const rowOrdering = (clusterReorderDataObj) ? reorderIndexList : order;
           const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
             const segment = segmentList[trueRowIdx];
@@ -2393,10 +2397,12 @@ const renderSegments = (
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
-          clusterResultsToExport = (clusterDataObj) ? results : null;
+          clusterResultsToExport = (clusterReorderDataObj) ? null : results;
           // console.log(`result ${JSON.stringify(result)}`);
           if (results.clusters.length > 0) {
-            const rowOrdering = (clusterDataObj) ? flatten(results.clusters.concat(results.noise)) : reorderIndexList;
+            const order = flatten(results.clusters.concat(results.noise));
+            // const rowOrdering = (clusterDataObj) ? order : (JSON.stringify(reorderIndexList.sort()) === JSON.stringify(order.sort())) ? reorderIndexList : order;
+            const rowOrdering = (clusterReorderDataObj) ? reorderIndexList : order;
             const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];
               const segment = segmentList[trueRowIdx];
@@ -2628,6 +2634,8 @@ const renderSegments = (
       yBottom = yTop + height;
 
       row.map((segment, j) => {
+        if (!segment.from || !segment.to) return;
+
         const from = xScale(segment.from);
         const to = xScale(segment.to);
 
