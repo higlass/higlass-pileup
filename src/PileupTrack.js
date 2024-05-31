@@ -483,25 +483,38 @@ varying vec4 vColor;
             if (this.id === data.uid) {
               if ((!this.options.methylation) || (this.clusterReorderData && this.clusterReorderData.uid === data.uid))
                 break;
-              // this.dataFetcher = new BAMDataFetcher(
-              //   this.dataFetcher.dataConfig,
-              //   this.options,
-              //   this.worker,
-              //   HGC,
-              // );
-              // this.dataFetcher.track = this;
-              // this.prevRows = [];
-              // this.removeTiles(Object.keys(this.fetchedTiles));
-              // this.fetching.clear();
-              // this.refreshTiles();
-              // this.externalInit(this.options);
+              this.dataFetcher = new BAMDataFetcher(
+                this.dataFetcher.dataConfig,
+                this.options,
+                this.worker,
+                HGC,
+              );
+              this.dataFetcher.track = this;
+              this.prevRows = [];
+              this.removeTiles(Object.keys(this.fetchedTiles));
+              this.fetching.clear();
+              this.refreshTiles();
+              this.externalInit(this.options);
+              if (this.clusterData) {
+                this.clusterData = null;
+              }
               this.clusterReorderData = {
                 uid: data.uid,
                 order: data.order,
+                range: data.range, 
+                viewportRange: data.viewportRange,
+                method: data.method,
+                distanceFn: data.distanceFn,
+                eventCategories: data.eventCategories,
+                linkage: data.linkage,
+                epsilon: data.epsilon,
+                minimumPoints: data.minimumPoints,
+                probabilityThresholdRange: data.probabilityThresholdRange,
+                eventOverlapType: data.eventOverlapType,
               }
               console.log(`cluster-reorder-data | ${this.id} | ${JSON.stringify(this.clusterReorderData)}`);
-              // this.updateExistingGraphics();
-              // this.prevOptions = Object.assign({}, this.options);
+              this.updateExistingGraphics();
+              this.prevOptions = Object.assign({}, this.options);
             }
             break;
           case "cluster-layout":
@@ -685,6 +698,9 @@ varying vec4 vColor;
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
+              if (this.clusterReorderData) {
+                this.clusterReorderData = null;
+              }
               if (
                 this.segmentGraphics
               ) {
@@ -731,6 +747,11 @@ varying vec4 vColor;
       // });
 
       this.updateLoadingText();
+
+      // if (this.clusterReorderData) {
+      //   console.log(`clearing clusterReorderData`);
+      //   this.clusterReorderData = null;
+      // }
 
       this.worker.then((tileFunctions) => {
         tileFunctions

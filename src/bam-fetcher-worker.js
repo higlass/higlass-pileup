@@ -1710,10 +1710,10 @@ const renderSegments = (
   clusterReorderDataObj,
 ) => {
   
-  if (clusterReorderDataObj) {
-    console.log(`clusterReorderDataObj (A) ${JSON.stringify(clusterReorderDataObj)}`);
-    return;
-  }
+  // if (clusterReorderDataObj) {
+  //   console.log(`clusterReorderDataObj (renderSegments start) ${JSON.stringify(clusterReorderDataObj)}`);
+  //   return;
+  // }
 
   const allSegments = {};
   // const allSequences = {};
@@ -1803,7 +1803,7 @@ const renderSegments = (
 
   prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterDataObj) {
+  if (areMatesRequired(trackOptions) && (!clusterDataObj || !clusterReorderDataObj)) {
     // At this point reads are colored correctly, but we only want to align those reads that
     // are within the visible tiles - not mates that are far away, as this can mess up the alignment
     let tileMinPos = Number.MAX_VALUE;
@@ -1854,21 +1854,26 @@ const renderSegments = (
   let clusterResultsToExport = null;
 
   // calculate the the rows of reads for each group
-  if (clusterDataObj && trackOptions.methylation) {
+  if ((clusterDataObj || clusterReorderDataObj) && trackOptions.methylation) {
     // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
     // const chromName = clusterDataObj.range.left.chrom;
-    const chromStart = clusterDataObj.range.left.start;
-    const chromEnd = clusterDataObj.range.right.stop;
-    const viewportChromStart = clusterDataObj.viewportRange.left.start;
-    const viewportChromEnd = clusterDataObj.viewportRange.right.stop;
-    const method = clusterDataObj.method;
-    const distanceFn = clusterDataObj.distanceFn;
-    const eventCategories = clusterDataObj.eventCategories;
-    const linkage = clusterDataObj.linkage;
-    const epsilon = clusterDataObj.epsilon;
-    const minimumPoints = clusterDataObj.minimumPoints;
-    const probabilityThresholdRange = {min: clusterDataObj.probabilityThresholdRange[0], max: clusterDataObj.probabilityThresholdRange[1]};
-    const eventOverlapType = clusterDataObj.eventOverlapType;
+
+    const clusterDataObjToUse = (clusterDataObj) ? clusterDataObj : clusterReorderDataObj;
+
+    const reorderIndexList = (clusterReorderDataObj) ? clusterReorderDataObj.order : null;
+    const chromStart = clusterDataObjToUse.range.left.start;
+    const chromEnd = clusterDataObjToUse.range.right.stop;
+    const viewportChromStart = clusterDataObjToUse.viewportRange.left.start;
+    const viewportChromEnd = clusterDataObjToUse.viewportRange.right.stop;
+    const method = clusterDataObjToUse.method;
+    const distanceFn = clusterDataObjToUse.distanceFn;
+    const eventCategories = clusterDataObjToUse.eventCategories;
+    const linkage = clusterDataObjToUse.linkage;
+    const epsilon = clusterDataObjToUse.epsilon;
+    const minimumPoints = clusterDataObjToUse.minimumPoints;
+    const probabilityThresholdRange = {min: clusterDataObjToUse.probabilityThresholdRange[0], max: clusterDataObjToUse.probabilityThresholdRange[1]};
+    const eventOverlapType = clusterDataObjToUse.eventOverlapType;
+
     // console.log(`probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)}`);
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
@@ -2349,9 +2354,11 @@ const renderSegments = (
             distance: distanceFnToCall,
             linkage: averageDistance,
           });
-          clusterResultsToExport = clusters;
+          clusterResultsToExport = (clusterDataObj) ? clusters : null;
           // console.log(`order ${order}`);
-          const orderedSegments = order.map(i => {
+          const rowOrdering = (clusterDataObj) ? order : reorderIndexList;
+          console.log(`using ${(clusterDataObj) ? 'clusterDataObj' : 'clusterReorderDataObj'} for row ordering`);
+          const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
             const segment = segmentList[trueRowIdx];
             return [segment];
@@ -2386,11 +2393,11 @@ const renderSegments = (
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
-          clusterResultsToExport = results;
+          clusterResultsToExport = (clusterDataObj) ? results : null;
           // console.log(`result ${JSON.stringify(result)}`);
           if (results.clusters.length > 0) {
-            const order = flatten(results.clusters.concat(results.noise));
-            const orderedSegments = order.map(i => {
+            const rowOrdering = (clusterDataObj) ? flatten(results.clusters.concat(results.noise)) : reorderIndexList;
+            const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];
               const segment = segmentList[trueRowIdx];
               return [segment];
@@ -2426,9 +2433,6 @@ const renderSegments = (
     }
 
     // data.length = 0;
-  }
-  else if (clusterReorderDataObj && trackOptions.methylation) {
-    console.log(`clusterReorderDataObj ${JSON.stringify(clusterReorderDataObj)}`);
   }
   else {
     for (let key of Object.keys(grouped)) {
