@@ -1206,7 +1206,7 @@ const exportSegmentsAsBED12 = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               switch (eventOverlapType) {
-                case 'Full region':
+                case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1229,7 +1229,7 @@ const exportSegmentsAsBED12 = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial region':
+                case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1328,7 +1328,7 @@ const exportSegmentsAsBED12 = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               switch (eventOverlapType) {
-                case 'Full region':
+                case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1351,7 +1351,7 @@ const exportSegmentsAsBED12 = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial region':
+                case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1457,7 +1457,7 @@ const exportSegmentsAsBED12 = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               switch (eventOverlapType) {
-                case 'Full region':
+                case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1480,7 +1480,7 @@ const exportSegmentsAsBED12 = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial region':
+                case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1974,7 +1974,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Full region':
+                case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -1997,7 +1997,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial region':
+                case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -2121,7 +2121,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Full region':
+                case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -2144,7 +2144,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial region':
+                case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -2274,7 +2274,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Full region':
+                case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
@@ -2297,7 +2297,7 @@ const renderSegments = (
                     data[allowedRowIdx++] = eventVec;
                   }
                   break;
-                case 'Partial region':
+                case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
                     const offsetEnd = offsetStart + eventVecLen;
