@@ -2403,8 +2403,7 @@ const renderSegments = (
             data: data,
             distance: distanceFnToCall,
             linkage: averageDistance,
-          });
-          clusterResultsToExport = clusters;
+          });          
           const newickString = convertAgnesClusterResultsToNewickString(clusters);
           const phylotreeTree = new phylotree(newickString);
           const phylotreeTreeOrder = fibertreeViewPhylotreeBranchDataToOrderedList(phylotreeTree.nodes.data).reverse();
@@ -2412,6 +2411,10 @@ const renderSegments = (
           if ((order.length === phylotreeTreeOrder.length) && (JSON.stringify(order.slice(0).sort((a, b) => a - b)) === JSON.stringify(phylotreeTreeOrder.slice(0).sort((a, b) => a - b)))) {
             rowOrdering = phylotreeTreeOrder;
           }
+          clusterResultsToExport = {
+            clusters: clusters,
+            order: rowOrdering,
+          };
           const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
             const segment = segmentList[trueRowIdx];
@@ -2447,11 +2450,14 @@ const renderSegments = (
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
-          clusterResultsToExport = results;
           // console.log(`result ${JSON.stringify(result)}`);
           if (results.clusters.length > 0) {
             const order = flatten(results.clusters.concat(results.noise));
             const rowOrdering = order;
+            clusterResultsToExport = {
+              clusters: results,
+              order: rowOrdering,
+            };
             const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];
               const segment = segmentList[trueRowIdx];
