@@ -10,8 +10,65 @@ import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
 // import BAMDataFetcher from './bam-fetcher';
 import { clusterData, euclideanDistance, jaccardDistance, averageDistance } from 'apr144-hclust';
 import { RemoteFile } from 'generic-filehandle';
+import { phylotree } from "phylotree";
 
 const dbscan = require('apr144-dbscan');
+
+function convertAgnesClusterResultsToNewickString(agnesClusterResults) {
+  const hclustToNewick = (node, suffix) => {
+    let newick = '';
+    const children = node.children;
+    let childless = false;
+    let siblings = [];
+    for (let i = 0; i < children.length; i++) {
+      if (children[i].children) {
+        // console.log(`has-child [A] | ${JSON.stringify(children[i])} | ${suffix}\n`);
+        newick += hclustToNewick(children[i], `:${children[i].height}`);
+      }
+      else {
+        // console.log(`childless [B] | ${JSON.stringify(children[i])} \n`);
+        siblings.push(children[i]);
+        childless = true;
+      }
+    }
+    if (childless) {
+      // flatten siblings
+      // console.log(`merging A | ${JSON.stringify(siblings)} \n`);
+      newick += '(';
+      for (let i = 0; i < siblings.length; i++) {
+        for (let j = 0; j < siblings[i].indexes.length; j++) {
+          newick += `'${siblings[i].indexes[j]}':${siblings[i].height},`;
+        }
+      }
+      newick = newick.slice(0, -1); 
+      newick += ')';
+      siblings.length = 0;
+    }
+    return `(${newick}${suffix})`;
+  }
+  const newick = hclustToNewick(agnesClusterResults, `:${agnesClusterResults.height}`);
+  return newick;
+}
+
+function isInt(number) {
+  if (!/^["|']{0,1}[-]{0,1}\d{0,}(\.{0,1}\d+)["|']{0,1}$/.test(number)) return false;
+  return !(number - parseInt(number));
+}
+
+function fibertreeViewPhylotreeBranchDataToOrderedList(branch) {
+  let orderedList = [];
+  let stack = [branch];
+  while (stack.length > 0) {
+    let node = stack.pop();
+    if (node.children) {
+      stack.push(...node.children);
+    }
+    if (isInt(node.name)) orderedList.push(parseInt(node.name));
+    // orderedList.push(parseInt(node.name));
+    // orderedList.push(node.name);
+  }
+  return orderedList;
+}
 
 function currTime() {
   const d = new Date();
@@ -1707,14 +1764,8 @@ const renderSegments = (
   prevRows,
   trackOptions,
   clusterDataObj,
-  clusterReorderDataObj,
 ) => {
   
-  // if (clusterReorderDataObj) {
-  //   console.log(`clusterReorderDataObj (renderSegments start) ${JSON.stringify(clusterReorderDataObj)}`);
-  //   return;
-  // }
-
   const allSegments = {};
   // const allSequences = {};
   const highlightPositions = {};
@@ -1803,7 +1854,7 @@ const renderSegments = (
 
   prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && (!clusterDataObj || !clusterReorderDataObj)) {
+  if (areMatesRequired(trackOptions) && !clusterDataObj) {
     // At this point reads are colored correctly, but we only want to align those reads that
     // are within the visible tiles - not mates that are far away, as this can mess up the alignment
     let tileMinPos = Number.MAX_VALUE;
@@ -1854,17 +1905,12 @@ const renderSegments = (
   let clusterResultsToExport = null;
 
   // calculate the the rows of reads for each group
-  // if (trackOptions && trackOptions.methylation) {
-  //   // console.log(`clusterReorderDataObj exists ${JSON.stringify((clusterReorderDataObj))}`);
-  // }
-  if ((clusterDataObj || clusterReorderDataObj) && trackOptions.methylation) {
+  if (clusterDataObj && trackOptions.methylation) {
     // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
     // const chromName = clusterDataObj.range.left.chrom;
 
-    const clusterDataObjToUse = (clusterReorderDataObj) ? clusterReorderDataObj : clusterDataObj;
-    // console.log(`using ${(clusterReorderDataObj) ? 'clusterReorderDataObj' : 'clusterDataObj'} for row ordering`);
+    const clusterDataObjToUse = clusterDataObj;
 
-    const reorderIndexList = (clusterReorderDataObj) ? clusterReorderDataObj.order : null;
     const chromStart = clusterDataObjToUse.range.left.start;
     const chromEnd = clusterDataObjToUse.range.right.stop;
     const viewportChromStart = clusterDataObjToUse.viewportRange.left.start;
@@ -2358,10 +2404,14 @@ const renderSegments = (
             distance: distanceFnToCall,
             linkage: averageDistance,
           });
-          clusterResultsToExport = (clusterReorderDataObj) ? null : clusters;
-          // console.log(`order ${order}`);
-          // const rowOrdering = (clusterDataObj) ? order : (JSON.stringify(reorderIndexList.sort()) === JSON.stringify(order.sort())) ? reorderIndexList : order;
-          const rowOrdering = (clusterReorderDataObj) ? reorderIndexList : order;
+          clusterResultsToExport = clusters;
+          const newickString = convertAgnesClusterResultsToNewickString(clusters);
+          const phylotreeTree = new phylotree(newickString);
+          const phylotreeTreeOrder = fibertreeViewPhylotreeBranchDataToOrderedList(phylotreeTree.nodes.data).reverse();
+          let rowOrdering = order;
+          if ((order.length === phylotreeTreeOrder.length) && (JSON.stringify(order.slice(0).sort((a, b) => a - b)) === JSON.stringify(phylotreeTreeOrder.slice(0).sort((a, b) => a - b)))) {
+            rowOrdering = phylotreeTreeOrder;
+          }
           const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
             const segment = segmentList[trueRowIdx];
@@ -2397,12 +2447,11 @@ const renderSegments = (
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
           });
-          clusterResultsToExport = (clusterReorderDataObj) ? null : results;
+          clusterResultsToExport = results;
           // console.log(`result ${JSON.stringify(result)}`);
           if (results.clusters.length > 0) {
             const order = flatten(results.clusters.concat(results.noise));
-            // const rowOrdering = (clusterDataObj) ? order : (JSON.stringify(reorderIndexList.sort()) === JSON.stringify(order.sort())) ? reorderIndexList : order;
-            const rowOrdering = (clusterReorderDataObj) ? reorderIndexList : order;
+            const rowOrdering = order;
             const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];
               const segment = segmentList[trueRowIdx];

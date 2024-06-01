@@ -77,6 +77,7 @@
     "generic-filehandle": "^3.1.2",
     "higlass-register": "^0.1.0",
     "lru-cache": "^6.0.0",
+    "phylotree": "^2.0.1",
     "raw-loader": "^4.0.2",
     "threads": "v1.7.0"
   },
