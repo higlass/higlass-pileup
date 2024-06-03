@@ -192,6 +192,7 @@ const PileupTrack = (HGC, ...args) => {
       this.worker = worker;
       this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
+      this.trackUpdatesAreFrozen = false;
 
       // this.optionsDict = {};
       // this.optionsDict[trackId] = options;
@@ -433,8 +434,14 @@ varying vec4 vColor;
       }
       if (data.state === 'request') {
         switch (data.msg) {
+          case "track-updates-freeze":
+            this.trackUpdatesAreFrozen = true;
+            break;
+          case "track-updates-unfreeze":
+            this.trackUpdatesAreFrozen = false;
+            break;
           case "refresh-layout":
-            if (!this.options.methylation) 
+            if (!this.options.methylation || this.trackUpdatesAreFrozen) 
               break;
             // this.dataFetcher = new BAMDataFetcher(
             //   this.dataFetcher.dataConfig,
@@ -460,7 +467,7 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
-            if ((!this.options.methylation) || this.clusterData)
+            if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
@@ -611,6 +618,8 @@ varying vec4 vColor;
 
     updateExistingGraphics() {
       // console.log(`updateExistingGraphics (start) | ${this.id}`);
+
+      if (this.trackUpdatesAreFrozen) return;
       
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {

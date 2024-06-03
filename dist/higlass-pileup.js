@@ -4119,6 +4119,7 @@ var PileupTrack = function PileupTrack(HGC) {
       _this.worker = worker;
       _this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       _this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
+      _this.trackUpdatesAreFrozen = false;
 
       // this.optionsDict = {};
       // this.optionsDict[trackId] = options;
@@ -4315,8 +4316,14 @@ var PileupTrack = function PileupTrack(HGC) {
         }
         if (data.state === 'request') {
           switch (data.msg) {
+            case "track-updates-freeze":
+              this.trackUpdatesAreFrozen = true;
+              break;
+            case "track-updates-unfreeze":
+              this.trackUpdatesAreFrozen = false;
+              break;
             case "refresh-layout":
-              if (!this.options.methylation) break;
+              if (!this.options.methylation || this.trackUpdatesAreFrozen) break;
               // this.dataFetcher = new BAMDataFetcher(
               //   this.dataFetcher.dataConfig,
               //   this.options,
@@ -4359,7 +4366,7 @@ var PileupTrack = function PileupTrack(HGC) {
               this.prevOptions = Object.assign({}, this.options);
               break;
             case "cluster-layout":
-              if (!this.options.methylation || this.clusterData) break;
+              if (!this.options.methylation || this.clusterData || this.trackUpdatesAreFrozen) break;
               this.dataFetcher = new bam_fetcher(this.dataFetcher.dataConfig, this.options, this.worker, HGC);
               this.dataFetcher.track = this;
               this.prevRows = [];
@@ -4474,6 +4481,7 @@ var PileupTrack = function PileupTrack(HGC) {
         var _this4 = this;
         // console.log(`updateExistingGraphics (start) | ${this.id}`);
 
+        if (this.trackUpdatesAreFrozen) return;
         var updateExistingGraphicsStart = performance.now();
         if (!this.maxTileWidthReached) {
           this.loadingText.text = 'Rendering...';
