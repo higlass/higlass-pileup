@@ -62106,7 +62106,7 @@ const renderSegments = (
     const eventVecLen = chromEnd - chromStart;
     const nReads = segmentList.length;
     // console.log(`nReads ${JSON.stringify(nReads)}`);
-    const data = new Array();
+    const clusterMatrix = new Array();
     let allowedRowIdx = 0;
     const trueRow = {};
 
@@ -62148,7 +62148,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 case 'Full subregion':
@@ -62171,7 +62171,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 case 'Partial subregion':
@@ -62194,7 +62194,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
                     const offsetModifier = segmentStart - chromStart;
@@ -62214,7 +62214,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
                     const offsetStart = chromStart - segmentStart;
@@ -62235,7 +62235,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
                     const offsetStart = segmentStart - chromStart;
@@ -62256,7 +62256,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 default:
@@ -62295,7 +62295,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 case 'Full subregion':
@@ -62318,7 +62318,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 case 'Partial subregion':
@@ -62341,7 +62341,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
                     const offsetModifier = segmentStart - chromStart;
@@ -62361,7 +62361,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
                     const offsetStart = chromStart - segmentStart;
@@ -62382,7 +62382,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
                     const offsetStart = segmentStart - chromStart;
@@ -62403,7 +62403,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 default:
@@ -62448,7 +62448,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 case 'Full subregion':
@@ -62471,7 +62471,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 case 'Partial subregion':
@@ -62494,7 +62494,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
                     const offsetModifier = segmentStart - chromStart;
@@ -62514,7 +62514,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
                     const offsetStart = chromStart - segmentStart;
@@ -62535,7 +62535,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
                     const offsetStart = segmentStart - chromStart;
@@ -62556,7 +62556,7 @@ const renderSegments = (
                       }
                     }
                     trueRow[allowedRowIdx] = i;
-                    data[allowedRowIdx++] = eventVec;
+                    clusterMatrix[allowedRowIdx++] = eventVec;
                   }
                   break;
                 default:
@@ -62572,25 +62572,27 @@ const renderSegments = (
         throw new Error(`Cluster method [${method}] is unknown or unsupported for subregion cluster matrix construction`);
     }
 
-    if (data.length > 0) {
+    if (clusterMatrix.length > 0) {
       switch (method) {
         case 'AGNES':
-          // console.log(`data ${JSON.stringify(data)}`);
+          // console.log(`clusterMatrix ${JSON.stringify(clusterMatrix)}`);
           const { clusters, distances, order, clustersGivenK } = (0,hclust_min/* clusterData */.eM)({
-            data: data,
+            data: clusterMatrix,
             distance: distanceFnToCall,
             linkage: hclust_min/* averageDistance */.bP,
           });          
           const newickString = convertAgnesClusterResultsToNewickString(clusters);
           const phylotreeTree = new src_main(newickString);
           const phylotreeTreeOrder = fibertreeViewPhylotreeBranchDataToOrderedList(phylotreeTree.nodes.data).reverse();
-          let rowOrdering = order;
-          if ((order.length === phylotreeTreeOrder.length) && (JSON.stringify(order.slice(0).sort((a, b) => a - b)) === JSON.stringify(phylotreeTreeOrder.slice(0).sort((a, b) => a - b)))) {
-            rowOrdering = phylotreeTreeOrder;
-          }
+          // let rowOrdering = order;
+          // if ((order.length === phylotreeTreeOrder.length) && (JSON.stringify(order.slice(0).sort((a, b) => a - b)) === JSON.stringify(phylotreeTreeOrder.slice(0).sort((a, b) => a - b)))) {
+          //   rowOrdering = phylotreeTreeOrder;
+          // }
+          const rowOrdering = phylotreeTreeOrder;
           clusterResultsToExport = {
             clusters: clusters,
             order: rowOrdering,
+            rawClusterSignal: clusterMatrix,
           };
           const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
@@ -62622,7 +62624,7 @@ const renderSegments = (
             return out;
           }
           const results = dbscan({
-            dataset: data,
+            dataset: clusterMatrix,
             epsilon: epsilon,
             minimumPoints: minimumPoints,
             distanceFunction: distanceFnToCall,
@@ -62634,6 +62636,7 @@ const renderSegments = (
             clusterResultsToExport = {
               clusters: results,
               order: rowOrdering,
+              rawClusterSignal: clusterMatrix,
             };
             const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];
