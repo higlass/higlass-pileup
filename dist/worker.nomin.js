@@ -62182,6 +62182,7 @@ const renderSegments = (
                     allowedRowIdx++;
                   }
                   break;
+
                 case 'Full subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
@@ -62211,6 +62212,23 @@ const renderSegments = (
                       viewportRawEventVec[i] = -255;
                     }
                     const viewportOffsetStart = viewportChromStart - segmentStart;
+                    
+                    if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = 0;
+                      }
+                    }
+                    else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                      for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = 0;
+                      }
+                    }
+                    else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                      const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                      for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                        viewportRawEventVec[i] = 0;
+                      }
+                    }
                     for (const mo of mos) {
                       const offsets = mo.offsets;
                       const probabilities = mo.probabilities;
@@ -62231,6 +62249,7 @@ const renderSegments = (
                     allowedRowIdx++;
                   }
                   break;
+
                 case 'Partial subregion':
                   if ((segmentStart < chromStart) && (segmentEnd > chromEnd)) {
                     const offsetStart = chromStart - segmentStart;
