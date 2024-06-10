@@ -60821,9 +60821,12 @@ const tilesetInfo = (uid) => {
 };
 
 const tile = async (uid, z, x) => {
-  const {maxTileWidth, maxSampleSize} = dataOptions[uid];
+  const {maxTileWidth, maxSampleSize, fiberMinLength, fiberMaxLength} = dataOptions[uid];
 
   // console.log(`maxSampleSize ${maxSampleSize}`);
+  // console.log(`dataOptions ${JSON.stringify(dataOptions)}`);
+  // console.log(`fiberMinLength ${fiberMinLength}`);
+  // console.log(`fiberMaxLength ${fiberMaxLength}`);
 
   const { bamUrl, fastaUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
@@ -60905,9 +60908,10 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
+                const filteredByLengthRecords = mappedRecords.filter((rec) => (rec.to - rec.from) >= fiberMinLength && (rec.to - rec.from) <= fiberMaxLength);
                 tileValues.set(
                   `${uid}.${z}.${x}`,
-                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                  tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
                 );
               }),
           );
@@ -60984,9 +60988,10 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
+                const filteredByLengthRecords = mappedRecords.filter((rec) => (rec.to - rec.from) >= fiberMinLength && (rec.to - rec.from) <= fiberMaxLength);
                 tileValues.set(
                   `${uid}.${z}.${x}`,
-                  tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                  tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
                 );
                 return [];
               }),
@@ -62105,11 +62110,11 @@ const renderSegments = (
     // console.log(`probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)}`);
     let distanceFnToCall = null;
     const eventVecLen = chromEnd - chromStart;
-    const viewportRawEventVecLen = viewportChromEnd - viewportChromStart;
+    const viewportRawEventVecLen = (viewportChromEnd - viewportChromStart <= 5000) ? viewportChromEnd - viewportChromStart : null;
     const nReads = segmentList.length;
     // console.log(`nReads ${JSON.stringify(nReads)}`);
     const clusterMatrix = new Array();
-    const viewportRawEventMatrix = new Array();
+    const viewportRawEventMatrix = (viewportRawEventVecLen) ? new Array() : [];
     let allowedRowIdx = 0;
     const trueRow = {};
 
@@ -62156,29 +62161,31 @@ const renderSegments = (
                     // ** viewport event matrix **
                     // note: full viewport overlap allows init to 0
                     // for loop provides faster initialization than Array.init
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = 0;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    const viewportOffsetEnd = viewportOffsetStart + viewportRawEventVecLen;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx];
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= viewportOffsetStart) && (offset <= viewportOffsetEnd)) {
-                            viewportRawEventVec[offset - viewportOffsetStart] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = 0;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      const viewportOffsetEnd = viewportOffsetStart + viewportRawEventVecLen;
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx];
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= viewportOffsetStart) && (offset <= viewportOffsetEnd)) {
+                              viewportRawEventVec[offset - viewportOffsetStart] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62207,45 +62214,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    
-                    if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
                       for (let i = 0; i < viewportRawEventVecLen; i++) {
-                        viewportRawEventVec[i] = 0;
+                        viewportRawEventVec[i] = -255;
                       }
-                    }
-                    else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
-                      for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
-                        viewportRawEventVec[i] = 0;
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
                       }
-                    }
-                    else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
-                      const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
-                      for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
-                        viewportRawEventVec[i] = 0;
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
                       }
-                    }
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62274,28 +62283,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
@@ -62320,28 +62348,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
@@ -62367,28 +62414,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
@@ -62414,28 +62480,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62480,29 +62565,31 @@ const renderSegments = (
                     // ** viewport event matrix **
                     // note: full viewport overlap allows init to 0
                     // for loop provides faster initialization than Array.init
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = 0;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    const viewportOffsetEnd = viewportOffsetStart + viewportRawEventVecLen;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx];
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= viewportOffsetStart) && (offset <= viewportOffsetEnd)) {
-                            viewportRawEventVec[offset - viewportOffsetStart] = 1;
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = 0;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      const viewportOffsetEnd = viewportOffsetStart + viewportRawEventVecLen;
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx];
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= viewportOffsetStart) && (offset <= viewportOffsetEnd)) {
+                              viewportRawEventVec[offset - viewportOffsetStart] = 1;
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62530,28 +62617,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = 1;
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = 1;
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62579,28 +62685,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = 1;
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = 1;
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
@@ -62625,28 +62750,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = 1;
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = 1;
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
@@ -62672,28 +62816,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = 1;
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = 1;
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
@@ -62719,28 +62882,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = 1;
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = 1;
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62791,29 +62973,31 @@ const renderSegments = (
                     // ** viewport event matrix **
                     // note: full viewport overlap allows init to 0
                     // for loop provides faster initialization than Array.init
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = 0;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    const viewportOffsetEnd = viewportOffsetStart + viewportRawEventVecLen;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx];
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= viewportOffsetStart) && (offset <= viewportOffsetEnd)) {
-                            viewportRawEventVec[offset - viewportOffsetStart] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = 0;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      const viewportOffsetEnd = viewportOffsetStart + viewportRawEventVecLen;
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx];
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= viewportOffsetStart) && (offset <= viewportOffsetEnd)) {
+                              viewportRawEventVec[offset - viewportOffsetStart] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62841,28 +63025,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
@@ -62890,28 +63093,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart >= chromStart) && (segmentEnd <= chromEnd)) {
@@ -62936,28 +63158,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart < chromStart) && (segmentEnd <= chromEnd) && (segmentEnd > chromStart)) {
@@ -62983,28 +63224,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   else if ((segmentStart >= chromStart) && (segmentStart < chromEnd) && (segmentEnd > chromEnd)) {
@@ -63030,28 +63290,47 @@ const renderSegments = (
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
-                    const viewportRawEventVec = new Array(viewportRawEventVecLen);
-                    for (let i = 0; i < viewportRawEventVecLen; i++) {
-                      viewportRawEventVec[i] = -255;
-                    }
-                    const viewportOffsetStart = viewportChromStart - segmentStart;
-                    for (const mo of mos) {
-                      const offsets = mo.offsets;
-                      const probabilities = mo.probabilities;
-                      if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
-                        || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
-                        for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
-                          const offset = offsets[offsetIdx] - viewportOffsetStart;
-                          const probability = probabilities[offsetIdx];
-                          // ** do not filter on probability, to start; maybe change this later **
-                          if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
-                            viewportRawEventVec[offset] = parseInt(probability);
+                    if (viewportRawEventVecLen) {
+                      const viewportRawEventVec = new Array(viewportRawEventVecLen);
+                      for (let i = 0; i < viewportRawEventVecLen; i++) {
+                        viewportRawEventVec[i] = -255;
+                      }
+                      const viewportOffsetStart = viewportChromStart - segmentStart;
+                      // initialization is revised to 0 where there is fiber coverage
+                      if ((segmentStart < viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = 0; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd > viewportChromEnd)) {
+                        for (let i = viewportOffsetStart; i < viewportRawEventVecLen; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      else if ((segmentStart >= viewportChromStart) && (segmentEnd <= viewportChromEnd)) {
+                        const viewportOffsetEnd = viewportRawEventVecLen - (viewportChromEnd - segmentEnd);
+                        for (let i = viewportOffsetStart; i < viewportOffsetEnd; i++) {
+                          viewportRawEventVec[i] = 0;
+                        }
+                      }
+                      for (const mo of mos) {
+                        const offsets = mo.offsets;
+                        const probabilities = mo.probabilities;
+                        if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
+                          || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
+                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
+                            const offset = offsets[offsetIdx] - viewportOffsetStart;
+                            const probability = probabilities[offsetIdx];
+                            // ** do not filter on probability, to start; maybe change this later **
+                            if ((offset >= 0) && (offset < viewportRawEventVecLen)) {
+                              viewportRawEventVec[offset] = parseInt(probability);
+                            }
                           }
                         }
                       }
+                      viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     }
-                    viewportRawEventMatrix[allowedRowIdx] = viewportRawEventVec;
                     allowedRowIdx++;
                   }
                   break;
