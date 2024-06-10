@@ -62039,6 +62039,11 @@ const renderSegments = (
 
   let segmentList = Object.values(allSegments);
 
+  const fiberMinLength = dataOptions[uid].fiberMinLength;
+  const fiberMaxLength = dataOptions[uid].fiberMaxLength;
+  console.log(`fiberMinLength ${JSON.stringify(fiberMinLength)} | fiberMaxLength ${JSON.stringify(fiberMaxLength)}`);
+  segmentList = segmentList.filter((s) => (s.to - s.from) >= fiberMinLength && (s.to - s.from) <= fiberMaxLength);
+
   if (trackOptions.minMappingQuality > 0){
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
@@ -62114,6 +62119,8 @@ const renderSegments = (
     const minimumPoints = clusterDataObjToUse.minimumPoints;
     const probabilityThresholdRange = {min: clusterDataObjToUse.probabilityThresholdRange[0], max: clusterDataObjToUse.probabilityThresholdRange[1]};
     const eventOverlapType = clusterDataObjToUse.eventOverlapType;
+    const fiberMinLength = clusterDataObjToUse.filterFiberMinLength;
+    const fiberMaxLength = clusterDataObjToUse.filterFiberMaxLength;
 
     // console.log(`probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)}`);
     let distanceFnToCall = null;
@@ -62141,6 +62148,8 @@ const renderSegments = (
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               const mos = segment.methylationOffsets;
+
+              if (segmentLength < fiberMinLength || segmentLength > fiberMaxLength) continue;
               
               // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
               switch (eventOverlapType) {
@@ -63377,6 +63386,7 @@ const renderSegments = (
             order: rowOrdering,
             // filteredEventClusterSignal: clusterMatrix,
             rawEventViewportSignal: viewportRawEventMatrix,
+            newickString: newickString,
           };
           const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
@@ -63422,6 +63432,7 @@ const renderSegments = (
               order: rowOrdering,
               // rawClusterSignal: clusterMatrix,
               rawEventViewportSignal: viewportRawEventMatrix,
+              newickString: null,
             };
             const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];

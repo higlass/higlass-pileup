@@ -492,6 +492,8 @@ varying vec4 vColor;
               minimumPoints: data.minimumPoints,
               probabilityThresholdRange: data.probabilityThresholdRange,
               eventOverlapType: data.eventOverlapType,
+              filterFiberMinLength: data.filterFiberMinLength,
+              filterFiberMaxLength: data.filterFiberMaxLength,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
