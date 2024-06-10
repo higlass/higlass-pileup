@@ -60908,6 +60908,10 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
+                // tileValues.set(
+                //   `${uid}.${z}.${x}`,
+                //   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                // );
                 const filteredByLengthRecords = mappedRecords.filter((rec) => (rec.to - rec.from) >= fiberMinLength && (rec.to - rec.from) <= fiberMaxLength);
                 tileValues.set(
                   `${uid}.${z}.${x}`,
@@ -60988,6 +60992,10 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
+                // tileValues.set(
+                //   `${uid}.${z}.${x}`,
+                //   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                // );
                 const filteredByLengthRecords = mappedRecords.filter((rec) => (rec.to - rec.from) >= fiberMinLength && (rec.to - rec.from) <= fiberMaxLength);
                 tileValues.set(
                   `${uid}.${z}.${x}`,
