@@ -647,6 +647,7 @@ const tile = async (uid, z, x) => {
 
   // console.log(`maxSampleSize ${maxSampleSize}`);
   // console.log(`dataOptions ${JSON.stringify(dataOptions)}`);
+  // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
   // console.log(`fiberMinLength ${fiberMinLength}`);
   // console.log(`fiberMaxLength ${fiberMaxLength}`);
 
@@ -730,15 +731,19 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-                // tileValues.set(
-                //   `${uid}.${z}.${x}`,
-                //   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                // );
-                const filteredByLengthRecords = mappedRecords.filter((rec) => (rec.to - rec.from) >= fiberMinLength && (rec.to - rec.from) <= fiberMaxLength);
-                tileValues.set(
-                  `${uid}.${z}.${x}`,
-                  tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
-                );
+                if (trackOptions[uid].methylation) {
+                  const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
+                  );
+                }
+                else {
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                  );
+                }
               }),
           );
 
@@ -814,15 +819,19 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-                // tileValues.set(
-                //   `${uid}.${z}.${x}`,
-                //   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
-                // );
-                const filteredByLengthRecords = mappedRecords.filter((rec) => (rec.to - rec.from) >= fiberMinLength && (rec.to - rec.from) <= fiberMaxLength);
-                tileValues.set(
-                  `${uid}.${z}.${x}`,
-                  tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
-                );
+                if (trackOptions[uid].methylation) {
+                  const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
+                  );
+                }
+                else {
+                  tileValues.set(
+                    `${uid}.${z}.${x}`,
+                    tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
+                  );
+                }
                 return [];
               }),
           );
@@ -1863,8 +1872,11 @@ const renderSegments = (
 
   const fiberMinLength = dataOptions[uid].fiberMinLength;
   const fiberMaxLength = dataOptions[uid].fiberMaxLength;
-  console.log(`fiberMinLength ${JSON.stringify(fiberMinLength)} | fiberMaxLength ${JSON.stringify(fiberMaxLength)}`);
-  segmentList = segmentList.filter((s) => (s.to - s.from) >= fiberMinLength && (s.to - s.from) <= fiberMaxLength);
+  // console.log(`fiberMinLength ${JSON.stringify(fiberMinLength)} | fiberMaxLength ${JSON.stringify(fiberMaxLength)}`);
+  
+  // if (dataOptions[uid].methylation) {
+  //   segmentList = segmentList.filter((s) => (s.to - s.from) >= fiberMinLength && (s.to - s.from) <= fiberMaxLength);
+  // }
 
   if (trackOptions.minMappingQuality > 0){
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
