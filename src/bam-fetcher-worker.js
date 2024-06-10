@@ -646,9 +646,9 @@ const tile = async (uid, z, x) => {
   const {maxTileWidth, maxSampleSize, fiberMinLength, fiberMaxLength} = dataOptions[uid];
 
   // console.log(`maxSampleSize ${maxSampleSize}`);
-  console.log(`dataOptions ${JSON.stringify(dataOptions)}`);
-  console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
-  console.log(`trackOptions[${uid}].methylation ${JSON.stringify(trackOptions[uid].methylation)}`);
+  // console.log(`dataOptions ${JSON.stringify(dataOptions)}`);
+  // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
+  // console.log(`trackOptions[${uid}].methylation ${JSON.stringify(trackOptions[uid].methylation)}`);
   // console.log(`fiberMinLength ${fiberMinLength}`);
   // console.log(`fiberMaxLength ${fiberMaxLength}`);
 
@@ -733,7 +733,7 @@ const tile = async (uid, z, x) => {
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
                 if (trackOptions[uid].methylation) {
-                  console.log(`filtering for methylation data (A) | ${fiberMinLength} | ${fiberMaxLength}`);
+                  // console.log(`filtering for methylation data (A) | ${fiberMinLength} | ${fiberMaxLength}`);
                   const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
                   tileValues.set(
                     `${uid}.${z}.${x}`,
@@ -822,7 +822,7 @@ const tile = async (uid, z, x) => {
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
                 if (trackOptions[uid].methylation) {
-                  console.log(`filtering for methylation data (B) | ${fiberMinLength} | ${fiberMaxLength}`);
+                  // console.log(`filtering for methylation data (B) | ${fiberMinLength} | ${fiberMaxLength}`);
                   const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
                   tileValues.set(
                     `${uid}.${z}.${x}`,
