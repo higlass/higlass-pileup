@@ -1,6 +1,13 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, indexDHSColors, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
+import { 
+  PILEUP_COLORS, 
+  indexDHSColors, 
+  fireColors, 
+  cigarTypeToText, 
+  areMatesRequired, 
+  calculateInsertSize 
+} from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -373,6 +380,18 @@ const PileupTrack = (HGC, ...args) => {
         if (options.indexDHS.backgroundColor) {
           // console.log(`[PileupTrack] options.indexDHS.backgroundColor ${options.indexDHS.backgroundColor}`);
           colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
+        }
+      }
+
+      //
+      // add FIRE color table data, if available
+      //
+      if (options && options.fire) { 
+        const fireColorDict = fireColors(options);
+        colorDict = {...colorDict, ...fireColorDict};
+        if (options.fire.metadata && options.fire.metadata.backgroundColor) {
+          // console.log(`[PileupTrack] options.fire.metadata.backgroundColor ${options.fire.metadata.backgroundColor}`);
+          colorDict.FIRE_BG = this.colorToArray(options.fire.metadata.backgroundColor);
         }
       }
 

@@ -44484,6 +44484,7 @@ const PILEUP_COLORS = {
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
+  FIRE_BG: [0.89, 0.89, 0.89, 1],
 };
 
 let PILEUP_COLOR_IXS = {};
@@ -44507,7 +44508,7 @@ const hexToRGBRawTriplet = (hex) => {
 const indexDHSColors = (options) => {
   if (!options.indexDHS) return {};
   // console.log(`options ${JSON.stringify(options)}`);
-  // console.log(`options.indexDHS.itemRGBMap ${JSON.stringify(options.indexDHS.itemRGBMap)}`);]
+  // console.log(`options.indexDHS.itemRGBMap ${JSON.stringify(options.indexDHS.itemRGBMap)}`);
   const colorTable = {};
   colorTable['INDEX_DHS_BG'] = [0, 0, 0, 0], // Index DHS background default
   Object.entries(options.indexDHS.itemRGBMap).map((o) => {
@@ -44515,6 +44516,21 @@ const indexDHSColors = (options) => {
     // const v = o[1];
     const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
     colorTable[`INDEX_DHS_${k}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify(colorTable)}`);
+  return {...PILEUP_COLORS, ...colorTable};
+};
+
+const fireColors = (options) => {
+  if (!options.fire) return {};
+  // console.log(`options.fire ${JSON.stringify(options.fire)}`);
+  const colorTable = {};
+  colorTable['FIRE_BG_TEST'] = [0.89, 0.89, 0.89, 1], // FIRE background default
+  Object.entries(options.fire.metadata.itemRGBMap).map((o) => {
+    const k = o[0];
+    // const v = o[1];
+    const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`FIRE_${k}`] = [...v, 1.0];
   });
   // console.log(`colorTable ${JSON.stringify(colorTable)}`);
   return {...PILEUP_COLORS, ...colorTable};
@@ -60355,6 +60371,19 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
   }
 
+  if (trackOptions.fire) {
+    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.fireColors = fireColors(trackOptions);
+    const newPileupColorIdxs = {};
+    Object.keys(segment.fireColors).map((x, i) => {
+      newPileupColorIdxs[x] = i;
+      return null;
+    })
+    replaceColorIdxs(newPileupColorIdxs);
+    segment.color = PILEUP_COLOR_IXS.FIRE_BG;
+    // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+  }
+
   if (trackOptions.indexDHS) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
@@ -63664,7 +63693,7 @@ const renderSegments = (
     const r = [group.start, group.end];
 
     // const yScale = scaleBand().domain(d).range(r).paddingInner(0.2);
-    const fiberPadding = (trackOptions && trackOptions.indexDHS) ? 0.25 : (trackOptions && trackOptions.methylation && trackOptions.methylation.hasOwnProperty('fiberPadding')) ? trackOptions.methylation.fiberPadding : 0.25;
+    const fiberPadding = (trackOptions && trackOptions.indexDHS) ? 0.25 : (trackOptions && trackOptions.methylation && trackOptions.methylation.hasOwnProperty('fiberPadding')) ? trackOptions.methylation.fiberPadding : 0.0;
     const yScale = band().domain(d).range(r).paddingInner(fiberPadding);
 
     let xLeft;
@@ -63675,8 +63704,10 @@ const renderSegments = (
     // let pileupSegmentsDrawn = 0;
 
     rows.map((row, i) => {
-      yTop = yScale(i);
+      // const height = (trackOptions && trackOptions.fire) ? yScale.bandwidth() / 3 : yScale.bandwidth();
+      // yTop = yScale(i) + (trackOptions && trackOptions.fire ? height : 0);
       const height = yScale.bandwidth();
+      yTop = yScale(i);
       yBottom = yTop + height;
 
       row.map((segment, j) => {
@@ -63688,13 +63719,18 @@ const renderSegments = (
         xLeft = from;
         xRight = to;
 
-        if (trackOptions && trackOptions.indexDHS) {
+        if (trackOptions && trackOptions.methylation) {
+          // if (trackOptions.methylation) console.log(`trackOptions.methylation ${JSON.stringify(trackOptions.methylation)} | segment.colorOverride ${segment.colorOverride} | segment.color ${segment.color}`);
+          // if (trackOptions.fire) console.log(`trackOptions.fire ${JSON.stringify(trackOptions.fire)} | segment.colorOverride ${segment.colorOverride} | segment.color ${segment.color}`);
+          addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+          // pileupSegmentsDrawn += 1;
+        }
+        else if (trackOptions && trackOptions.indexDHS) {
           // console.log(`PILEUP_COLOR_IXS.INDEX_DHS_BG ${PILEUP_COLOR_IXS.INDEX_DHS_BG} vs segment.color ${segment.color} or segment.colorOverride ${segment.colorOverride}`);
           addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
         }
-        else {
-          addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
-          // pileupSegmentsDrawn += 1;
+        else if (trackOptions && trackOptions.fire) {
+          // addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
         }
 
         if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
@@ -63858,7 +63894,7 @@ const renderSegments = (
           }
         }
 
-        if (trackOptions && trackOptions.indexDHS) {
+        else if (trackOptions && trackOptions.indexDHS) {
           // console.log(`segment ${JSON.stringify(segment, null, 2)}`);
           //
           // apply color to segment, if available
@@ -63952,7 +63988,8 @@ const renderSegments = (
                   defaultSegmentColor,
                 );
               }
-            } else if (substitution.type === 'N') {
+            } 
+            else if (substitution.type === 'N') {
               
               // deletions so we're going to draw a thinner line
               // across
@@ -64004,7 +64041,8 @@ const renderSegments = (
               //   currPos += DASH_LENGTH + DASH_SPACE;
               // }
               // allready handled above
-            } else {
+            } 
+            else {
               const indexDHSElementHeight = yScale.bandwidth() * 0.5;
               const indexDHSYTop = yTop + ((yBottom - yTop) * 0.25);
               addRect(xLeft, indexDHSYTop, width, indexDHSElementHeight, defaultSegmentColor);
@@ -64013,7 +64051,7 @@ const renderSegments = (
           //
           // draw Index DHS summit
           //
-          if (trackOptions && trackOptions.indexDHS) {
+          // if (trackOptions && trackOptions.indexDHS) {
             // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
             const indexDHSElementStart = segment.from - segment.chrOffset;
             const indexDHSSummitStart = indexDHSMetadata.summit.start;
@@ -64026,6 +64064,52 @@ const renderSegments = (
             const indexDHSHeight = height;
             // const indexDHSXRight = indexDHSXLeft + indexDHSWidth;
             addRect(indexDHSXLeft, indexDHSYTop, indexDHSWidth, indexDHSHeight, defaultSegmentColor);
+          // }
+        }
+
+        else if (trackOptions && trackOptions.fire) {
+          // let showDims = true;
+          const fireMetadata = (trackOptions.fire && trackOptions.fire.metadata) ? segment.metadata : {};
+          fireMetadata.defaultRGB = '169,169,169';
+          // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+          // let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
+          let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
+          // if (trackOptions.fire) {
+          //   defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
+          // }
+          // console.log(`segment.substitutions ${JSON.stringify(segment.substitutions)}`);
+          for (const substitution of segment.substitutions) {
+            // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos}`);
+            xLeft = xScale(segment.from + substitution.pos);
+            const width = Math.max(1, xScale(substitution.length) - xScale(0));
+            const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
+            xRight = xLeft + width;
+
+            const fireElementHeight = yScale.bandwidth() * 0.25;
+            const fireYTop = yTop + ((yBottom - yTop) * 0.125);
+            addRect(xLeft, fireYTop, width, fireElementHeight, defaultSegmentColor);
+
+            const colorMap = segment.metadata.colors;
+
+            const blocks = segment.metadata.blocks;
+            const blockSizes = blocks.sizes;
+            const blockOffsets = blocks.offsets;
+            const blockColorIdxs = blocks.colors.map(d => PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
+            // const heightFactors = trackOptions.fire.metadata.itemRGBMap.map(d => d.heightFactor);
+            const blockHeightFactors = blocks.colors.map(d => trackOptions.fire.metadata.itemRGBMap[colorMap[d]].heightFactor);
+            
+            // console.log(`blocks ${JSON.stringify(blocks)}`);
+            // console.log(`colorMap ${JSON.stringify(colorMap)}`);
+
+            for (let i = 0; i < blocks.count; i++) {
+              const blockSize = blockSizes[i];
+              const blockOffset = blockOffsets[i];
+              const blockColorIdx = blockColorIdxs[i];
+              const blockWidth = Math.max(1, xScale(blockSize) - xScale(0));
+              const blockXLeft = xScale(segment.from + blockOffset);
+              const blockYTop = yTop + ((yBottom - yTop) * (1 - 0.125 * blockHeightFactors[i]));
+              addRect(blockXLeft, blockYTop, blockWidth, fireElementHeight * blockHeightFactors[i], blockColorIdx);
+            }
           }
         }
       });

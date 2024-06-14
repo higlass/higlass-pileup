@@ -33,6 +33,7 @@ export const PILEUP_COLORS = {
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
+  FIRE_BG: [0.89, 0.89, 0.89, 1],
 };
 
 export let PILEUP_COLOR_IXS = {};
@@ -56,7 +57,7 @@ export const hexToRGBRawTriplet = (hex) => {
 export const indexDHSColors = (options) => {
   if (!options.indexDHS) return {};
   // console.log(`options ${JSON.stringify(options)}`);
-  // console.log(`options.indexDHS.itemRGBMap ${JSON.stringify(options.indexDHS.itemRGBMap)}`);]
+  // console.log(`options.indexDHS.itemRGBMap ${JSON.stringify(options.indexDHS.itemRGBMap)}`);
   const colorTable = {};
   colorTable['INDEX_DHS_BG'] = [0, 0, 0, 0], // Index DHS background default
   Object.entries(options.indexDHS.itemRGBMap).map((o) => {
@@ -64,6 +65,21 @@ export const indexDHSColors = (options) => {
     // const v = o[1];
     const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
     colorTable[`INDEX_DHS_${k}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify(colorTable)}`);
+  return {...PILEUP_COLORS, ...colorTable};
+};
+
+export const fireColors = (options) => {
+  if (!options.fire) return {};
+  // console.log(`options.fire ${JSON.stringify(options.fire)}`);
+  const colorTable = {};
+  colorTable['FIRE_BG_TEST'] = [0.89, 0.89, 0.89, 1], // FIRE background default
+  Object.entries(options.fire.metadata.itemRGBMap).map((o) => {
+    const k = o[0];
+    // const v = o[1];
+    const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`FIRE_${k}`] = [...v, 1.0];
   });
   // console.log(`colorTable ${JSON.stringify(colorTable)}`);
   return {...PILEUP_COLORS, ...colorTable};
