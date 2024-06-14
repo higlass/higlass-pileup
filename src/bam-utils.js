@@ -33,6 +33,7 @@ export const PILEUP_COLORS = {
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
+  FIRE_SEGMENT_BG: [0, 0, 0, 0],
   FIRE_BG: [0.89, 0.89, 0.89, 1],
 };
 

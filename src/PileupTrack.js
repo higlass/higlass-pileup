@@ -277,6 +277,7 @@ const PileupTrack = (HGC, ...args) => {
 
       this.clusterData = null;
       this.bed12ExportData = null;
+      this.fireIdentifierData = null;
 
       this.setUpShaderAndTextures(options);
 
@@ -485,6 +486,27 @@ varying vec4 vColor;
             // this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
+          case "refresh-fire-layout-post-clustering":
+            if (!this.options.fire || this.trackUpdatesAreFrozen)
+              break;
+            this.dataFetcher = new BAMDataFetcher(
+              this.dataFetcher.dataConfig,
+              this.options,
+              this.worker,
+              HGC,
+            );
+            this.dataFetcher.track = this;
+            this.prevRows = [];
+            this.removeTiles(Object.keys(this.fetchedTiles));
+            this.fetching.clear();
+            this.refreshTiles();
+            this.externalInit(this.options);
+            this.fireIdentifierData = {
+              identifiers: data.identifiers,
+            };
+            this.updateExistingGraphics();
+            this.prevOptions = Object.assign({}, this.options);
+            break;
           case "cluster-layout":
             if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
@@ -627,6 +649,10 @@ varying vec4 vColor;
               this.bed12ExportData = null;
             }
 
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
             this.bc.postMessage({
               state: 'export_bed12_end',
               msg: 'Completed (exportBED12Layout Promise fulfillment)', 
@@ -665,6 +691,7 @@ varying vec4 vColor;
               this.prevRows,
               this.options,
               this.clusterData,
+              this.fireIdentifierData,
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
@@ -733,6 +760,7 @@ varying vec4 vColor;
             this.prevRows,
             this.options,
             this.clusterData,
+            this.fireIdentifierData,
           )
           .then((toRender) => {
             // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
@@ -906,6 +934,10 @@ varying vec4 vColor;
 
             if (this.bed12ExportData) {
               this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
             }
 
             const updateExistingGraphicsEndC = performance.now();

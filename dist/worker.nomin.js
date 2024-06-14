@@ -44484,6 +44484,7 @@ const PILEUP_COLORS = {
   HIGHLIGHTS_C: [0.95, 0.84, 0.84, 1], // C highlights
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
+  FIRE_SEGMENT_BG: [0, 0, 0, 0],
   FIRE_BG: [0.89, 0.89, 0.89, 1],
 };
 
@@ -61254,10 +61255,26 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
 }
 
 function segmentsToRows(segments, optionsIn) {
-  const { prevRows, padding } = Object.assign(
-    { prevRows: [], padding: 5 },
+  const { 
+    prevRows, 
+    padding,
+    readNamesToFilterOn,
+  } = Object.assign(
+    { 
+      prevRows: [], 
+      padding: 5,
+      readNamesToFilterOn: {},
+    },
     optionsIn || {},
   );
+
+  // console.log(`optionsIn ${JSON.stringify(optionsIn)}`);
+
+  // if (readNamesToFilterOn && readNamesToFilterOn.identifiers && readNamesToFilterOn.identifiers.length > 0) {
+  //   // console.log(`pre segments ${Object.keys(segments).length} | readNamesToFilterOn ${readNamesToFilterOn.identifiers.length}`);
+  //   segments = segments.filter((segment) => readNamesToFilterOn.identifiers.includes(segment.readName));
+  //   // console.log(`post segments ${Object.keys(segments).length} | readNamesToFilterOn ${readNamesToFilterOn.identifiers.length}`);
+  // }
 
   // The following array contains elements fo the form
   // occupiedSpaceInRows[i] = {from: 100, to: 110}
@@ -61322,8 +61339,16 @@ function segmentsToRows(segments, optionsIn) {
   }
 
   const outputRows = [];
-  for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-    outputRows[i] = newSegments.filter((x) => x.row === i);
+  if (readNamesToFilterOn && readNamesToFilterOn.identifiers && readNamesToFilterOn.identifiers.length > 0) {
+    // console.log(`newSegments ${JSON.stringify(newSegments)}`);
+    for (let i = 0; i < readNamesToFilterOn.identifiers.length; i++) {
+      outputRows[i] = newSegments.filter((x) => x.readName === readNamesToFilterOn.identifiers[i]);
+    }
+  }
+  else {
+    for (let i = 0; i < occupiedSpaceInRows.length; i++) {
+      outputRows[i] = newSegments.filter((x) => x.row === i);
+    }
   }
 
   // console.log(`outputRows ${JSON.stringify(outputRows.length)} | segmentsInRows ${JSON.stringify(segments.length)}`);
@@ -61996,6 +62021,7 @@ const renderSegments = (
   prevRows,
   trackOptions,
   clusterDataObj,
+  fireIdentifierDataObj,
 ) => {
   
   const allSegments = {};
@@ -62174,6 +62200,7 @@ const renderSegments = (
     // console.log(`nReads ${JSON.stringify(nReads)}`);
     const clusterMatrix = new Array();
     const viewportRawEventMatrix = (viewportRawEventVecLen) ? new Array() : [];
+    const identifiersArray = new Array();
     let allowedRowIdx = 0;
     const trueRow = {};
 
@@ -62218,6 +62245,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
                     
                     // ** viewport event matrix **
                     // note: full viewport overlap allows init to 0
@@ -62272,6 +62300,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62341,6 +62370,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62406,6 +62436,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62472,6 +62503,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62538,6 +62570,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62622,6 +62655,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: full viewport overlap allows init to 0
@@ -62675,6 +62709,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62743,6 +62778,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62808,6 +62844,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62874,6 +62911,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -62940,6 +62978,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -63030,6 +63069,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: full viewport overlap allows init to 0
@@ -63083,6 +63123,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -63151,6 +63192,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -63216,6 +63258,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -63282,6 +63325,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -63348,6 +63392,7 @@ const renderSegments = (
                     }
                     trueRow[allowedRowIdx] = i;
                     clusterMatrix[allowedRowIdx] = eventVec;
+                    identifiersArray.push(segment.readName);
 
                     // ** viewport event matrix **
                     // note: partial overlap requires init to -255
@@ -63431,6 +63476,7 @@ const renderSegments = (
             // filteredEventClusterSignal: clusterMatrix,
             rawEventViewportSignal: viewportRawEventMatrix,
             newickString: newickString,
+            identifiers: rowOrdering.map((i) => identifiersArray[i]),
           };
           const orderedSegments = rowOrdering.map(i => {
             const trueRowIdx = trueRow[i];
@@ -63477,6 +63523,7 @@ const renderSegments = (
               // rawClusterSignal: clusterMatrix,
               rawEventViewportSignal: viewportRawEventMatrix,
               newickString: null,
+              identifiers: rowOrdering.map((i) => identifiersArray[i]),
             };
             const orderedSegments = rowOrdering.map(i => {
               const trueRowIdx = trueRow[i];
@@ -63515,6 +63562,28 @@ const renderSegments = (
 
     // data.length = 0;
   }
+  else if (fireIdentifierDataObj && trackOptions.fire) {
+    // console.log(`fireIdentifierDataObj ${JSON.stringify(fireIdentifierDataObj)}`);
+    for (let key of Object.keys(grouped)) {
+      const rows = segmentsToRows(grouped[key], {
+        prevRows: (prevRows[key] && prevRows[key].rows) || [],
+        readNamesToFilterOn: fireIdentifierDataObj || [],
+        // maxRows: (trackOptions.methylation && trackOptions.methylation.maxRows) ? trackOptions.methylation.maxRows : null,
+      });
+      // console.log(`uid ${uid} | rows ${JSON.stringify(rows)}`);
+      // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
+      // Therefore we get rid of everything else to save memory and increase performance
+      grouped[key] = {};
+      // if (trackOptions.methylation && trackOptions.methylation.maxRows) {
+      //   grouped[key].rows = rows.slice(0, trackOptions.methylation.maxRows);
+      // }
+      // else {
+      //   grouped[key].rows = rows;
+      // }
+      grouped[key].rows = rows;
+      // console.log(`uid ${uid} | rows ${JSON.stringify(grouped[key].rows)}`);
+    }
+  }
   else {
     for (let key of Object.keys(grouped)) {
       const rows = segmentsToRows(grouped[key], {
@@ -63532,6 +63601,7 @@ const renderSegments = (
       //   grouped[key].rows = rows;
       // }
       grouped[key].rows = rows;
+      // console.log(`uid ${uid} | rows ${JSON.stringify(grouped[key].rows)}`);
     }
   }
 
@@ -63729,9 +63799,9 @@ const renderSegments = (
           // console.log(`PILEUP_COLOR_IXS.INDEX_DHS_BG ${PILEUP_COLOR_IXS.INDEX_DHS_BG} vs segment.color ${segment.color} or segment.colorOverride ${segment.colorOverride}`);
           addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
         }
-        else if (trackOptions && trackOptions.fire) {
-          // addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
-        }
+        // else if (trackOptions && trackOptions.fire) {
+        //   addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.FIRE_SEGMENT_BG);
+        // }
 
         if (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions) {
           //
@@ -64072,12 +64142,8 @@ const renderSegments = (
           const fireMetadata = (trackOptions.fire && trackOptions.fire.metadata) ? segment.metadata : {};
           fireMetadata.defaultRGB = '169,169,169';
           // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
-          // let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
-          let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
-          // if (trackOptions.fire) {
-          //   defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
-          // }
-          // console.log(`segment.substitutions ${JSON.stringify(segment.substitutions)}`);
+          let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
+          // let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
           for (const substitution of segment.substitutions) {
             // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos}`);
             xLeft = xScale(segment.from + substitution.pos);
@@ -64095,7 +64161,6 @@ const renderSegments = (
             const blockSizes = blocks.sizes;
             const blockOffsets = blocks.offsets;
             const blockColorIdxs = blocks.colors.map(d => PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
-            // const heightFactors = trackOptions.fire.metadata.itemRGBMap.map(d => d.heightFactor);
             const blockHeightFactors = blocks.colors.map(d => trackOptions.fire.metadata.itemRGBMap[colorMap[d]].heightFactor);
             
             // console.log(`blocks ${JSON.stringify(blocks)}`);
