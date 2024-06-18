@@ -598,6 +598,7 @@ varying vec4 vColor;
               eventOverlapType: data.eventOverlapType,
               filterFiberMinLength: data.filterFiberMinLength,
               filterFiberMaxLength: data.filterFiberMaxLength,
+              filterFiberStrands: data.filterFiberStrands,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);

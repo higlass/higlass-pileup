@@ -664,7 +664,7 @@ const tilesetInfo = (uid) => {
 };
 
 const tile = async (uid, z, x) => {
-  const {maxTileWidth, maxSampleSize, fiberMinLength, fiberMaxLength} = dataOptions[uid];
+  const {maxTileWidth, maxSampleSize, fiberMinLength, fiberMaxLength, fiberStrands} = dataOptions[uid];
 
   // console.log(`maxSampleSize ${maxSampleSize}`);
   // console.log(`dataOptions ${JSON.stringify(dataOptions)}`);
@@ -756,9 +756,11 @@ const tile = async (uid, z, x) => {
                 if (trackOptions[uid].methylation) {
                   // console.log(`filtering for methylation data (A) | ${fiberMinLength} | ${fiberMaxLength}`);
                   const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
+                  const filteredByStrandsRecords = filteredByLengthRecords.filter((rec) => fiberStrands.includes(rec.strand));
+                  const filteredRecords = filteredByStrandsRecords;
                   tileValues.set(
                     `${uid}.${z}.${x}`,
-                    tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
+                    tileValues.get(`${uid}.${z}.${x}`).concat(filteredRecords),
                   );
                 }
                 else {
@@ -845,9 +847,11 @@ const tile = async (uid, z, x) => {
                 if (trackOptions[uid].methylation) {
                   // console.log(`filtering for methylation data (B) | ${fiberMinLength} | ${fiberMaxLength}`);
                   const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
+                  const filteredByStrandsRecords = filteredByLengthRecords.filter((rec) => fiberStrands.includes(rec.strand));
+                  const filteredRecords = filteredByStrandsRecords;
                   tileValues.set(
                     `${uid}.${z}.${x}`,
-                    tileValues.get(`${uid}.${z}.${x}`).concat(filteredByLengthRecords),
+                    tileValues.get(`${uid}.${z}.${x}`).concat(filteredRecords),
                   );
                 }
                 else {
@@ -1936,6 +1940,7 @@ const renderSegments = (
 
   const fiberMinLength = dataOptions[uid].fiberMinLength;
   const fiberMaxLength = dataOptions[uid].fiberMaxLength;
+  const fiberStrands = dataOptions[uid].fiberStrands;
   // console.log(`fiberMinLength ${JSON.stringify(fiberMinLength)} | fiberMaxLength ${JSON.stringify(fiberMaxLength)}`);
   
   // if (dataOptions[uid].methylation) {
@@ -2024,6 +2029,7 @@ const renderSegments = (
     const eventOverlapType = clusterDataObjToUse.eventOverlapType;
     const fiberMinLength = clusterDataObjToUse.filterFiberMinLength;
     const fiberMaxLength = clusterDataObjToUse.filterFiberMaxLength;
+    const fiberStrands = clusterDataObjToUse.filterFiberStrands;
 
     // console.log(`probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)}`);
     let distanceFnToCall = null;
@@ -2047,6 +2053,7 @@ const renderSegments = (
             distanceFnToCall = euclideanDistance;
             for (let i = 0; i < nReads; ++i) {
               const segment = segmentList[i];
+              const segmentStrand = segment.strand;
               const segmentLength = segment.to - segment.from;
               const eventVec = new Array(eventVecLen).fill(-255);
               const segmentStart = segment.from - segment.chrOffset;
@@ -2054,6 +2061,7 @@ const renderSegments = (
               const mos = segment.methylationOffsets;
 
               if (segmentLength < fiberMinLength || segmentLength > fiberMaxLength) continue;
+              if (fiberStrands && !fiberStrands.includes(segmentStrand)) continue;
               
               // console.log(`segmentStart ${JSON.stringify(segmentStart)} | segmentEnd ${JSON.stringify(segmentEnd)} | segment.name ${JSON.stringify(segment.readName)}`);
               switch (eventOverlapType) {
@@ -2460,11 +2468,15 @@ const renderSegments = (
             distanceFnToCall = jaccardDistance;
             for (let i = 0; i < nReads; ++i) {
               const segment = segmentList[i];
+              const segmentStrand = segment.strand;
               const segmentLength = segment.to - segment.from;
               const eventVec = new Array(eventVecLen).fill(0);
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               const mos = segment.methylationOffsets;
+
+              if (segmentLength < fiberMinLength || segmentLength > fiberMaxLength) continue;
+              if (fiberStrands && !fiberStrands.includes(segmentStrand)) continue;
 
               switch (eventOverlapType) {
                 case 'Full viewport':
@@ -2874,11 +2886,15 @@ const renderSegments = (
             distanceFnToCall = (a, b) => Math.hypot(...Object.keys(a).map(k => b[k] - a[k]));
             for (let i = 0; i < nReads; ++i) {
               const segment = segmentList[i];
+              const segmentStrand = segment.strand;
               const segmentLength = segment.to - segment.from;
               const eventVec = new Array(eventVecLen).fill(-255);
               const segmentStart = segment.from - segment.chrOffset;
               const segmentEnd = segment.to - segment.chrOffset;
               const mos = segment.methylationOffsets;
+
+              if (segmentLength < fiberMinLength || segmentLength > fiberMaxLength) continue;
+              if (fiberStrands && !fiberStrands.includes(segmentStrand)) continue;
 
               switch (eventOverlapType) {
                 case 'Full viewport':
