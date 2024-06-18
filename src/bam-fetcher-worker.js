@@ -1187,6 +1187,7 @@ function isEmpty(obj) {
 }
 
 const exportSegmentsAsBED12 = (
+  sessionId,
   uid,
   tileIds,
   domain,
@@ -1825,6 +1826,7 @@ const exportSegmentsAsBED12 = (
 };
 
 const renderSegments = (
+  sessionId,
   uid,
   tileIds,
   domain,
@@ -1833,6 +1835,7 @@ const renderSegments = (
   dimensions,
   prevRows,
   trackOptions,
+  alignCpGEvents,
   clusterDataObj,
   fireIdentifierDataObj,
 ) => {
@@ -1859,6 +1862,17 @@ const renderSegments = (
     }
     if (!tileValue) continue;
 
+    if (trackOptions.methylation && alignCpGEvents) {
+      for (const segment of tileValue) {
+        // console.log(`segment ${JSON.stringify(segment)}`);
+        for (const mo of segment.methylationOffsets) {
+          if (mo.unmodifiedBase === 'C' && segment.strand === '-') {
+            mo.offsets = mo.offsets.map(offset => offset - 1);
+          }
+        }
+      }
+    }
+
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
@@ -1866,6 +1880,7 @@ const renderSegments = (
     const sequenceTileValue = sequenceTileValues.get(`${uid}.${tileId}`);
 
     if (sequenceTileValue && trackOptions.methylation && trackOptions.methylation.highlights) {
+      // console.log(`renderSegments | ${uid} | ${JSON.stringify(tileIds)} | ${JSON.stringify(trackOptions)}`);
       const highlights = Object.keys(trackOptions.methylation.highlights);
       for (const sequence of sequenceTileValue) {
         // allSequences[parseInt(sequence.start)] = sequence.data;
@@ -1980,6 +1995,11 @@ const renderSegments = (
   } else {
     grouped = { null: segmentList };
   }
+
+  // if (trackOptions.methylation) {
+  //   console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
+  //   console.log(`grouped | A2 | ${JSON.stringify(grouped)}`);
+  // }
 
   let clusterResultsToExport = null;
 
@@ -3414,9 +3434,16 @@ const renderSegments = (
       //   grouped[key].rows = rows;
       // }
       grouped[key].rows = rows;
-      // console.log(`uid ${uid} | rows ${JSON.stringify(grouped[key].rows)}`);
+      // if (trackOptions.methylation) {
+      //   console.log(`uid ${uid} | rows ${JSON.stringify(grouped[key].rows)}`);
+      // }
     }
   }
+
+  // if (trackOptions.methylation) {
+  //   console.log(`grouped | B1 | ${JSON.stringify(segmentList)}`);
+  //   console.log(`grouped | B2 | ${JSON.stringify(grouped)}`);
+  // }
 
   // calculate the height of each group
   const totalRows = Object.values(grouped)

@@ -249,11 +249,12 @@ export const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
       //
       // shift reverse-stranded CpG events upstream by one bases
       //
-      if (mo.unmodifiedBase === 'C' && segment.strand === '-' && alignCpGEvents) {
-        for (let i = 0; i < nOffsets; ++i) {
-          offsets[i] -= 1;
-        }
-      }
+      // console.log(`alignCpGEvents ${alignCpGEvents}`);
+      // if (mo.unmodifiedBase === 'C' && segment.strand === '-' && alignCpGEvents) {
+      //   for (let i = 0; i < nOffsets; ++i) {
+      //     offsets[i] -= 1;
+      //   }
+      // }
 
       //
       // modify raw offsets with CIGAR/substitution data

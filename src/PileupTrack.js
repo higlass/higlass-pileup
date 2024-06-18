@@ -193,6 +193,7 @@ const PileupTrack = (HGC, ...args) => {
 
       // console.log(`${this.id} | options ${JSON.stringify(options)}`);
 
+      this.sessionId = null;
       this.trackId = this.id;
       this.viewId = context.viewUid;
       this.originalHeight = context.definition.height;
@@ -200,6 +201,7 @@ const PileupTrack = (HGC, ...args) => {
       this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
       this.trackUpdatesAreFrozen = false;
+      this.alignCpGEvents = true;
 
       // this.optionsDict = {};
       // this.optionsDict[trackId] = options;
@@ -228,11 +230,16 @@ const PileupTrack = (HGC, ...args) => {
 
       // console.log(`setting up pileup-track: ${this.id}`);
 
-      this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
-      this.bc.postMessage({state: 'loading', msg: this.loadingText.text, uid: this.id});
-
       this.monitor = new BroadcastChannel(`pileup-track-viewer`);
       this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
+
+      this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
+      this.bc.postMessage({
+        state: 'loading',
+        msg: this.loadingText.text,
+        uid: this.id,
+        sid: this.sessionId,
+      });
 
       // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
     }
@@ -447,12 +454,29 @@ varying vec4 vColor;
 
     handlePileupTrackViewerMessage(data) {
       // console.log(`data ${JSON.stringify(data)} | ${JSON.stringify(this.options)}`);
+      // console.log(`handlePileupTrackViewerMessage [${data.state} : ${data.sid}]`);
       if (data.state === 'mouseover') {
         if (this.id !== data.uid) {
           this.clearMouseOver();
         }
       }
+      if (data.state === 'initialize_session_id') {
+        // console.log(`loading | ${this.id} | ${this.sessionId} | ${data.sid}`);
+        if (!this.sessionId) {
+          // console.log(`updating ${this.id} session id to ${data.sid}`);
+          this.sessionId = data.sid;
+        }
+      }
       if (data.state === 'request') {
+        // console.log(`request | ${this.id} | ${this.sessionId} | ${data.sid}`);
+        if (!this.sessionId && data.sid) {
+          // console.log(`updating ${this.id} session id to ${data.sid}`);
+          this.sessionId = data.sid;
+        }
+        if (this.sessionId !== data.sid) {
+          // console.log(`${data.msg} | session id mismatch ${this.sessionId} !== ${data.sid}`);
+          return;
+        }
         switch (data.msg) {
           case "track-updates-freeze":
             this.trackUpdatesAreFrozen = true;
@@ -470,19 +494,58 @@ varying vec4 vColor;
             //   HGC,
             // );
             // this.dataFetcher.track = this;
-            for (const key in this.prevRows) {
-              for (const row of this.prevRows[key].rows) {
-                for (const segment of row) {
-                  // console.log(`rerender > segment.id ${segment.id} | ${Object.getOwnPropertyNames(segment)}`);
-                  segment.methylationOffsets = [];
+            // console.log(`refresh-layout | id ${this.id} | sessionId ${this.sessionId} | recalculateOffsets ${data.recalculateOffsets}`);
+            if (data.recalculateOffsets) {
+              this.alignCpGEvents = data.alignCpGEvents;
+              this.removeTiles(Object.keys(this.fetchedTiles));
+              this.fetching.clear();
+              this.refreshTiles();
+              this.externalInit(this.options);
+              this.updateExistingGraphics();
+              this.prevOptions = Object.assign({}, this.options);
+            }
+            else {
+              for (const key in this.prevRows) {
+                for (const row of this.prevRows[key].rows) {
+                  for (const segment of row) {
+                    // console.log(`rerender > segment.id ${segment.id} | ${Object.getOwnPropertyNames(segment)}`);
+                    segment.methylationOffsets = [];
+                  }
                 }
               }
+              this.prevRows = [];
+              this.removeTiles(Object.keys(this.fetchedTiles));
+              this.fetching.clear();
+              this.refreshTiles();
+              this.externalInit(this.options);
+              // this.updateExistingGraphics();
+              this.prevOptions = Object.assign({}, this.options);
             }
+            this.bc.postMessage({
+              state: 'refresh_layout_end',
+              uid: this.id,
+              sid: this.sessionId,
+            });
+            break;
+          case "refresh-fire-layout":
+            if (!this.options.fire || this.trackUpdatesAreFrozen)
+              break;
+            // console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
+            this.dataFetcher = new BAMDataFetcher(
+              this.dataFetcher.dataConfig,
+              this.options,
+              this.worker,
+              HGC,
+            );
+            this.dataFetcher.track = this;
             this.prevRows = [];
             this.removeTiles(Object.keys(this.fetchedTiles));
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
+            // this.fireIdentifierData = {
+            //   identifiers: data.identifiers,
+            // };
             // this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
@@ -624,10 +687,12 @@ varying vec4 vColor;
         state: 'export_bed12_start',
         msg: 'Begin BED12 export worker processing',
         uid: this.id,
+        sid: this.sessionId,
       });
       this.worker.then((tileFunctions) => {
         tileFunctions
           .exportSegmentsAsBED12(
+            this.sessionId,
             this.dataFetcher.uid,
             Object.values(this.fetchedTiles).map((x) => x.remoteId),
             this._xScale.domain(),
@@ -657,6 +722,7 @@ varying vec4 vColor;
               state: 'export_bed12_end',
               msg: 'Completed (exportBED12Layout Promise fulfillment)', 
               uid: this.id,
+              sid: this.sessionId,
               data: toExport,
             });
           })
@@ -675,6 +741,7 @@ varying vec4 vColor;
           state: 'update_start', 
           msg: this.loadingText.text,
           uid: this.id,
+          sid: this.sessionId,
         });
       } 
       else {
@@ -682,6 +749,7 @@ varying vec4 vColor;
         this.worker.then((tileFunctions) => {
           tileFunctions
             .renderSegments(
+              this.sessionId,
               this.dataFetcher.uid,
               Object.values(this.fetchedTiles).map((x) => x.remoteId),
               this._xScale.domain(),
@@ -690,6 +758,7 @@ varying vec4 vColor;
               this.dimensions,
               this.prevRows,
               this.options,
+              this.alignCpGEvents,
               this.clusterData,
               this.fireIdentifierData,
             )
@@ -708,7 +777,8 @@ varying vec4 vColor;
               const msg = {
                 state: 'update_end', 
                 msg: 'Completed (maxTileWidthReached)', 
-                uid: this.id, 
+                uid: this.id,
+                sid: this.sessionId,
                 elapsedTime: elapsedTimeA,
               };
               // console.log(`${JSON.stringify(msg)}`);
@@ -751,6 +821,7 @@ varying vec4 vColor;
       this.worker.then((tileFunctions) => {
         tileFunctions
           .renderSegments(
+            this.sessionId,
             this.dataFetcher.uid,
             Object.values(this.fetchedTiles).map((x) => x.remoteId),
             this._xScale.domain(),
@@ -759,6 +830,7 @@ varying vec4 vColor;
             this.dimensions,
             this.prevRows,
             this.options,
+            this.alignCpGEvents,
             this.clusterData,
             this.fireIdentifierData,
           )
@@ -773,6 +845,7 @@ varying vec4 vColor;
                 state: 'export_subregion_clustering_results',
                 msg: 'Completed subregion clustering', 
                 uid: this.id,
+                sid: this.sessionId,
                 data: toRender.clusterResultsToExport,
               });
               // console.log(`export_subregion_clustering_end | ${this.id} | ${toRender.clusterResultsToExport}`);
@@ -817,7 +890,8 @@ varying vec4 vColor;
               const msg = {
                 state: 'update_end', 
                 msg: 'Completed (maxTileWidthReached)', 
-                uid: this.id, 
+                uid: this.id,
+                sid: this.sessionId,
                 elapsedTime: elapsedTimeB,
               };
               // console.log(`${JSON.stringify(msg)}`);
@@ -946,6 +1020,7 @@ varying vec4 vColor;
               state: 'update_end', 
               msg: 'Completed (renderSegments Promise fulfillment)', 
               uid: this.id,
+              sid: this.sessionId,
               elapsedTime: elapsedTimeC,
             };
             // console.log(`${JSON.stringify(msg)}`);
@@ -975,7 +1050,12 @@ varying vec4 vColor;
 
       if (!this.tilesetInfo) {
         this.loadingText.text = 'Fetching tileset info...';
-        this.bc.postMessage({state: 'fetching_tileset_info', msg: this.loadingText.text,  uid: this.id});
+        this.bc.postMessage({
+          state: 'fetching_tileset_info',
+          msg: this.loadingText.text,
+          uid: this.id,
+          sid: this.sessionId,
+        });
         return;
       }
 
@@ -983,12 +1063,22 @@ varying vec4 vColor;
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map((x) => x.split('|')[0])
           .join(' ')}`;
-        this.bc.postMessage({state: 'fetching', msg: this.loadingText.text,  uid: this.id});
+        this.bc.postMessage({
+          state: 'fetching',
+          msg: this.loadingText.text,
+          uid: this.id,
+          sid: this.sessionId,
+        });
       }
 
       if (this.rendering.size) {
         this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
-        this.bc.postMessage({state: 'rendering', msg: this.loadingText.text,  uid: this.id});
+        this.bc.postMessage({
+          state: 'rendering',
+          msg: this.loadingText.text,
+          uid: this.id,
+          sid: this.sessionId,
+        });
       }
 
       if (!this.fetching.size && !this.rendering.size && this.tilesetInfo) {
@@ -1120,6 +1210,7 @@ varying vec4 vColor;
         state: 'mouseover', 
         msg: 'mouseover event', 
         uid: this.id,
+        sid: this.sessionId,
       };
       this.monitor.postMessage(msg);
 
