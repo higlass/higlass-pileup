@@ -4179,10 +4179,22 @@ var PileupTrack = function PileupTrack(HGC) {
 
       // console.log(`setting up pileup-track: ${this.id}`);
 
-      _this.monitor = new BroadcastChannel("pileup-track-viewer");
-      _this.monitor.onmessage = function (event) {
-        return _this.handlePileupTrackViewerMessage(event.data);
+      var debounce = function debounce(callback, wait) {
+        var timeoutId = null;
+        return function () {
+          for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+            args[_key3] = arguments[_key3];
+          }
+          window.clearTimeout(timeoutId);
+          timeoutId = window.setTimeout(function () {
+            callback.apply(void 0, args);
+          }, wait);
+        };
       };
+      _this.monitor = new BroadcastChannel("pileup-track-viewer");
+      _this.monitor.onmessage = debounce(function (event) {
+        return _this.handlePileupTrackViewerMessage(event.data);
+      }, 500);
       _this.bc = new BroadcastChannel("pileup-track-".concat(_this.id));
       _this.bc.postMessage({
         state: 'loading',
@@ -4846,8 +4858,8 @@ var PileupTrack = function PileupTrack(HGC) {
             _this4.pMain.removeChild(_this4.mouseOverGraphics);
             _this4.pMain.addChild(_this4.mouseOverGraphics);
             _this4.yScaleBands = {};
-            for (var _key3 in _this4.prevRows) {
-              _this4.yScaleBands[_key3] = HGC.libraries.d3Scale.scaleBand().domain(HGC.libraries.d3Array.range(0, _this4.prevRows[_key3].rows.length)).range([_this4.prevRows[_key3].start, _this4.prevRows[_key3].end]).paddingInner(0.2);
+            for (var _key4 in _this4.prevRows) {
+              _this4.yScaleBands[_key4] = HGC.libraries.d3Scale.scaleBand().domain(HGC.libraries.d3Array.range(0, _this4.prevRows[_key4].rows.length)).range([_this4.prevRows[_key4].start, _this4.prevRows[_key4].end]).paddingInner(0.2);
             }
             _this4.drawnAtScale = HGC.libraries.d3Scale.scaleLinear().domain(toRender.xScaleDomain).range(toRender.xScaleRange);
             scaleScalableGraphics(_this4.segmentGraphics, _this4._xScale, _this4.drawnAtScale);

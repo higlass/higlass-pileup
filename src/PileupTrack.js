@@ -242,7 +242,18 @@ const PileupTrack = (HGC, ...args) => {
 
       // console.log(`setting up pileup-track: ${this.id}`);
 
+      const debounce = (callback, wait) => {
+        let timeoutId = null;
+        return (...args) => {
+          window.clearTimeout(timeoutId);
+          timeoutId = window.setTimeout(() => {
+            callback(...args);
+          }, wait);
+        };
+      };
+
       this.monitor = new BroadcastChannel(`pileup-track-viewer`);
+      // this.monitor.onmessage = debounce((event) => this.handlePileupTrackViewerMessage(event.data), 500);
       this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
 
       this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
