@@ -867,6 +867,10 @@ varying vec4 vColor;
             if (!toRender)
               return;
 
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
             if (toRender.clusterResultsToExport) {
               this.bc.postMessage({
                 state: 'export_subregion_clustering_results',
@@ -875,18 +879,17 @@ varying vec4 vColor;
                 sid: this.sessionId,
                 data: toRender.clusterResultsToExport,
               });
-              // console.log(`export_subregion_clustering_end | ${this.id} | ${toRender.clusterResultsToExport}`);
             }
 
-            if (toRender.drawnSegmentIdentifiers) {
-              this.bc.postMessage({
-                state: 'drawn_segment_identifiers',
-                msg: 'Completed segment identifier drawing', 
-                uid: this.id,
-                sid: this.sessionId,
-                data: toRender.drawnSegmentIdentifiers,
-              });
-            }
+            // if (toRender.drawnSegmentIdentifiers) {
+            //   this.bc.postMessage({
+            //     state: 'drawn_segment_identifiers',
+            //     msg: 'Completed segment identifier drawing', 
+            //     uid: this.id,
+            //     sid: this.sessionId,
+            //     data: toRender.drawnSegmentIdentifiers,
+            //   });
+            // }
 
             this.loadingText.visible = false;
 
@@ -1047,9 +1050,9 @@ varying vec4 vColor;
               this.bed12ExportData = null;
             }
 
-            if (this.fireIdentifierData) {
-              this.fireIdentifierData = null;
-            }
+            // if (this.fireIdentifierData) {
+            //   this.fireIdentifierData = null;
+            // }
 
             const updateExistingGraphicsEndC = performance.now();
             const elapsedTimeC = updateExistingGraphicsEndC - updateExistingGraphicsStart;

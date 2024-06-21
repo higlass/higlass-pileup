@@ -63847,7 +63847,7 @@ const renderSegments = (
           // if (trackOptions.methylation) console.log(`trackOptions.methylation ${JSON.stringify(trackOptions.methylation)} | segment.colorOverride ${segment.colorOverride} | segment.color ${segment.color}`);
           // if (trackOptions.fire) console.log(`trackOptions.fire ${JSON.stringify(trackOptions.fire)} | segment.colorOverride ${segment.colorOverride} | segment.color ${segment.color}`);
           addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
-          drawnSegmentIdentifiers[originatingTrackId].methylation.push(segment.readName);
+          // drawnSegmentIdentifiers[originatingTrackId].methylation.push(segment.readName);
           // pileupSegmentsDrawn += 1;
         }
         else if (trackOptions && trackOptions.indexDHS) {
