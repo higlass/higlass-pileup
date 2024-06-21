@@ -1080,7 +1080,7 @@ function segmentsToRows(segments, optionsIn) {
     { 
       prevRows: [], 
       padding: 5,
-      readNamesToFilterOn: {},
+      readNamesToFilterOn: [],
     },
     optionsIn || {},
   );
@@ -1156,10 +1156,10 @@ function segmentsToRows(segments, optionsIn) {
   }
 
   const outputRows = [];
-  if (readNamesToFilterOn && readNamesToFilterOn.identifiers && readNamesToFilterOn.identifiers.length > 0) {
+  if (readNamesToFilterOn && readNamesToFilterOn.length > 0) {
     // console.log(`newSegments ${JSON.stringify(newSegments)}`);
-    for (let i = 0; i < readNamesToFilterOn.identifiers.length; i++) {
-      outputRows[i] = newSegments.filter((x) => x.readName === readNamesToFilterOn.identifiers[i]);
+    for (let i = 0; i < readNamesToFilterOn.length; i++) {
+      outputRows[i] = newSegments.filter((x) => x.readName === readNamesToFilterOn[i]);
     }
   }
   else {
@@ -1840,6 +1840,7 @@ const renderSegments = (
   prevRows,
   trackOptions,
   alignCpGEvents,
+  originatingTrackId,
   clusterDataObj,
   fireIdentifierDataObj,
 ) => {
@@ -1855,6 +1856,8 @@ const renderSegments = (
     let tileValue = null;
     try {
       tileValue = tileValues.get(`${uid}.${tileId}`);
+      // console.log(`uid ${JSON.stringify(uid)}`);
+      // console.log(`tileId ${JSON.stringify(tileId)}`);
 
       if (tileValue.error) {
         // throw new Error(tileValue.error);
@@ -1937,6 +1940,13 @@ const renderSegments = (
   // if (!isEmpty(highlightPositions)) console.log(`highlightPositions ${JSON.stringify(highlightPositions)}`);
 
   let segmentList = Object.values(allSegments);
+  const drawnSegmentIdentifiers = {
+    [originatingTrackId]: {
+      methylation: [],
+      fire: [],
+      indexDHS: [],
+    },
+  };
 
   const fiberMinLength = dataOptions[uid].fiberMinLength;
   const fiberMaxLength = dataOptions[uid].fiberMaxLength;
@@ -3416,7 +3426,7 @@ const renderSegments = (
     for (let key of Object.keys(grouped)) {
       const rows = segmentsToRows(grouped[key], {
         prevRows: (prevRows[key] && prevRows[key].rows) || [],
-        readNamesToFilterOn: fireIdentifierDataObj || [],
+        readNamesToFilterOn: fireIdentifierDataObj.identifiers || [],
         // maxRows: (trackOptions.methylation && trackOptions.methylation.maxRows) ? trackOptions.methylation.maxRows : null,
       });
       // console.log(`uid ${uid} | rows ${JSON.stringify(rows)}`);
@@ -3649,6 +3659,7 @@ const renderSegments = (
           // if (trackOptions.methylation) console.log(`trackOptions.methylation ${JSON.stringify(trackOptions.methylation)} | segment.colorOverride ${segment.colorOverride} | segment.color ${segment.color}`);
           // if (trackOptions.fire) console.log(`trackOptions.fire ${JSON.stringify(trackOptions.fire)} | segment.colorOverride ${segment.colorOverride} | segment.color ${segment.color}`);
           addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
+          // drawnSegmentIdentifiers[originatingTrackId].methylation.push(segment.readName);
           // pileupSegmentsDrawn += 1;
         }
         else if (trackOptions && trackOptions.indexDHS) {
@@ -3679,31 +3690,7 @@ const renderSegments = (
                   }
                 }
               }
-              // else if (highlight === 'M0A') {
-              //   for (const posn of highlightPosns) {
-              //     if (posn >= segment.from && posn < segment.to) {
-              //       xLeft = xScale(posn);
-              //       xRight = xLeft + highlightWidth;
-              //       addRect(xLeft, yTop, highlightWidth, height, highlightColor);
-              //     }
-              //   }
-              // }
             }
-            // highlights.forEach((highlight) => {
-            //   const highlightLen = highlight.length;
-            //   const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-            //   const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
-            //   const highlightPosns = highlightPositions[highlight];
-            //   if (highlight !== 'M0A') {
-            //     highlightPosns.forEach((posn) => {
-            //       if (posn >= segment.from && posn < segment.to) {
-            //         xLeft = xScale(posn);
-            //         xRight = xLeft + highlightWidth;
-            //         addRect(xLeft, yTop, highlightWidth, height, highlightColor);
-            //       }
-            //     })
-            //   }
-            // });
           }
 
           //
@@ -4000,6 +3987,9 @@ const renderSegments = (
           // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
           let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
           // let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
+          const fireElementHeight = yScale.bandwidth() * 0.25;
+          const topCorrection = fireElementHeight * 1.75;
+
           for (const substitution of segment.substitutions) {
             // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos}`);
             xLeft = xScale(segment.from + substitution.pos);
@@ -4007,8 +3997,7 @@ const renderSegments = (
             const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
             xRight = xLeft + width;
 
-            const fireElementHeight = yScale.bandwidth() * 0.25;
-            const fireYTop = yTop + ((yBottom - yTop) * 0.125);
+            const fireYTop = yTop + ((yBottom - yTop) * 0.5) - topCorrection;
             addRect(xLeft, fireYTop, width, fireElementHeight, defaultSegmentColor);
 
             const colorMap = segment.metadata.colors;
@@ -4028,7 +4017,7 @@ const renderSegments = (
               const blockColorIdx = blockColorIdxs[i];
               const blockWidth = Math.max(1, xScale(blockSize) - xScale(0));
               const blockXLeft = xScale(segment.from + blockOffset);
-              const blockYTop = yTop + ((yBottom - yTop) * (1 - 0.125 * blockHeightFactors[i]));
+              const blockYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * blockHeightFactors[i]))) - topCorrection;
               addRect(blockXLeft, blockYTop, blockWidth, fireElementHeight * blockHeightFactors[i], blockColorIdx);
             }
           }
@@ -4054,6 +4043,7 @@ const renderSegments = (
     xScaleDomain: domain,
     xScaleRange: scaleRange,
     clusterResultsToExport: clusterResultsToExport,
+    drawnSegmentIdentifiers: drawnSegmentIdentifiers,
   };
 
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);

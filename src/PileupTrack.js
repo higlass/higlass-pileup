@@ -194,6 +194,7 @@ const PileupTrack = (HGC, ...args) => {
       // console.log(`${this.id} | options ${JSON.stringify(options)}`);
 
       this.sessionId = null;
+      this.originatingTrackId = JSON.parse(JSON.stringify(this.id));
       this.trackId = this.id;
       this.viewId = context.viewUid;
       this.originalHeight = context.definition.height;
@@ -565,11 +566,35 @@ varying vec4 vColor;
             this.refreshTiles();
             this.externalInit(this.options);
             this.fireIdentifierData = {
+              sourceTrackUid: data.sourceTrackUid,
               identifiers: data.identifiers,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
+          // case "refresh-fire-layout-post-filter":
+          //   if (!this.options.fire || this.trackUpdatesAreFrozen)
+          //     break;
+          //   this.dataFetcher = new BAMDataFetcher(
+          //     this.dataFetcher.dataConfig,
+          //     this.options,
+          //     this.worker,
+          //     HGC,
+          //   );
+          //   this.dataFetcher.track = this;
+          //   this.prevRows = [];
+          //   this.removeTiles(Object.keys(this.fetchedTiles));
+          //   this.fetching.clear();
+          //   this.refreshTiles();
+          //   this.externalInit(this.options);
+          //   this.fireIdentifierData = {
+          //     sourceTrackUid: data.sourceTrackUid,
+          //     identifiers: data.identifiers,
+          //   };
+          //   console.log(`data.sourceTrackUid ${data.sourceTrackUid} | data.identifiers ${data.identifiers}`);
+          //   this.updateExistingGraphics();
+          //   this.prevOptions = Object.assign({}, this.options);
+          //   break;
           case "cluster-layout":
             if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
@@ -832,6 +857,7 @@ varying vec4 vColor;
             this.prevRows,
             this.options,
             this.alignCpGEvents,
+            this.id,
             this.clusterData,
             this.fireIdentifierData,
           )
@@ -850,6 +876,16 @@ varying vec4 vColor;
                 data: toRender.clusterResultsToExport,
               });
               // console.log(`export_subregion_clustering_end | ${this.id} | ${toRender.clusterResultsToExport}`);
+            }
+
+            if (toRender.drawnSegmentIdentifiers) {
+              this.bc.postMessage({
+                state: 'drawn_segment_identifiers',
+                msg: 'Completed segment identifier drawing', 
+                uid: this.id,
+                sid: this.sessionId,
+                data: toRender.drawnSegmentIdentifiers,
+              });
             }
 
             this.loadingText.visible = false;
