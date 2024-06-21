@@ -3975,6 +3975,18 @@ var createColorTexture = function createColorTexture(PIXI, colors) {
   });
   return [PIXI.Texture.fromBuffer(rgba, colorTexRes, colorTexRes), colorTexRes];
 };
+function debounce(callback, wait) {
+  var timeoutId = null;
+  return function () {
+    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(function () {
+      callback.apply(null, args);
+    }, wait);
+  };
+}
 function transformY(p, t) {
   return p * t.k + t.y;
 }
@@ -4143,6 +4155,7 @@ var PileupTrack = function PileupTrack(HGC) {
       _this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
       _this.trackUpdatesAreFrozen = false;
       _this.alignCpGEvents = true;
+      _this.clusterResultsReadyToExport = {};
 
       // this.optionsDict = {};
       // this.optionsDict[trackId] = options;
@@ -4426,7 +4439,7 @@ var PileupTrack = function PileupTrack(HGC) {
                 this.fetching.clear();
                 this.refreshTiles();
                 this.externalInit(this.options);
-                // this.updateExistingGraphics();
+                this.updateExistingGraphics();
                 this.prevOptions = Object.assign({}, this.options);
               }
               this.bc.postMessage({
@@ -4452,7 +4465,8 @@ var PileupTrack = function PileupTrack(HGC) {
               this.prevOptions = Object.assign({}, this.options);
               break;
             case "refresh-fire-layout-post-clustering":
-              if (!this.options.fire || this.trackUpdatesAreFrozen) break;
+              if (!this.options.fire || this.trackUpdatesAreFrozen) return;
+              console.log("refresh-fire-layout-post-clustering | ".concat(this.id, " | ").concat(this.sessionId, " | ").concat(this.clusterResultsReadyToExport[this.id]));
               this.dataFetcher = new bam_fetcher(this.dataFetcher.dataConfig, this.options, this.worker, HGC);
               this.dataFetcher.track = this;
               this.prevRows = [];
@@ -4464,6 +4478,7 @@ var PileupTrack = function PileupTrack(HGC) {
                 sourceTrackUid: data.sourceTrackUid,
                 identifiers: data.identifiers
               };
+              this.clusterResultsReadyToExport[this.id] = false;
               this.updateExistingGraphics();
               this.prevOptions = Object.assign({}, this.options);
               break;
@@ -4693,7 +4708,10 @@ var PileupTrack = function PileupTrack(HGC) {
             if (_this4.fireIdentifierData) {
               _this4.fireIdentifierData = null;
             }
+
+            // console.log(`this.clusterResultsReadyToExport[${this.id}] ${JSON.stringify(this.clusterResultsReadyToExport[this.id])}`);
             if (toRender.clusterResultsToExport) {
+              _this4.clusterResultsReadyToExport[_this4.id] = true;
               _this4.bc.postMessage({
                 state: 'export_subregion_clustering_results',
                 msg: 'Completed subregion clustering',
@@ -4701,7 +4719,9 @@ var PileupTrack = function PileupTrack(HGC) {
                 sid: _this4.sessionId,
                 data: toRender.clusterResultsToExport
               });
+              toRender.clusterResultsToExport = null;
             }
+            if (toRender.clusterResultsToExport && !_this4.clusterResultsReadyToExport[_this4.id]) return;
 
             // if (toRender.drawnSegmentIdentifiers) {
             //   this.bc.postMessage({
@@ -4826,8 +4846,8 @@ var PileupTrack = function PileupTrack(HGC) {
             _this4.pMain.removeChild(_this4.mouseOverGraphics);
             _this4.pMain.addChild(_this4.mouseOverGraphics);
             _this4.yScaleBands = {};
-            for (var _key2 in _this4.prevRows) {
-              _this4.yScaleBands[_key2] = HGC.libraries.d3Scale.scaleBand().domain(HGC.libraries.d3Array.range(0, _this4.prevRows[_key2].rows.length)).range([_this4.prevRows[_key2].start, _this4.prevRows[_key2].end]).paddingInner(0.2);
+            for (var _key3 in _this4.prevRows) {
+              _this4.yScaleBands[_key3] = HGC.libraries.d3Scale.scaleBand().domain(HGC.libraries.d3Array.range(0, _this4.prevRows[_key3].rows.length)).range([_this4.prevRows[_key3].start, _this4.prevRows[_key3].end]).paddingInner(0.2);
             }
             _this4.drawnAtScale = HGC.libraries.d3Scale.scaleLinear().domain(toRender.xScaleDomain).range(toRender.xScaleRange);
             scaleScalableGraphics(_this4.segmentGraphics, _this4._xScale, _this4.drawnAtScale);
@@ -5578,8 +5598,8 @@ var PileupTrack = function PileupTrack(HGC) {
     }]);
     return PileupTrackClass;
   }(HGC.tracks.Tiled1DPixiTrack);
-  for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    args[_key - 1] = arguments[_key];
+  for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+    args[_key2 - 1] = arguments[_key2];
   }
   return _construct(PileupTrackClass, args);
 };

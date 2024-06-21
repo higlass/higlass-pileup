@@ -28,6 +28,16 @@ const createColorTexture = (PIXI, colors) => {
   return [PIXI.Texture.fromBuffer(rgba, colorTexRes, colorTexRes), colorTexRes];
 };
 
+function debounce(callback, wait) {
+  let timeoutId = null;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => {
+      callback.apply(null, args);
+    }, wait);
+  };
+}
+
 function transformY(p, t) {
   return p * t.k + t.y;
 }
@@ -203,6 +213,7 @@ const PileupTrack = (HGC, ...args) => {
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
       this.trackUpdatesAreFrozen = false;
       this.alignCpGEvents = true;
+      this.clusterResultsReadyToExport = {};
 
       // this.optionsDict = {};
       // this.optionsDict[trackId] = options;
@@ -519,7 +530,7 @@ varying vec4 vColor;
               this.fetching.clear();
               this.refreshTiles();
               this.externalInit(this.options);
-              // this.updateExistingGraphics();
+              this.updateExistingGraphics();
               this.prevOptions = Object.assign({}, this.options);
             }
             this.bc.postMessage({
@@ -552,7 +563,8 @@ varying vec4 vColor;
             break;
           case "refresh-fire-layout-post-clustering":
             if (!this.options.fire || this.trackUpdatesAreFrozen)
-              break;
+              return;
+            console.log(`refresh-fire-layout-post-clustering | ${this.id} | ${this.sessionId} | ${this.clusterResultsReadyToExport[this.id]}`);
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
               this.options,
@@ -569,6 +581,7 @@ varying vec4 vColor;
               sourceTrackUid: data.sourceTrackUid,
               identifiers: data.identifiers,
             };
+            this.clusterResultsReadyToExport[this.id] = false;
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
@@ -871,7 +884,9 @@ varying vec4 vColor;
               this.fireIdentifierData = null;
             }
 
+            // console.log(`this.clusterResultsReadyToExport[${this.id}] ${JSON.stringify(this.clusterResultsReadyToExport[this.id])}`);
             if (toRender.clusterResultsToExport) {
+              this.clusterResultsReadyToExport[this.id] = true;
               this.bc.postMessage({
                 state: 'export_subregion_clustering_results',
                 msg: 'Completed subregion clustering', 
@@ -879,7 +894,10 @@ varying vec4 vColor;
                 sid: this.sessionId,
                 data: toRender.clusterResultsToExport,
               });
+              toRender.clusterResultsToExport = null;
             }
+
+            if (toRender.clusterResultsToExport && !this.clusterResultsReadyToExport[this.id]) return;
 
             // if (toRender.drawnSegmentIdentifiers) {
             //   this.bc.postMessage({
