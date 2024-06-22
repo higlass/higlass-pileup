@@ -201,9 +201,9 @@ const PileupTrack = (HGC, ...args) => {
       super(context, options);
       context.dataFetcher.track = this;
 
-      // console.log(`${this.id} | options ${JSON.stringify(options)}`);
+      // console.log(`${this.id} | context.dataConfig ${JSON.stringify(context.dataConfig)}`);
 
-      this.sessionId = null;
+      this.sessionId = context.dataConfig.sid;
       this.originatingTrackId = JSON.parse(JSON.stringify(this.id));
       this.trackId = this.id;
       this.viewId = context.viewUid;
@@ -242,18 +242,20 @@ const PileupTrack = (HGC, ...args) => {
 
       // console.log(`setting up pileup-track: ${this.id}`);
 
-      const debounce = (callback, wait) => {
-        let timeoutId = null;
-        return (...args) => {
-          window.clearTimeout(timeoutId);
-          timeoutId = window.setTimeout(() => {
-            callback(...args);
-          }, wait);
-        };
-      };
-
-      this.monitor = new BroadcastChannel(`pileup-track-viewer`);
+      // const debounce = (callback, wait) => {
+      //   let timeoutId = null;
+      //   return (...args) => {
+      //     window.clearTimeout(timeoutId);
+      //     timeoutId = window.setTimeout(() => {
+      //       callback(...args);
+      //     }, wait);
+      //   };
+      // };
+      //
+      // this.monitor = new BroadcastChannel(`pileup-track-viewer`);
       // this.monitor.onmessage = debounce((event) => this.handlePileupTrackViewerMessage(event.data), 500);
+
+      this.monitor = new BroadcastChannel(`pileup-track-viewer-${this.sessionId}`);
       this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
 
       this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
@@ -502,13 +504,20 @@ varying vec4 vColor;
         }
         switch (data.msg) {
           case "track-updates-freeze":
+            if (data.sid !== this.sessionId)
+              break;
             this.trackUpdatesAreFrozen = true;
             break;
           case "track-updates-unfreeze":
+            if (data.sid !== this.sessionId)
+              break;
             this.trackUpdatesAreFrozen = false;
             break;
           case "refresh-layout":
             if (!this.options.methylation || this.trackUpdatesAreFrozen) 
+              break;
+            // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`)
+            if (data.sid !== this.sessionId)
               break;
             // this.dataFetcher = new BAMDataFetcher(
             //   this.dataFetcher.dataConfig,
@@ -553,6 +562,8 @@ varying vec4 vColor;
           case "refresh-fire-layout":
             if (!this.options.fire || this.trackUpdatesAreFrozen)
               break;
+            if (data.sid !== this.sessionId)
+              break;
             // console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
@@ -575,7 +586,9 @@ varying vec4 vColor;
           case "refresh-fire-layout-post-clustering":
             if (!this.options.fire || this.trackUpdatesAreFrozen)
               return;
-            console.log(`refresh-fire-layout-post-clustering | ${this.id} | ${this.sessionId} | ${this.clusterResultsReadyToExport[this.id]}`);
+            // console.log(`refresh-fire-layout-post-clustering | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`);
+            if (data.sid !== this.sessionId)
+              break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
               this.options,
@@ -622,6 +635,8 @@ varying vec4 vColor;
           case "cluster-layout":
             if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
+            if (data.sid !== this.sessionId)
+              break;
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,
               this.options,
@@ -654,6 +669,8 @@ varying vec4 vColor;
             break;
           case "bed12-layout":
             if (!this.options.methylation) 
+              break;
+            if (data.sid !== this.sessionId)
               break;
             const bed12Name = `${this.options.methylation.group}/${this.options.methylation.set}`;
             const bed12Colors = this.options.methylation.colors;

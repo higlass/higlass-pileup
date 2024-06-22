@@ -60941,8 +60941,8 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-                if (trackOptions[uid].methylation) {
-                  // console.log(`filtering for methylation data (A) | ${fiberMinLength} | ${fiberMaxLength}`);
+                if (trackOptions[uid].methylation || trackOptions[uid].fire) {
+                  // console.log(`filtering for methylation or FIRE data (A) | ${fiberMinLength} | ${fiberMaxLength} | ${fiberStrands}`);
                   const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
                   const filteredByStrandsRecords = filteredByLengthRecords.filter((rec) => fiberStrands.includes(rec.strand));
                   const filteredRecords = filteredByStrandsRecords;
@@ -61032,8 +61032,8 @@ const tile = async (uid, z, x) => {
                 const mappedRecords = records.map((rec) =>
                   bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
                 );
-                if (trackOptions[uid].methylation) {
-                  // console.log(`filtering for methylation data (B) | ${fiberMinLength} | ${fiberMaxLength}`);
+                if (trackOptions[uid].methylation || trackOptions[uid].fire) {
+                  // console.log(`filtering for methylation or FIRE data (B) | ${fiberMinLength} | ${fiberMaxLength} | ${fiberStrands}`);
                   const filteredByLengthRecords = mappedRecords.filter((rec) => Math.abs(rec.to - rec.from) >= fiberMinLength && Math.abs(rec.to - rec.from) <= fiberMaxLength);
                   const filteredByStrandsRecords = filteredByLengthRecords.filter((rec) => fiberStrands.includes(rec.strand));
                   const filteredRecords = filteredByStrandsRecords;
