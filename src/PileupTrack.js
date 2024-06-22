@@ -1397,13 +1397,14 @@ varying vec4 vColor;
                   // }
 
                   const dataX = this._xScale.invert(trackX);
+                  let position = null;
                   let positionText = null;
                   let eventText = null;
                   let eventProbability = null;
                   if (this.options.chromInfo) {
                     const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
                     const chrom = atcX[0];
-                    const position = Math.ceil(atcX[1]);
+                    position = Math.ceil(atcX[1]);
                     positionText = `${chrom}:${position}`;
                     const methylationOffset = position - (read.from - read.chrOffset);
                     for (const mo of read.methylationOffsets) {
@@ -1508,7 +1509,15 @@ varying vec4 vColor;
                   //   `;
                   // }
 
-                  if (this.options.indexDHS) {
+                  if (this.options.tfbs) {
+                    const tfbsLabel = 'Model name';
+                    const tfbsValue = read.readName;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="tfbs" class="track-mouseover-menu-table-item-label">${tfbsLabel}</label>
+                      <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsValue}</div>
+                    </div>`;
+                  }
+                  else if (this.options.indexDHS) {
                     const readNameLabel = 'Index DHS';
                     const readNameValue = `${read.readName} | ${this.options.name}`;
                     output += `<div class="track-mouseover-menu-table-item">
@@ -1527,7 +1536,7 @@ varying vec4 vColor;
 
                   const readIntervalLabel = (this.options.methylation) ? 'Interval' : (this.options.indexDHS) ? 'Range' : 'Interval';
                   let readIntervalValue = `${read.chrName}:${read.from - read.chrOffset}-${read.to - read.chrOffset - 1}`;
-                  readIntervalValue += (this.options.methylation) ? ` (${read.strand})` : '';
+                  readIntervalValue += (this.options.methylation || this.options.tfbs) ? ` (${read.strand})` : '';
                   output += `<div class="track-mouseover-menu-table-item">
                     <label for="readInterval" class="track-mouseover-menu-table-item-label">${readIntervalLabel}</label>
                     <div name="readInterval" class="track-mouseover-menu-table-item-value">${readIntervalValue}</div>
@@ -1539,6 +1548,50 @@ varying vec4 vColor;
                       <label for="readLength" class="track-mouseover-menu-table-item-label">Length</label>
                       <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
                     </div>`;
+                  }
+
+                  if (this.options.tfbs) {
+                    const tfbsScore = read.metadata.score;
+                    if (tfbsScore) {
+                      output += `<div class="track-mouseover-menu-table-item">
+                        <label for="tfbsScore" class="track-mouseover-menu-table-item-label">Score</label>
+                        <div name="tfbsScore" class="track-mouseover-menu-table-item-value">${tfbsScore}</div>
+                      </div>`;
+                    }
+                    const tfbsSequence = read.seq;
+                    if (position) {
+                      const tfbsSequencePositionToHighlight = position - (read.from - read.chrOffset) + 1;
+                      // console.log(`tfbsSequencePositionToHighlight ${tfbsSequencePositionToHighlight} | ${position} | ${read.from} | ${read.chrOffset} | ${tfbsSequence}`);
+                      if (tfbsSequence && tfbsSequencePositionToHighlight >= 1 && tfbsSequencePositionToHighlight <= tfbsSequence.length) {
+                        let tfbsSequencePieces = '';
+                        if (tfbsSequencePositionToHighlight === 1) {
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(0, 1)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(1, tfbsSequence.length)}</span>`;
+                        }
+                        else if (tfbsSequencePositionToHighlight === tfbsSequence.length) {
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(0, tfbsSequence.length - 1)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(tfbsSequence.length - 1, tfbsSequence.length)}</span>`;
+                        }
+                        else {
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(0, tfbsSequencePositionToHighlight - 1)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(tfbsSequencePositionToHighlight - 1, tfbsSequencePositionToHighlight)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(tfbsSequencePositionToHighlight, tfbsSequence.length)}</span>`;
+                        }                        
+                        // console.log(`tfbsSequencePieces ${tfbsSequencePieces}`);
+                        output += `<div class="track-mouseover-menu-table-item">
+                          <label for="tfbsSequence" class="track-mouseover-menu-table-item-label">Sequence</label>
+                          <div name="tfbsSequence" class="track-mouseover-menu-table-item-value">${tfbsSequencePieces}</div>
+                        </div>`;
+                      }
+                    }
+                    else {
+                      if (tfbsSequence) {
+                        output += `<div class="track-mouseover-menu-table-item">
+                          <label for="tfbsSequence" class="track-mouseover-menu-table-item-label">Sequence</label>
+                          <div name="tfbsSequence" class="track-mouseover-menu-table-item-value track-mouseover-menu-table-item-value-sequence">${tfbsSequence}</div>
+                        </div>`;
+                      }
+                    }
                   }
 
                   if (this.options.indexDHS) {

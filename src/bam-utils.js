@@ -35,6 +35,8 @@ export const PILEUP_COLORS = {
   INDEX_DHS_BG: [0, 0, 0, 0],
   FIRE_SEGMENT_BG: [0, 0, 0, 0],
   FIRE_BG: [0.89, 0.89, 0.89, 1],
+  TFBS_SEGMENT_BG: [0, 0, 0, 1],
+  TFBS_BG: [1, 1, 1, 1],
 };
 
 export let PILEUP_COLOR_IXS = {};

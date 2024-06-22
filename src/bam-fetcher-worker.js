@@ -162,6 +162,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     strand: bamRecord.get('strand') === 1 ? '+' : '-',
     row: null,
     readName: bamRecord.get('name'),
+    seq: seq,
     color: PILEUP_COLOR_IXS.BG,
     colorOverride: null,
     mappingOrientation: null,
@@ -196,6 +197,10 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     replaceColorIdxs(newPileupColorIdxs);
     segment.color = PILEUP_COLOR_IXS.FIRE_BG;
     // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+  }
+
+  if (trackOptions.tfbs) {
+    segment.metadata = JSON.parse(bamRecord.get('CO'));
   }
 
   if (trackOptions.indexDHS) {
@@ -1960,9 +1965,9 @@ const renderSegments = (
     },
   };
 
-  const fiberMinLength = dataOptions[uid].fiberMinLength;
-  const fiberMaxLength = dataOptions[uid].fiberMaxLength;
-  const fiberStrands = dataOptions[uid].fiberStrands;
+  const fiberMinLength = dataOptions[uid].fiberMinLength || 0;
+  const fiberMaxLength = dataOptions[uid].fiberMaxLength || 30000;
+  const fiberStrands = dataOptions[uid].fiberStrands || ['+', '-'];
   // console.log(`fiberMinLength ${JSON.stringify(fiberMinLength)} | fiberMaxLength ${JSON.stringify(fiberMaxLength)}`);
   
   // if (dataOptions[uid].methylation) {
@@ -3677,6 +3682,9 @@ const renderSegments = (
         else if (trackOptions && trackOptions.indexDHS) {
           // console.log(`PILEUP_COLOR_IXS.INDEX_DHS_BG ${PILEUP_COLOR_IXS.INDEX_DHS_BG} vs segment.color ${segment.color} or segment.colorOverride ${segment.colorOverride}`);
           addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
+        }
+        else if (trackOptions && trackOptions.tfbs) {
+          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
         }
         // else if (trackOptions && trackOptions.fire) {
         //   addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.FIRE_SEGMENT_BG);
