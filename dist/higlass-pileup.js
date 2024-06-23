@@ -5262,9 +5262,15 @@ var PileupTrack = function PileupTrack(HGC) {
                       // }
 
                       if (this.options.tfbs) {
-                        var tfbsLabel = 'Model name';
                         var tfbsValue = read.readName;
-                        output += "<div class=\"track-mouseover-menu-table-item\">\n                      <label for=\"tfbs\" class=\"track-mouseover-menu-table-item-label\">".concat(tfbsLabel, "</label>\n                      <div name=\"tfbs\" class=\"track-mouseover-menu-table-item-value\">").concat(tfbsValue, "</div>\n                    </div>");
+                        var _tfbsValue$split = tfbsValue.split('%%'),
+                          _tfbsValue$split2 = _slicedToArray(_tfbsValue$split, 2),
+                          tfbsClusterName = _tfbsValue$split2[0],
+                          tfbsModelName = _tfbsValue$split2[1];
+                        var tfbsClusterNameLabel = 'Cluster';
+                        output += "<div class=\"track-mouseover-menu-table-item\">\n                      <label for=\"tfbs\" class=\"track-mouseover-menu-table-item-label\">".concat(tfbsClusterNameLabel, "</label>\n                      <div name=\"tfbs\" class=\"track-mouseover-menu-table-item-value\">").concat(tfbsClusterName, "</div>\n                    </div>");
+                        var tfbsModelNameLabel = 'Model';
+                        output += "<div class=\"track-mouseover-menu-table-item\">\n                      <label for=\"tfbs\" class=\"track-mouseover-menu-table-item-label\">".concat(tfbsModelNameLabel, "</label>\n                      <div name=\"tfbs\" class=\"track-mouseover-menu-table-item-value\">").concat(tfbsModelName, "</div>\n                    </div>");
                       } else if (this.options.indexDHS) {
                         var readNameLabel = 'Index DHS';
                         var readNameValue = "".concat(read.readName, " | ").concat(this.options.name);

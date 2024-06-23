@@ -1510,11 +1510,17 @@ varying vec4 vColor;
                   // }
 
                   if (this.options.tfbs) {
-                    const tfbsLabel = 'Model name';
                     const tfbsValue = read.readName;
+                    const [tfbsClusterName, tfbsModelName] = tfbsValue.split('%%');
+                    const tfbsClusterNameLabel = 'Cluster';
                     output += `<div class="track-mouseover-menu-table-item">
-                      <label for="tfbs" class="track-mouseover-menu-table-item-label">${tfbsLabel}</label>
-                      <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsValue}</div>
+                      <label for="tfbs" class="track-mouseover-menu-table-item-label">${tfbsClusterNameLabel}</label>
+                      <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsClusterName}</div>
+                    </div>`;
+                    const tfbsModelNameLabel = 'Model';
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="tfbs" class="track-mouseover-menu-table-item-label">${tfbsModelNameLabel}</label>
+                      <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsModelName}</div>
                     </div>`;
                   }
                   else if (this.options.indexDHS) {
