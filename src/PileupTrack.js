@@ -690,6 +690,15 @@ varying vec4 vColor;
             };
             this.exportBED12Layout();
             break;
+          case "retrieve-tfbs-overlaps":
+            if (!this.options.tfbs) break;
+            if (data.sid !== this.sessionId) break;
+            this.tfbsExportData = {
+              range: data.range,
+              uid: this.id,
+            }
+            this.exportTFBSOverlaps();
+            break;
           default:
             break;
         }
@@ -748,6 +757,55 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
+    exportTFBSOverlaps() {
+      this.bc.postMessage({
+        state: 'export_tfbs_overlaps_start',
+        msg: 'Begin TFBS overlap export worker processing',
+        uid: this.id,
+        sid: this.sessionId,
+      });
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportTFBSOverlaps(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.tfbsExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            this.bc.postMessage({
+              state: 'export_tfbs_overlaps_end',
+              msg: 'Completed (exportTFBSOverlaps Promise fulfillment)', 
+              uid: this.id,
+              sid: this.sessionId,
+              data: toExport,
+            });
+          })
+      });
+    }
+
     exportBED12Layout() {
       // console.log(`exportBED12Layout called`);
       this.bc.postMessage({
@@ -783,6 +841,10 @@ varying vec4 vColor;
 
             if (this.fireIdentifierData) {
               this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
             }
 
             this.bc.postMessage({
@@ -1094,6 +1156,10 @@ varying vec4 vColor;
 
             if (this.bed12ExportData) {
               this.bed12ExportData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
             }
 
             // if (this.fireIdentifierData) {

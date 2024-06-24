@@ -1207,6 +1207,66 @@ function isEmpty(obj) {
   return true;
 }
 
+const exportTFBSOverlaps = (
+  sessionId,
+  uid,
+  tileIds,
+  domain,
+  scaleRange,
+  position,
+  dimensions,
+  prevRows,
+  trackOptions,
+  tfbsOverlapsExportDataObj,
+) => {
+  const allSegments = {};
+
+  const tfbsOverlaps = [];
+
+  for (const tileId of tileIds) {
+    const tileValue = tileValues.get(`${uid}.${tileId}`);
+
+    if (tileValue.error) {
+      throw new Error(tileValue.error);
+    }
+
+    for (const segment of tileValue) {
+      allSegments[segment.id] = segment;
+    }
+  }
+
+  let segmentList = Object.values(allSegments);
+
+  if (tfbsOverlapsExportDataObj && trackOptions.tfbs) {
+    const rangeStart = tfbsOverlapsExportDataObj.range.left.start;
+    const rangeEnd = tfbsOverlapsExportDataObj.range.right.stop;
+    
+    for (let i = 0; i < segmentList.length; i++) {
+      const segment = segmentList[i];
+      const segmentStart = segment.from - segment.chrOffset;
+      const segmentEnd = segment.to - segment.chrOffset;
+      // console.log(`segmentStart ${segmentStart} | segmentEnd ${segmentEnd} | rangeStart ${rangeStart} | rangeEnd ${rangeEnd}`);
+      if (
+        ((segmentStart <= rangeStart) && (segmentStart < rangeEnd) && (segmentEnd > rangeStart))
+        ||
+        ((segmentStart >= rangeStart) && (segmentStart < rangeEnd) && (segmentEnd >= rangeEnd))
+        ||
+        ((segmentStart >= rangeStart) && (segmentStart < rangeEnd) && (segmentEnd >= rangeStart) && (segmentEnd < rangeEnd))
+        ) 
+      {
+        // console.log(`segment ${segment.readName}`);
+        tfbsOverlaps.push(segment.readName);
+      }
+    }
+  }
+
+  const objData = {
+    uid: tfbsOverlapsExportDataObj.uid,
+    tfbsOverlaps: tfbsOverlaps,
+  }
+  return objData;
+}
+
 const exportSegmentsAsBED12 = (
   sessionId,
   uid,
@@ -1965,9 +2025,10 @@ const renderSegments = (
     },
   };
 
-  const fiberMinLength = dataOptions[uid].fiberMinLength || 0;
-  const fiberMaxLength = dataOptions[uid].fiberMaxLength || 30000;
-  const fiberStrands = dataOptions[uid].fiberStrands || ['+', '-'];
+  const fiberMinLength = (Object.hasOwn(dataOptions[uid], fiberMinLength)) ? dataOptions[uid].fiberMinLength : 0;
+  const fiberMaxLength = (Object.hasOwn(dataOptions[uid], fiberMaxLength)) ? dataOptions[uid].fiberMaxLength : 30000;
+  const fiberStrands = (Object.hasOwn(dataOptions[uid], fiberStrands)) ? dataOptions[uid].fiberStrands : ['+', '-'];
+  
   // console.log(`fiberMinLength ${JSON.stringify(fiberMinLength)} | fiberMaxLength ${JSON.stringify(fiberMaxLength)}`);
   
   // if (dataOptions[uid].methylation) {
@@ -4079,6 +4140,7 @@ const tileFunctions = {
   tile,
   renderSegments,
   exportSegmentsAsBED12,
+  exportTFBSOverlaps,
 };
 
 expose(tileFunctions);
