@@ -2045,6 +2045,14 @@ varying vec4 vColor;
           'xlink:href',
           b64string,
         );
+        image.setAttribute(
+          'width',
+          window.innerWidth,
+        );
+        image.setAttribute(
+          'height',
+          this.pMain.height,
+        );
         gImage.appendChild(image);
         gSegment.appendChild(gImage);
 

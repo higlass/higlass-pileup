@@ -5675,6 +5675,8 @@ var PileupTrack = function PileupTrack(HGC) {
           gImage.setAttribute('transform', "translate(0,0)");
           var image = document.createElement('image');
           image.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', b64string);
+          image.setAttribute('width', window.innerWidth);
+          image.setAttribute('height', this.pMain.height);
           gImage.appendChild(image);
           gSegment.appendChild(gImage);
 
