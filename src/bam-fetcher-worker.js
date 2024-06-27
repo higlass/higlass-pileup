@@ -11,6 +11,7 @@ import {
   hexToRGBRawTriplet, 
   indexDHSColors,
   fireColors,
+  genericBedColors,
 } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS, replaceColorIdxs } from './bam-utils';
@@ -201,6 +202,17 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
   if (trackOptions.tfbs) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
+  }
+
+  if (trackOptions.genericBed) {
+    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.genericBedColors = genericBedColors(trackOptions);
+    const newPileupColorIdxs = {};
+    Object.keys(segment.genericBedColors).map((x, i) => {
+      newPileupColorIdxs[x] = i;
+      return null;
+    })
+    replaceColorIdxs(newPileupColorIdxs);
   }
 
   if (trackOptions.indexDHS) {
@@ -3746,6 +3758,17 @@ const renderSegments = (
         }
         else if (trackOptions && trackOptions.tfbs) {
           addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
+        }
+        else if (trackOptions && trackOptions.genericBed) {
+          let colorIdx = PILEUP_COLOR_IXS.GENERIC_BED_SEGMENT_BG;
+          // if (trackOptions.genericBed.colors) {
+          //   const colorRgb = trackOptions.genericBed.colors[0];
+          //   console.log(`colorRgb ${colorRgb}`);
+          //   console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+          //   colorIdx = PILEUP_COLOR_IXS[`GENERIC_BED_${colorRgb}`];
+          //   console.log(`colorIdx ${colorIdx}`);
+          // }
+          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, colorIdx);
         }
         // else if (trackOptions && trackOptions.fire) {
         //   addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.FIRE_SEGMENT_BG);

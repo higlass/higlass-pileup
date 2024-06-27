@@ -611,29 +611,6 @@ varying vec4 vColor;
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
             break;
-          // case "refresh-fire-layout-post-filter":
-          //   if (!this.options.fire || this.trackUpdatesAreFrozen)
-          //     break;
-          //   this.dataFetcher = new BAMDataFetcher(
-          //     this.dataFetcher.dataConfig,
-          //     this.options,
-          //     this.worker,
-          //     HGC,
-          //   );
-          //   this.dataFetcher.track = this;
-          //   this.prevRows = [];
-          //   this.removeTiles(Object.keys(this.fetchedTiles));
-          //   this.fetching.clear();
-          //   this.refreshTiles();
-          //   this.externalInit(this.options);
-          //   this.fireIdentifierData = {
-          //     sourceTrackUid: data.sourceTrackUid,
-          //     identifiers: data.identifiers,
-          //   };
-          //   console.log(`data.sourceTrackUid ${data.sourceTrackUid} | data.identifiers ${data.identifiers}`);
-          //   this.updateExistingGraphics();
-          //   this.prevOptions = Object.assign({}, this.options);
-          //   break;
           case "cluster-layout":
             if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
@@ -1577,7 +1554,15 @@ varying vec4 vColor;
                   //   `;
                   // }
 
-                  if (this.options.tfbs) {
+                  if (this.options.genericBed) {
+                    const genericBedNameLabel = 'Name';
+                    const genericBedNameValue = (read.readName !== '.') ? read.readName : this.options.name;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readName" class="track-mouseover-menu-table-item-label">${genericBedNameLabel}</label>
+                      <div name="readName" class="track-mouseover-menu-table-item-value">${genericBedNameValue}</div>
+                    </div>`;
+                  }
+                  else if (this.options.tfbs) {
                     const tfbsValue = read.readName;
                     const [tfbsClusterName, tfbsModelName] = tfbsValue.split('%%');
                     const tfbsClusterNameLabel = 'Cluster';

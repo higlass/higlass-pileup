@@ -37,6 +37,8 @@ export const PILEUP_COLORS = {
   FIRE_BG: [0.89, 0.89, 0.89, 1],
   TFBS_SEGMENT_BG: [0, 0, 0, 1],
   TFBS_BG: [1, 1, 1, 1],
+  GENERIC_BED_SEGMENT_BG: [0, 0, 0, 1],
+  GENERIC_BED_SEGMENT_RED_BG: [1, 0, 0, 1],
 };
 
 export let PILEUP_COLOR_IXS = {};
@@ -55,7 +57,26 @@ export const hexToRGBRawTriplet = (hex) => {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `${r},${g},${b}`;
- }
+}
+
+export const genericBedColors = (options) => {
+  if (!options.genericBed) return {};
+  const colorTable = {};
+  colorTable['GENERIC_BED_BG'] = [0, 0, 0, 0], // Generic BED background default
+  // Object.entries(options.genericBed.colors).map((o) => {
+  //   const c = o[0];
+  //   console.log(`c ${c}`);
+  //   const v = c.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+  //   colorTable[`GENERIC_BED_${c}`] = [...v, 1.0];
+  // });
+  options.genericBed.colors.forEach((c, i) => {
+    // console.log(`c ${c} | i ${i}`);
+    const v = c.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`GENERIC_BED_${c}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify({...PILEUP_COLORS, ...colorTable})}`);
+  return {...PILEUP_COLORS, ...colorTable};
+}
 
 export const indexDHSColors = (options) => {
   if (!options.indexDHS) return {};

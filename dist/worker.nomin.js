@@ -44488,6 +44488,8 @@ const PILEUP_COLORS = {
   FIRE_BG: [0.89, 0.89, 0.89, 1],
   TFBS_SEGMENT_BG: [0, 0, 0, 1],
   TFBS_BG: [1, 1, 1, 1],
+  GENERIC_BED_SEGMENT_BG: [0, 0, 0, 1],
+  GENERIC_BED_SEGMENT_RED_BG: [1, 0, 0, 1],
 };
 
 let PILEUP_COLOR_IXS = {};
@@ -44506,7 +44508,26 @@ const hexToRGBRawTriplet = (hex) => {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `${r},${g},${b}`;
- }
+}
+
+const genericBedColors = (options) => {
+  if (!options.genericBed) return {};
+  const colorTable = {};
+  colorTable['GENERIC_BED_BG'] = [0, 0, 0, 0], // Generic BED background default
+  // Object.entries(options.genericBed.colors).map((o) => {
+  //   const c = o[0];
+  //   console.log(`c ${c}`);
+  //   const v = c.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+  //   colorTable[`GENERIC_BED_${c}`] = [...v, 1.0];
+  // });
+  options.genericBed.colors.forEach((c, i) => {
+    // console.log(`c ${c} | i ${i}`);
+    const v = c.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`GENERIC_BED_${c}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify({...PILEUP_COLORS, ...colorTable})}`);
+  return {...PILEUP_COLORS, ...colorTable};
+}
 
 const indexDHSColors = (options) => {
   if (!options.indexDHS) return {};
@@ -60393,6 +60414,17 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
   }
 
+  if (trackOptions.genericBed) {
+    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.genericBedColors = genericBedColors(trackOptions);
+    const newPileupColorIdxs = {};
+    Object.keys(segment.genericBedColors).map((x, i) => {
+      newPileupColorIdxs[x] = i;
+      return null;
+    })
+    replaceColorIdxs(newPileupColorIdxs);
+  }
+
   if (trackOptions.indexDHS) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
@@ -63936,6 +63968,17 @@ const renderSegments = (
         }
         else if (trackOptions && trackOptions.tfbs) {
           addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
+        }
+        else if (trackOptions && trackOptions.genericBed) {
+          let colorIdx = PILEUP_COLOR_IXS.GENERIC_BED_SEGMENT_BG;
+          // if (trackOptions.genericBed.colors) {
+          //   const colorRgb = trackOptions.genericBed.colors[0];
+          //   console.log(`colorRgb ${colorRgb}`);
+          //   console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
+          //   colorIdx = PILEUP_COLOR_IXS[`GENERIC_BED_${colorRgb}`];
+          //   console.log(`colorIdx ${colorIdx}`);
+          // }
+          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, colorIdx);
         }
         // else if (trackOptions && trackOptions.fire) {
         //   addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.FIRE_SEGMENT_BG);
