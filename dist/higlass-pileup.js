@@ -4154,13 +4154,15 @@ var PileupTrack = function PileupTrack(HGC) {
        );
      }
     */
+
+  var worker = spawn(BlobWorker.fromText(cjs_js_dist_worker));
   var PileupTrackClass = /*#__PURE__*/function (_HGC$tracks$Tiled1DPi) {
     _inherits(PileupTrackClass, _HGC$tracks$Tiled1DPi);
     var _super = _createSuper(PileupTrackClass);
     function PileupTrackClass(context, options) {
       var _this;
       PileupTrack_classCallCheck(this, PileupTrackClass);
-      var worker = spawn(BlobWorker.fromText(cjs_js_dist_worker));
+      // const worker = spawn(BlobWorker.fromText(MyWorkerWeb)); 
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
@@ -4232,10 +4234,20 @@ var PileupTrack = function PileupTrack(HGC) {
       // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
       return _this;
     }
-
-    // Some of the initialization code is factored out, so that we can 
-    // reset/reinitialize if an option change requires it
     PileupTrack_createClass(PileupTrackClass, [{
+      key: "remove",
+      value: function remove() {
+        if (_get(_getPrototypeOf(PileupTrackClass.prototype), "remove", this)) _get(_getPrototypeOf(PileupTrackClass.prototype), "remove", this).call(this);
+        // console.log(`[PileupTrack] remove | ${this.id} | ${this.sessionId}`);
+        this.monitor.close();
+        this.bc.close();
+        worker = null;
+        this.worker = null;
+      }
+
+      // Some of the initialization code is factored out, so that we can 
+      // reset/reinitialize if an option change requires it
+    }, {
       key: "externalInit",
       value: function externalInit(options) {
         // we scale the entire view up until a certain point

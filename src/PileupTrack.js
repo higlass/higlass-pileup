@@ -1,5 +1,5 @@
 import BAMDataFetcher from './bam-fetcher';
-import { spawn, BlobWorker } from 'threads';
+import { spawn, Thread, BlobWorker } from 'threads';
 import { 
   PILEUP_COLORS, 
   indexDHSColors, 
@@ -186,9 +186,12 @@ const PileupTrack = (HGC, ...args) => {
      }
     */
 
-  class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
+let worker = spawn(BlobWorker.fromText(MyWorkerWeb));
+
+class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
-      const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
+
+      // const worker = spawn(BlobWorker.fromText(MyWorkerWeb)); 
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
@@ -267,6 +270,15 @@ const PileupTrack = (HGC, ...args) => {
       });
 
       // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
+    }
+
+    remove() {
+      if (super.remove) super.remove();
+      // console.log(`[PileupTrack] remove | ${this.id} | ${this.sessionId}`);
+      this.monitor.close();
+      this.bc.close();
+      worker = null;
+      this.worker = null;
     }
 
     // Some of the initialization code is factored out, so that we can 
