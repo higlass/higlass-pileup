@@ -4442,10 +4442,10 @@ var PileupTrack = function PileupTrack(HGC) {
               this.trackUpdatesAreFrozen = false;
               break;
             case "refresh-layout":
-              // if (!this.options.methylation || this.trackUpdatesAreFrozen) 
-              //   break;
+              if (!this.options.methylation || this.trackUpdatesAreFrozen) break;
               // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`)
-              if (this.options.fire) break;
+              // if (this.options.fire) 
+              //   break;
               if (data.sid !== this.sessionId) break;
               // this.dataFetcher = new BAMDataFetcher(
               //   this.dataFetcher.dataConfig,

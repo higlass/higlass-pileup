@@ -526,11 +526,11 @@ varying vec4 vColor;
             this.trackUpdatesAreFrozen = false;
             break;
           case "refresh-layout":
-            // if (!this.options.methylation || this.trackUpdatesAreFrozen) 
-            //   break;
-            // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`)
-            if (this.options.fire) 
+            if (!this.options.methylation || this.trackUpdatesAreFrozen) 
               break;
+            // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`)
+            // if (this.options.fire) 
+            //   break;
             if (data.sid !== this.sessionId)
               break;
             // this.dataFetcher = new BAMDataFetcher(
