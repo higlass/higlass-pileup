@@ -639,7 +639,7 @@ varying vec4 vColor;
             this.removeTiles(Object.keys(this.fetchedTiles));
             this.fetching.clear();
             this.refreshTiles();
-            this.externalInit(this.options);
+            this.externalInit(this.options);            
             this.clusterData = {
               range: data.range, 
               viewportRange: data.viewportRange,
@@ -654,6 +654,8 @@ varying vec4 vColor;
               filterFiberMinLength: data.filterFiberMinLength,
               filterFiberMaxLength: data.filterFiberMaxLength,
               filterFiberStrands: data.filterFiberStrands,
+              basesPerPixel: data.basesPerPixel,
+              viewportWidthInPixels: data.viewportWidthInPixels,
             };
             this.updateExistingGraphics();
             this.prevOptions = Object.assign({}, this.options);
@@ -689,6 +691,32 @@ varying vec4 vColor;
               uid: this.id,
             }
             this.exportTFBSOverlaps();
+            break;
+          case "recalculate-signal-matrices":
+            // console.log(`recalculate-signal-matrices (A) ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.trackUpdatesAreFrozen}`);
+            if (typeof this.options.methylation === 'undefined') break;
+            if (!this.trackUpdatesAreFrozen) break;
+            if (data.sid !== this.sessionId) break;
+            // console.log(`recalculate-signal-matrices (B)`);
+            this.signalMatrixExportData = {
+              uid: this.id,
+              range: data.range,
+              viewportRange: data.viewportRange,
+              method: data.method,
+              distanceFn: data.distanceFn,
+              eventCategories: data.eventCategories,
+              linkage: data.linkage,
+              epsilon: data.epsilon,
+              minimumPoints: data.minimumPoints,
+              probabilityThresholdRange: data.probabilityThresholdRange,
+              eventOverlapType: data.eventOverlapType,
+              filterFiberMinLength: data.filterFiberMinLength,
+              filterFiberMaxLength: data.filterFiberMaxLength,
+              filterFiberStrands: data.filterFiberStrands,
+              basesPerPixel: data.basesPerPixel,
+              viewportWidthInPixels: data.viewportWidthInPixels,
+            };
+            this.exportSignalMatrices();
             break;
           default:
             break;
@@ -748,6 +776,59 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
+    exportSignalMatrices() {
+      this.bc.postMessage({
+        state: 'export_signal_matrices_start',
+        msg: 'Begin signal matrix export worker processing',
+        uid: this.id,
+        sid: this.sessionId,
+      });
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportSignalMatrices(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.signalMatrixExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            this.bc.postMessage({
+              state: 'export_signal_matrices_end',
+              msg: 'Completed (exportSignalMatrices Promise fulfillment)', 
+              uid: this.id,
+              sid: this.sessionId,
+              data: toExport,
+            });
+          })
+      });
+    }
+
     exportTFBSOverlaps() {
       this.bc.postMessage({
         state: 'export_tfbs_overlaps_start',
@@ -784,6 +865,10 @@ varying vec4 vColor;
 
             if (this.tfbsExportData) {
               this.tfbsExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
             }
 
             this.bc.postMessage({
@@ -838,6 +923,10 @@ varying vec4 vColor;
               this.tfbsExportData = null;
             }
 
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
             this.bc.postMessage({
               state: 'export_bed12_end',
               msg: 'Completed (exportBED12Layout Promise fulfillment)', 
@@ -852,7 +941,7 @@ varying vec4 vColor;
     updateExistingGraphics() {
       // console.log(`updateExistingGraphics (start) | ${this.id}`);
 
-      if (this.trackUpdatesAreFrozen && (this.options.fire || this.options.methylation)) return;
+      if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.methylation)) return;
       
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
@@ -921,6 +1010,7 @@ varying vec4 vColor;
         return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
+
       // console.log(`updateExistingGraphics (B2+) | ${this.id}`);
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
@@ -929,6 +1019,7 @@ varying vec4 vColor;
         this.fetching.delete(fetchedTileKey);
         this.rendering.add(fetchedTileKey);
       }
+      
       // fetchedTileKeys.forEach((x) => {
       //   this.fetching.delete(x);
       //   this.rendering.add(x);
@@ -1149,8 +1240,16 @@ varying vec4 vColor;
               this.bed12ExportData = null;
             }
 
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
             if (this.tfbsExportData) {
               this.tfbsExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
             }
 
             // if (this.fireIdentifierData) {

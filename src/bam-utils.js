@@ -39,6 +39,14 @@ export const PILEUP_COLORS = {
   TFBS_BG: [1, 1, 1, 1],
   GENERIC_BED_SEGMENT_BG: [0, 0, 0, 1],
   GENERIC_BED_SEGMENT_RED_BG: [1, 0, 0, 1],
+  "FIRE_169,169,169": [0.66, 0.66, 0.66],
+  "FIRE_147,112,219": [0.58, 0.44, 0.86],
+  "FIRE_255,0,0": [1, 0, 0],
+  "FIRE_200,0,0": [0.78, 0, 0],
+  "FIRE_255,140,0": [1, 0.55, 0],
+  "FIRE_175,0,0": [0.68, 0, 0],
+  "FIRE_225,0,0": [0.88, 0, 0],
+  "FIRE_139,0,0": [0.54, 0, 0],
 };
 
 export let PILEUP_COLOR_IXS = {};
@@ -49,6 +57,12 @@ Object.keys(PILEUP_COLORS).map((x, i) => {
 
 export function replaceColorIdxs(newColorIdxs) {
   PILEUP_COLOR_IXS = newColorIdxs;
+}
+
+export function appendColorIdxs(newColorIdxs) {
+  const currentColorTableLength = Object.keys(PILEUP_COLOR_IXS).length;
+  Object.keys(newColorIdxs).map((x, i) => { newColorIdxs[x] = i + currentColorTableLength; })
+  PILEUP_COLOR_IXS = {...PILEUP_COLOR_IXS, ...newColorIdxs};
 }
 
 export const hexToRGBRawTriplet = (hex) => {
