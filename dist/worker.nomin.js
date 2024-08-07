@@ -42063,7 +42063,7 @@ class BAI extends IndexFile {
                 firstDataLine = findFirstData(firstDataLine, offset);
                 linearIndex[j] = offset;
             }
-            console.log(`indices[i]: ${JSON.stringify(indices[i])}`);
+            // console.log(`indices[i]: ${JSON.stringify(indices[i])}`)
             indices[i] = { binIndex, linearIndex, stats };
         }
         return {
@@ -44034,6 +44034,139 @@ class bamFile_BamFile {
     }
     async getHeaderPre(origOpts) {
         const opts = makeOpts(origOpts);
+        // console.log(`[bam-js] getHeaderPre: ${JSON.stringify(opts)}`)
+        if (opts.assemblyName && opts.assemblyName === 'hg38') {
+            this.chrToIndex = {
+                chr1: 0,
+                chr10: 1,
+                chr11: 2,
+                chr12: 3,
+                chr13: 4,
+                chr14: 5,
+                chr15: 6,
+                chr16: 7,
+                chr17: 8,
+                chr18: 9,
+                chr19: 10,
+                chr2: 11,
+                chr20: 12,
+                chr21: 13,
+                chr22: 14,
+                chr3: 15,
+                chr4: 16,
+                chr5: 17,
+                chr6: 18,
+                chr7: 19,
+                chr8: 20,
+                chr9: 21,
+                chrM: 22,
+                chrX: 23,
+                chrY: 24,
+            };
+            this.indexToChr = [
+                {
+                    refName: 'chr1',
+                    length: 248956422,
+                },
+                {
+                    refName: 'chr10',
+                    length: 133797422,
+                },
+                {
+                    refName: 'chr11',
+                    length: 135086622,
+                },
+                {
+                    refName: 'chr12',
+                    length: 133275309,
+                },
+                {
+                    refName: 'chr13',
+                    length: 114364328,
+                },
+                {
+                    refName: 'chr14',
+                    length: 107043718,
+                },
+                {
+                    refName: 'chr15',
+                    length: 101991189,
+                },
+                {
+                    refName: 'chr16',
+                    length: 90338345,
+                },
+                {
+                    refName: 'chr17',
+                    length: 83257441,
+                },
+                {
+                    refName: 'chr18',
+                    length: 80373285,
+                },
+                {
+                    refName: 'chr19',
+                    length: 58617616,
+                },
+                {
+                    refName: 'chr2',
+                    length: 242193529,
+                },
+                {
+                    refName: 'chr20',
+                    length: 64444167,
+                },
+                {
+                    refName: 'chr21',
+                    length: 46709983,
+                },
+                {
+                    refName: 'chr22',
+                    length: 50818468,
+                },
+                {
+                    refName: 'chr3',
+                    length: 198295559,
+                },
+                {
+                    refName: 'chr4',
+                    length: 190214555,
+                },
+                {
+                    refName: 'chr5',
+                    length: 181538259,
+                },
+                {
+                    refName: 'chr6',
+                    length: 170805979,
+                },
+                {
+                    refName: 'chr7',
+                    length: 159345973,
+                },
+                {
+                    refName: 'chr8',
+                    length: 145138636,
+                },
+                {
+                    refName: 'chr9',
+                    length: 138394717,
+                },
+                {
+                    refName: 'chrM',
+                    length: 16569,
+                },
+                {
+                    refName: 'chrX',
+                    length: 156040895,
+                },
+                {
+                    refName: 'chrY',
+                    length: 57227415,
+                },
+            ];
+            return;
+        }
         if (!this.index) {
             return;
         }
@@ -44044,16 +44177,16 @@ class bamFile_BamFile {
         let buffer;
         if (ret) {
             const s = ret + blockLen;
-            console.log(`[bam-js] reading header [ ret ${ret} | s ${s} ]`);
+            // console.log(`[bam-js] reading header [ ret ${ret} | s ${s} ]`)
             const res = await this.bam.read(node_modules_buffer/* Buffer */.lW.alloc(s), 0, s, 0, opts);
             if (!res.bytesRead) {
                 throw new Error('Error reading header');
             }
             buffer = res.buffer.subarray(0, Math.min(res.bytesRead, ret));
-            console.log(`[bam-js] reading header [ res.bytesRead ${res.bytesRead} ]`);
+            // console.log(`[bam-js] reading header [ res.bytesRead ${res.bytesRead} ]`)
         }
         else {
-            console.log(`[bam-js] reading all of header`);
+            // console.log(`[bam-js] reading all of header`)
             buffer = await this.bam.readFile(opts);
         }
         const uncba = await unzip_pako_unzip(buffer);
@@ -44108,6 +44241,8 @@ class bamFile_BamFile {
                 return this._readRefSeqs(start, refSeqBytes * 2, opts);
             }
         }
+        // console.log(`[bam-js] chrToIndex: ${JSON.stringify(chrToIndex)}`)
+        // console.log(`[bam-js] indexToChr: ${JSON.stringify(indexToChr)}`)
         return { chrToIndex, indexToChr };
     }
     async getRecordsForRange(chr, min, max, opts) {
@@ -44115,7 +44250,11 @@ class bamFile_BamFile {
     }
     async *streamRecordsForRange(chr, min, max, opts) {
         var _a;
-        await this.getHeader(opts);
+        // console.log(`[bam-js] streamRecordsForRange: ${JSON.stringify(opts)}`)
+        // console.log(`[bam-js] opts?.assemblyName ${opts?.assemblyName}`)
+        if ((opts === null || opts === void 0 ? void 0 : opts.assemblyName) && (opts === null || opts === void 0 ? void 0 : opts.assemblyName) !== 'hg38') {
+            await this.getHeader(opts);
+        }
         const chrId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[chr];
         if (chrId === undefined || !this.index) {
             yield [];
@@ -60723,7 +60862,7 @@ const bam_fetcher_worker_init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSiz
     });
 
     // we have to fetch the header before we can fetch data
-    bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
+    bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader({assemblyName: 'hg38'});
 
     // const bamUrlObj = new URL(bamUrl)
     // const bamUrlUsername = bamUrlObj.username
@@ -60953,6 +61092,7 @@ const tile = async (uid, z, x) => {
           viewAsPairs: areMatesRequired(trackOptions[uid]),
           maxSampleSize: maxSampleSize || 1000,
           maxInsertSize: 1000,
+          assemblyName: 'hg38',
         };
 
         if (maxX > chromEnd) {

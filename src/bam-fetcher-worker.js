@@ -499,7 +499,7 @@ const init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSizesUrl, options, tOp
     });
 
     // we have to fetch the header before we can fetch data
-    bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader();
+    bamHeaders[bamUrl] = bamFiles[bamUrl].getHeader({assemblyName: 'hg38'});
 
     // const bamUrlObj = new URL(bamUrl)
     // const bamUrlUsername = bamUrlObj.username
@@ -729,6 +729,7 @@ const tile = async (uid, z, x) => {
           viewAsPairs: areMatesRequired(trackOptions[uid]),
           maxSampleSize: maxSampleSize || 1000,
           maxInsertSize: 1000,
+          assemblyName: 'hg38',
         };
 
         if (maxX > chromEnd) {
