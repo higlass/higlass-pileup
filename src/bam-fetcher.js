@@ -46,6 +46,12 @@ class BAMDataFetcher {
     });
   }
 
+  cleanup() {
+    this.initPromise = this.worker.then(tileFunctions => {
+      tileFunctions.cleanup();
+    });
+  }
+
   tilesetInfo(callback) {
     this.worker.then(tileFunctions => {
       if (this.isServerFetcher) {

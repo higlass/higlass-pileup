@@ -5997,6 +5997,20 @@ const renderSegments = (
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
+const cleanup = () => {
+  console.log("[higlass-pileup] deleting data in the Dedicated Worker");
+  Object.keys(bamFiles).forEach(key => delete bamFiles[key]);
+  Object.keys(bamHeaders).forEach(key => delete bamHeaders[key]);
+  Object.keys(dataOptions).forEach(key => delete dataOptions[key]);
+  Object.keys(serverInfos).forEach(key => delete serverInfos[key]);
+  Object.keys(chromSizes).forEach(key => delete chromSizes[key]);
+  Object.keys(chromInfos).forEach(key => delete chromInfos[key]);
+  Object.keys(tileValues).forEach(key => delete tileValues[key]);
+  Object.keys(tilesetInfos).forEach(key => delete tilesetInfos[key]);
+  Object.keys(dataConfs).forEach(key => delete dataConfs[key]);
+  Object.keys(trackOptions).forEach(key => delete trackOptions[key]);
+};
+
 const tileFunctions = {
   init,
   serverInit,
@@ -6005,6 +6019,7 @@ const tileFunctions = {
   serverFetchTilesDebounced,
   fetchTilesDebounced,
   tile,
+  cleanup,
   renderSegments,
   exportSegmentsAsBED12,
   exportTFBSOverlaps,

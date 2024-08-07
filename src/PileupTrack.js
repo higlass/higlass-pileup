@@ -329,9 +329,17 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
 
     initTile() {}
 
+    remove() {
+      console.log(this);
+      console.log("[higlass-pileup] REMOVE");
+      this.pLabel.destroy(true);  // clean up pixi stuff
+      this.dataFetcher.cleanup();
+      this.fetching.clear();
+      super.remove()  
+    }
+
     colorToArray(color) {
       const rgb = HGC.libraries.d3Color.rgb(color);
-
       const array = [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
       return array;
     }
