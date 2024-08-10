@@ -177,8 +177,6 @@ function isIn(as) {
   };
 }
 
-let worker = spawn(BlobWorker.fromText(MyWorkerWeb));
-
 const PileupTrack = (HGC, ...args) => {
   /**
      if (!new.target) {
@@ -187,6 +185,8 @@ const PileupTrack = (HGC, ...args) => {
        );
      }
     */
+
+let worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
 class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {

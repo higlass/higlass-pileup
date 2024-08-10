@@ -61046,6 +61046,7 @@ const tilesetInfo = (uid) => {
 };
 
 const tile = async (uid, z, x) => {
+  if (!uid || !dataOptions[uid] || !dataOptions[uid].maxTileWidth) return;
   const {maxTileWidth, maxSampleSize, fiberMinLength, fiberMaxLength, fiberStrands} = dataOptions[uid];
 
   // console.log(`maxSampleSize ${maxSampleSize}`);
