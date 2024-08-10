@@ -34,7 +34,7 @@ export const PILEUP_COLORS = {
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
   FIRE_SEGMENT_BG: [0, 0, 0, 0],
-  FIRE_BG: [0.89, 0.89, 0.89, 1],
+  FIRE_BG: [0.88, 0.88, 0.88, 1],
   TFBS_SEGMENT_BG: [0, 0, 0, 1],
   TFBS_BG: [1, 1, 1, 1],
   GENERIC_BED_SEGMENT_BG: [0, 0, 0, 1],

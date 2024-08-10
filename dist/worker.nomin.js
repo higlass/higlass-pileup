@@ -44624,7 +44624,7 @@ const PILEUP_COLORS = {
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
   FIRE_SEGMENT_BG: [0, 0, 0, 0],
-  FIRE_BG: [0.89, 0.89, 0.89, 1],
+  FIRE_BG: [0.88, 0.88, 0.88, 1],
   TFBS_SEGMENT_BG: [0, 0, 0, 1],
   TFBS_BG: [1, 1, 1, 1],
   GENERIC_BED_SEGMENT_BG: [0, 0, 0, 1],
@@ -60626,13 +60626,13 @@ const findMates = (segments) => {
 
   Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
     {
-      if (segmentGroup.length === 2){
+      if (segmentGroup.length === 2) {
         const read = segmentGroup[0];
         const mate = segmentGroup[1];
         read.mate_ids = [mate.id];
         mate.mate_ids = [read.id];
       }
-      else if (segmentGroup.length > 2){
+      else if (segmentGroup.length > 2) {
         // It might be useful to distinguish reads from chimeric alignments in the future,
         // e.g., if we want to highlight read orientations of split reads. Not doing this for now.
         // See flags here: https://broadinstitute.github.io/picard/explain-flags.html
@@ -66295,7 +66295,10 @@ const renderSegments = (
         else if (trackOptions && trackOptions.fire) {
           // let showDims = true;
           const fireMetadata = (trackOptions.fire && trackOptions.fire.metadata) ? segment.metadata : {};
-          fireMetadata.defaultRGB = '169,169,169';
+          const fireEnabledCategories = (trackOptions.fire && trackOptions.fire.enabledCategories) ? trackOptions.fire.enabledCategories : [];
+          // console.log(`trackOptions.fire ${JSON.stringify(trackOptions.fire)}`);
+          // console.log(`fireEnabledCategories ${JSON.stringify(fireEnabledCategories)}`);
+          // fireMetadata.defaultRGB = '169,169,169';
           // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
           let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
           // let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
@@ -66317,20 +66320,25 @@ const renderSegments = (
             const blocks = segment.metadata.blocks;
             const blockSizes = blocks.sizes;
             const blockOffsets = blocks.offsets;
+            const blockColors = blocks.colors.map((d => colorMap[d]));
             const blockColorIdxs = blocks.colors.map(d => PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
             const blockHeightFactors = blocks.colors.map(d => trackOptions.fire.metadata.itemRGBMap[colorMap[d]].heightFactor);
             
             // console.log(`blocks ${JSON.stringify(blocks)}`);
             // console.log(`colorMap ${JSON.stringify(colorMap)}`);
+            // console.log(`blockColors ${JSON.stringify(blockColors)}`);
 
             for (let i = 0; i < blocks.count; i++) {
-              const blockSize = blockSizes[i];
-              const blockOffset = blockOffsets[i];
-              const blockColorIdx = blockColorIdxs[i];
-              const blockWidth = Math.max(1, xScale(blockSize) - xScale(0));
-              const blockXLeft = xScale(segment.from + blockOffset);
-              const blockYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * blockHeightFactors[i]))) - topCorrection;
-              addRect(blockXLeft, blockYTop, blockWidth, fireElementHeight * blockHeightFactors[i], blockColorIdx);
+              const blockColorRgb = blockColors[i];
+              if (fireEnabledCategories.includes(blockColorRgb)) {
+                const blockSize = blockSizes[i];
+                const blockOffset = blockOffsets[i];
+                const blockColorIdx = blockColorIdxs[i];
+                const blockWidth = Math.max(1, xScale(blockSize) - xScale(0));
+                const blockXLeft = xScale(segment.from + blockOffset);
+                const blockYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * blockHeightFactors[i]))) - topCorrection;
+                addRect(blockXLeft, blockYTop, blockWidth, fireElementHeight * blockHeightFactors[i], blockColorIdx);
+              }
             }
           }
         }
