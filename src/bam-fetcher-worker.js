@@ -141,7 +141,7 @@ function natcmp(xRow, yRow) {
   return 0;
 }
 
-const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
+const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegmentAttributesOnly) => {
   const seq = bamRecord.get('seq');
   const from = +bamRecord.get('start') + 1 + chrOffset;
   const to = +bamRecord.get('end') + 1 + chrOffset;
@@ -172,6 +172,10 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
     ml: bamRecord.get('ML'),
     methylationOffsets: [],
   };
+
+  if (basicSegmentAttributesOnly) {
+    return segment;
+  }
 
   if (segment.strand === '+' && trackOptions && trackOptions.plusStrandColor) {
     segment.color = PILEUP_COLOR_IXS.PLUS_STRAND;
@@ -700,6 +704,7 @@ const tile = async (uid, z, x) => {
   // console.log(`sequenceFile | ${fastaUrl} | ${JSON.stringify(sequenceFile)}`);
 
   return tilesetInfo(uid).then((tsInfo) => {
+    const basicSegmentAttributesOnly = false;
     const tileWidth = +tsInfo.max_width / 2 ** +z;
     const recordPromises = [];
 
@@ -754,7 +759,7 @@ const tile = async (uid, z, x) => {
               .then((records) => {
                 // if (trackOptions[uid].methylation && trackOptions[uid].methylation.maxSegmentsPerTile) {
                 //   const mappedRecordsWithMaxSegments = records.map((rec) =>
-                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid], basicSegmentAttributesOnly),
                 //   ).slice(0, trackOptions[uid].methylation.maxSegmentsPerTile);
                 //   tileValues.set(
                 //     `${uid}.${z}.${x}`,
@@ -763,7 +768,7 @@ const tile = async (uid, z, x) => {
                 // }
                 // else {
                 //   const mappedRecords = records.map((rec) =>
-                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                //     bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid], basicSegmentAttributesOnly),
                 //   );
                 //   tileValues.set(
                 //     `${uid}.${z}.${x}`,
@@ -772,7 +777,7 @@ const tile = async (uid, z, x) => {
                 // }
                 // console.log(`records retrieved ${JSON.stringify(records.length)} | ${uid}.${z}.${x}`);
                 const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid], basicSegmentAttributesOnly),
                 );
                 if (trackOptions[uid].methylation || trackOptions[uid].fire) {
                   // console.log(`filtering for methylation or FIRE data (A) | ${fiberMinLength} | ${fiberMaxLength} | ${fiberStrands}`);
@@ -827,6 +832,7 @@ const tile = async (uid, z, x) => {
         else {
           const endPos = Math.ceil(maxX - chromStart);
           const startPos = Math.floor(minX - chromStart);
+          // console.log(`fetching ${chromName}:${startPos}-${endPos} | ${JSON.stringify(fetchOptions)}`);
           // the end of the region is within this chromosome
           recordPromises.push(
             bamFile
@@ -840,7 +846,7 @@ const tile = async (uid, z, x) => {
                 chromName, 
                 startPos, 
                 endPos, 
-                fetchOptions
+                fetchOptions,
               )
               .then((records) => {
                 // if (trackOptions[uid].methylation && trackOptions[uid].methylation.maxSegmentsPerTile) {
@@ -863,7 +869,7 @@ const tile = async (uid, z, x) => {
                 // }
                 // console.log(`records retrieved ${JSON.stringify(records.length)} | ${uid}.${z}.${x}`);
                 const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid], basicSegmentAttributesOnly),
                 );
                 if (trackOptions[uid].methylation) {
                   // console.log(`filtering for methylation data (B) | ${fiberMinLength} | ${fiberMaxLength} | ${fiberStrands}`);
@@ -2854,6 +2860,88 @@ const exportTFBSOverlaps = (
     tfbsOverlaps: tfbsOverlaps,
   }
   return objData;
+}
+
+const exportUidTrackElements = (
+  sessionId,
+  uid,
+  tileIds,
+  domain,
+  scaleRange,
+  position,
+  dimensions,
+  prevRows,
+  trackOptions,
+  uidTrackElementMidpointExportDataObj,
+) => {
+  const recordPromises = [];
+
+  if (uidTrackElementMidpointExportDataObj && trackOptions.genericBed) {
+    const { bamUrl } = dataConfs[uid];
+    const bamFile = bamFiles[bamUrl];
+    const rangeChrom = uidTrackElementMidpointExportDataObj.range.left.chrom;
+    const rangeStart = uidTrackElementMidpointExportDataObj.range.left.start;
+    const rangeEnd = uidTrackElementMidpointExportDataObj.range.right.stop;
+    const rangeMidpoint = Math.floor((rangeStart + rangeEnd) / 2);
+    const fetchOptions = {
+      viewAsPairs: false,
+      maxSampleSize: 1000,
+      maxInsertSize: 1000,
+      assemblyName: 'hg38',
+    };
+    const basicSegmentAttributesOnly = true;
+    recordPromises.push(
+      bamFile.getRecordsForRange(
+        rangeChrom,
+        rangeStart,
+        rangeEnd,
+        fetchOptions,
+      ).then((records) => {
+        const overlaps = [];
+        const segmentList = records.map((rec) =>
+          bamRecordToJson(rec, rangeChrom, rangeStart, trackOptions, basicSegmentAttributesOnly),
+        );
+
+        for (let i = 0; i < segmentList.length; i++) {
+          const segment = segmentList[i];
+          const segmentStart = segment.from - segment.chrOffset;
+          const segmentEnd = segment.to - segment.chrOffset;
+          const segmentMidpoint = Math.floor((segmentStart + segmentEnd) / 2);
+          // console.log(`segmentStart ${segmentStart} | segmentEnd ${segmentEnd} | segmentMidpoint ${segmentMidpoint} || rangeStart ${rangeStart} | rangeEnd ${rangeEnd} | rangeMidpoint ${rangeMidpoint}`);
+          overlaps.push({
+            absDistanceFromMidpoint: Math.abs(rangeMidpoint - segmentMidpoint),
+            signedDistanceFromMidpoint: (rangeMidpoint > segmentMidpoint) ? Math.abs(rangeMidpoint - segmentMidpoint) : -Math.abs(rangeMidpoint - segmentMidpoint),
+            viewportRange: uidTrackElementMidpointExportDataObj.range,
+            segment: {
+              chrName: segment.chrName,
+              start: segmentStart,
+              end: segmentEnd,
+            },
+          });
+        }
+
+        switch (uidTrackElementMidpointExportDataObj.offset) {
+          case -1:
+          case 0:
+          case 1:
+            overlaps.sort((a, b) => a.absDistanceFromMidpoint - b.absDistanceFromMidpoint);
+            break;
+          default:
+            break;
+        }
+
+        return overlaps;
+      })
+    );
+  }
+
+  return Promise.all(recordPromises).then((values) => {
+    return {
+      uid: uidTrackElementMidpointExportDataObj.uid,
+      overlaps: values.flat(),
+      offset: uidTrackElementMidpointExportDataObj.offset,
+    };
+  });
 }
 
 const exportSegmentsAsBED12 = (
@@ -6033,6 +6121,7 @@ const tileFunctions = {
   exportSegmentsAsBED12,
   exportTFBSOverlaps,
   exportSignalMatrices,
+  exportUidTrackElements,
 };
 
 expose(tileFunctions);

@@ -726,6 +726,18 @@ varying vec4 vColor;
             };
             this.exportSignalMatrices();
             break;
+          case 'get-uid-track-element-midpoint':
+            if (typeof this.options.genericBed === 'undefined') break;
+            if (data.sid !== this.sessionId) break;
+            if (data.trackUid !== this.id) break;
+            this.uidTrackElementMidpointExportData = {
+              uid: this.id,
+              trackUid: data.trackUid,
+              range: data.viewportRange,
+              offset: data.offset,
+            };
+            this.exportUidTrackElements();
+            break;
           default:
             break;
         }
@@ -826,6 +838,10 @@ varying vec4 vColor;
               this.signalMatrixExportData = null;
             }
 
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
             this.bc.postMessage({
               state: 'export_signal_matrices_end',
               msg: 'Completed (exportSignalMatrices Promise fulfillment)', 
@@ -879,9 +895,66 @@ varying vec4 vColor;
               this.signalMatrixExportData = null;
             }
 
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
             this.bc.postMessage({
               state: 'export_tfbs_overlaps_end',
               msg: 'Completed (exportTFBSOverlaps Promise fulfillment)', 
+              uid: this.id,
+              sid: this.sessionId,
+              data: toExport,
+            });
+          })
+      });
+    }
+
+    exportUidTrackElements() {
+      this.bc.postMessage({
+        state: 'export_uid_track_element_midpoint_start',
+        msg: 'Begin UID track element midpoint export worker processing',
+        uid: this.id,
+        sid: this.sessionId,
+      });
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportUidTrackElements(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.uidTrackElementMidpointExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            this.bc.postMessage({
+              state: 'export_uid_track_element_midpoint_end',
+              msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)', 
               uid: this.id,
               sid: this.sessionId,
               data: toExport,
@@ -933,6 +1006,10 @@ varying vec4 vColor;
 
             if (this.signalMatrixExportData) {
               this.signalMatrixExportData = null;
+            }
+
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
             }
 
             this.bc.postMessage({
