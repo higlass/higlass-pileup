@@ -63,9 +63,9 @@ const libraryConfig = {
     path: path.resolve(__dirname, 'dist'),
   },
   devServer: {
-    contentBase: [path.join(__dirname, 'node_modules/higlass/dist')],
-    watchContentBase: true,
-    writeToDisk: true,
+    devMiddleware: {
+      writeToDisk: true,
+    },
   },
   optimization: {
     minimizer: [

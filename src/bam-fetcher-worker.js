@@ -2,7 +2,7 @@ import { group, range } from 'd3-array';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
-import { BamFile } from '@gmod/bam'
+import { BamFile } from 'apr144-bam';
 import { 
   getSubstitutions, 
   calculateInsertSize, 
@@ -168,8 +168,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
-    mm: bamRecord.get('MM'),
-    ml: bamRecord.get('ML'),
+    // mm: bamRecord.get('MM'),
+    // ml: bamRecord.get('ML'),
     methylationOffsets: [],
   };
 
@@ -188,6 +188,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
 
   segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
   if (trackOptions.methylation) {
+    segment.mm = bamRecord.get('MM');
+    segment.ml = bamRecord.get('ML');
     segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
   }
 
