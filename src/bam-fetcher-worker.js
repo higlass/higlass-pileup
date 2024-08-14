@@ -168,8 +168,6 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
-    // mm: bamRecord.get('MM'),
-    // ml: bamRecord.get('ML'),
     methylationOffsets: [],
   };
 
@@ -2913,7 +2911,7 @@ const exportUidTrackElements = (
           overlaps.push({
             absDistanceFromMidpoint: Math.abs(rangeMidpoint - segmentMidpoint),
             signedDistanceFromMidpoint: (rangeMidpoint > segmentMidpoint) ? Math.abs(rangeMidpoint - segmentMidpoint) : -Math.abs(rangeMidpoint - segmentMidpoint),
-            viewportRange: uidTrackElementMidpointExportDataObj.range,
+            // viewportRange: uidTrackElementMidpointExportDataObj.range,
             segment: {
               chrName: segment.chrName,
               start: segmentStart,
