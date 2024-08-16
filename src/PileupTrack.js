@@ -1,12 +1,12 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, Thread, BlobWorker } from 'threads';
-import { 
-  PILEUP_COLORS, 
-  indexDHSColors, 
-  fireColors, 
-  cigarTypeToText, 
-  areMatesRequired, 
-  calculateInsertSize 
+import {
+  PILEUP_COLORS,
+  indexDHSColors,
+  fireColors,
+  cigarTypeToText,
+  areMatesRequired,
+  calculateInsertSize
 } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
@@ -186,12 +186,12 @@ const PileupTrack = (HGC, ...args) => {
      }
     */
 
-let worker = spawn(BlobWorker.fromText(MyWorkerWeb));
+// let worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
 class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
 
-      // const worker = spawn(BlobWorker.fromText(MyWorkerWeb)); 
+      const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
@@ -273,15 +273,18 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     }
 
     remove() {
-      if (super.remove) super.remove();
       // console.log(`[PileupTrack] remove | ${this.id} | ${this.sessionId}`);
+      if (super.remove) super.remove();
       this.monitor.close();
       this.bc.close();
-      worker = null;
-      this.worker = null;
+      // worker = null;
+      // this.worker = null;
+      this.pLabel.destroy(true);  // clean up pixi stuff
+      this.fetching.clear();
+      this.dataFetcher.cleanup();
     }
 
-    // Some of the initialization code is factored out, so that we can 
+    // Some of the initialization code is factored out, so that we can
     // reset/reinitialize if an option change requires it
     externalInit(options) {
       // we scale the entire view up until a certain point
@@ -307,7 +310,7 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
-      
+
       this.fetching = new Set();
       this.rendering = new Set();
 
@@ -328,15 +331,6 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     }
 
     initTile() {}
-
-    remove() {
-      console.log(this);
-      console.log("[higlass-pileup] REMOVE");
-      this.pLabel.destroy(true);  // clean up pixi stuff
-      this.dataFetcher.cleanup();
-      this.fetching.clear();
-      super.remove()  
-    }
 
     colorToArray(color) {
       const rgb = HGC.libraries.d3Color.rgb(color);
@@ -427,7 +421,7 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
       //
       // add Index DHS color table data, if available
       //
-      if (options && options.indexDHS) { 
+      if (options && options.indexDHS) {
         const indexDHSColorDict = indexDHSColors(options);
         colorDict = {...colorDict, ...indexDHSColorDict};
         if (options.indexDHS.backgroundColor) {
@@ -439,7 +433,7 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
       //
       // add FIRE color table data, if available
       //
-      if (options && options.fire) { 
+      if (options && options.fire) {
         const fireColorDict = fireColors(options);
         colorDict = {...colorDict, ...fireColorDict};
         if (options.fire.metadata && options.fire.metadata.backgroundColor) {
@@ -534,10 +528,10 @@ varying vec4 vColor;
             this.trackUpdatesAreFrozen = false;
             break;
           case "refresh-layout":
-            if (!this.options.methylation || this.trackUpdatesAreFrozen) 
+            if (!this.options.methylation || this.trackUpdatesAreFrozen)
               break;
             // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`)
-            // if (this.options.fire) 
+            // if (this.options.fire)
             //   break;
             if (data.sid !== this.sessionId)
               break;
@@ -647,9 +641,9 @@ varying vec4 vColor;
             this.removeTiles(Object.keys(this.fetchedTiles));
             this.fetching.clear();
             this.refreshTiles();
-            this.externalInit(this.options);            
+            this.externalInit(this.options);
             this.clusterData = {
-              range: data.range, 
+              range: data.range,
               viewportRange: data.viewportRange,
               method: data.method,
               distanceFn: data.distanceFn,
@@ -669,7 +663,7 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "bed12-layout":
-            if (!this.options.methylation) 
+            if (!this.options.methylation)
               break;
             if (data.sid !== this.sessionId)
               break;
@@ -844,7 +838,7 @@ varying vec4 vColor;
 
             this.bc.postMessage({
               state: 'export_signal_matrices_end',
-              msg: 'Completed (exportSignalMatrices Promise fulfillment)', 
+              msg: 'Completed (exportSignalMatrices Promise fulfillment)',
               uid: this.id,
               sid: this.sessionId,
               data: toExport,
@@ -901,7 +895,7 @@ varying vec4 vColor;
 
             this.bc.postMessage({
               state: 'export_tfbs_overlaps_end',
-              msg: 'Completed (exportTFBSOverlaps Promise fulfillment)', 
+              msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
               uid: this.id,
               sid: this.sessionId,
               data: toExport,
@@ -954,7 +948,7 @@ varying vec4 vColor;
 
             this.bc.postMessage({
               state: 'export_uid_track_element_midpoint_end',
-              msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)', 
+              msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
               uid: this.id,
               sid: this.sessionId,
               data: toExport,
@@ -1014,7 +1008,7 @@ varying vec4 vColor;
 
             this.bc.postMessage({
               state: 'export_bed12_end',
-              msg: 'Completed (exportBED12Layout Promise fulfillment)', 
+              msg: 'Completed (exportBED12Layout Promise fulfillment)',
               uid: this.id,
               sid: this.sessionId,
               data: toExport,
@@ -1027,17 +1021,17 @@ varying vec4 vColor;
       // console.log(`updateExistingGraphics (start) | ${this.id}`);
 
       if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.methylation)) return;
-      
+
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
         this.loadingText.text = 'Rendering...';
         this.bc.postMessage({
-          state: 'update_start', 
+          state: 'update_start',
           msg: this.loadingText.text,
           uid: this.id,
           sid: this.sessionId,
         });
-      } 
+      }
       else {
         // console.log(`updateExistingGraphics (A) | ${this.id}`);
         this.worker.then((tileFunctions) => {
@@ -1058,7 +1052,7 @@ varying vec4 vColor;
             )
             .then((toRender) => {
               // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
-              
+
               if (
                 this.segmentGraphics
               ) {
@@ -1069,8 +1063,8 @@ varying vec4 vColor;
               const updateExistingGraphicsEndA = performance.now();
               const elapsedTimeA = updateExistingGraphicsEndA - updateExistingGraphicsStart;
               const msg = {
-                state: 'update_end', 
-                msg: 'Completed (maxTileWidthReached)', 
+                state: 'update_end',
+                msg: 'Completed (maxTileWidthReached)',
                 uid: this.id,
                 sid: this.sessionId,
                 elapsedTime: elapsedTimeA,
@@ -1104,7 +1098,7 @@ varying vec4 vColor;
         this.fetching.delete(fetchedTileKey);
         this.rendering.add(fetchedTileKey);
       }
-      
+
       // fetchedTileKeys.forEach((x) => {
       //   this.fetching.delete(x);
       //   this.rendering.add(x);
@@ -1113,7 +1107,7 @@ varying vec4 vColor;
       this.updateLoadingText();
 
       // console.log(`updateExistingGraphics (B3) | ${this.id}`);
-      
+
       this.worker.then((tileFunctions) => {
         tileFunctions
           .renderSegments(
@@ -1146,7 +1140,7 @@ varying vec4 vColor;
               this.clusterResultsReadyToExport[this.id] = true;
               this.bc.postMessage({
                 state: 'export_subregion_clustering_results',
-                msg: 'Completed subregion clustering', 
+                msg: 'Completed subregion clustering',
                 uid: this.id,
                 sid: this.sessionId,
                 data: toRender.clusterResultsToExport,
@@ -1159,7 +1153,7 @@ varying vec4 vColor;
             // if (toRender.drawnSegmentIdentifiers) {
             //   this.bc.postMessage({
             //     state: 'drawn_segment_identifiers',
-            //     msg: 'Completed segment identifier drawing', 
+            //     msg: 'Completed segment identifier drawing',
             //     uid: this.id,
             //     sid: this.sessionId,
             //     data: toRender.drawnSegmentIdentifiers,
@@ -1199,12 +1193,12 @@ varying vec4 vColor;
               this.draw();
               this.animate();
               requestAnimationFrame(this.animate);
-              
+
               const updateExistingGraphicsEndB = performance.now();
               const elapsedTimeB = updateExistingGraphicsEndB - updateExistingGraphicsStart;
               const msg = {
-                state: 'update_end', 
-                msg: 'Completed (maxTileWidthReached)', 
+                state: 'update_end',
+                msg: 'Completed (maxTileWidthReached)',
                 uid: this.id,
                 sid: this.sessionId,
                 elapsedTime: elapsedTimeB,
@@ -1344,8 +1338,8 @@ varying vec4 vColor;
             const updateExistingGraphicsEndC = performance.now();
             const elapsedTimeC = updateExistingGraphicsEndC - updateExistingGraphicsStart;
             const msg = {
-              state: 'update_end', 
-              msg: 'Completed (renderSegments Promise fulfillment)', 
+              state: 'update_end',
+              msg: 'Completed (renderSegments Promise fulfillment)',
               uid: this.id,
               sid: this.sessionId,
               elapsedTime: elapsedTimeC,
@@ -1534,8 +1528,8 @@ varying vec4 vColor;
       requestAnimationFrame(this.animate);
 
       const msg = {
-        state: 'mouseover', 
-        msg: 'mouseover event', 
+        state: 'mouseover',
+        msg: 'mouseover event',
         uid: this.id,
         sid: this.sessionId,
       };
@@ -1831,7 +1825,7 @@ varying vec4 vColor;
                           tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(0, tfbsSequencePositionToHighlight - 1)}</span>`;
                           tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(tfbsSequencePositionToHighlight - 1, tfbsSequencePositionToHighlight)}</span>`;
                           tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(tfbsSequencePositionToHighlight, tfbsSequence.length)}</span>`;
-                        }                        
+                        }
                         // console.log(`tfbsSequencePieces ${tfbsSequencePieces}`);
                         output += `<div class="track-mouseover-menu-table-item">
                           <label for="tfbsSequence" class="track-mouseover-menu-table-item-label">Sequence</label>
@@ -1973,7 +1967,7 @@ varying vec4 vColor;
             const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
             const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
             style = `style="color:${htmlColor};"`;
-          } 
+          }
           insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
         }
       }
@@ -2006,7 +2000,7 @@ varying vec4 vColor;
           mate_width,
           mate_height,
         );
-      }      
+      }
       // read.mate_ids.forEach((mate_id) => {
       //   if (!this.readsById[mate_id]) {
       //     return;
