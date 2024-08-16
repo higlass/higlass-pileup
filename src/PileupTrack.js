@@ -177,6 +177,9 @@ function isIn(as) {
   };
 }
 
+const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
+
+
 const PileupTrack = (HGC, ...args) => {
   /**
      if (!new.target) {
@@ -190,8 +193,6 @@ const PileupTrack = (HGC, ...args) => {
 
 class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
-
-      const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
@@ -281,7 +282,7 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
       // this.worker = null;
       this.pLabel.destroy(true);  // clean up pixi stuff
       this.fetching.clear();
-      this.dataFetcher.cleanup();
+      // this.dataFetcher.cleanup();
     }
 
     // Some of the initialization code is factored out, so that we can
