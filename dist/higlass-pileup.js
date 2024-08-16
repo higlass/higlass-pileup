@@ -4168,6 +4168,7 @@ function isIn(as) {
     return as.has(a);
   };
 }
+var workersAvail = [];
 var PileupTrack = function PileupTrack(HGC) {
   /**
      if (!new.target) {
@@ -4176,14 +4177,14 @@ var PileupTrack = function PileupTrack(HGC) {
        );
      }
     */
-  // let worker = spawn(BlobWorker.fromText(MyWorkerWeb));
   var PileupTrackClass = /*#__PURE__*/function (_HGC$tracks$Tiled1DPi) {
     _inherits(PileupTrackClass, _HGC$tracks$Tiled1DPi);
     var _super = _createSuper(PileupTrackClass);
     function PileupTrackClass(context, options) {
       var _this;
       PileupTrack_classCallCheck(this, PileupTrackClass);
-      var worker = spawn(BlobWorker.fromText(cjs_js_dist_worker));
+      console.log("Workers available :", workersAvail.length);
+      var worker = workersAvail.length > 0 ? workersAvail.pop() : spawn(BlobWorker.fromText(cjs_js_dist_worker));
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
@@ -4262,11 +4263,10 @@ var PileupTrack = function PileupTrack(HGC) {
         if (_get(_getPrototypeOf(PileupTrackClass.prototype), "remove", this)) _get(_getPrototypeOf(PileupTrackClass.prototype), "remove", this).call(this);
         this.monitor.close();
         this.bc.close();
-        // worker = null;
-        // this.worker = null;
         this.pLabel.destroy(true); // clean up pixi stuff
         this.fetching.clear();
         this.dataFetcher.cleanup();
+        workersAvail.push(this.dataFetcher.worker);
       }
 
       // Some of the initialization code is factored out, so that we can
