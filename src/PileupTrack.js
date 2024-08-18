@@ -693,6 +693,15 @@ varying vec4 vColor;
             }
             this.exportTFBSOverlaps();
             break;
+          case "retrieve-indexDHS-overlaps":
+            if (!this.options.indexDHS) break;
+            if (data.sid !== this.sessionId) break;
+            this.indexDHSExportData = {
+              range: data.range,
+              uid: this.id,
+            }
+            this.exportIndexDHSOverlaps();
+            break;
           case "recalculate-signal-matrices":
             // console.log(`recalculate-signal-matrices (A) ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.trackUpdatesAreFrozen}`);
             if (typeof this.options.methylation === 'undefined') break;
@@ -827,6 +836,10 @@ varying vec4 vColor;
               this.tfbsExportData = null;
             }
 
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
             if (this.signalMatrixExportData) {
               this.signalMatrixExportData = null;
             }
@@ -884,6 +897,10 @@ varying vec4 vColor;
               this.tfbsExportData = null;
             }
 
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
             if (this.signalMatrixExportData) {
               this.signalMatrixExportData = null;
             }
@@ -895,6 +912,67 @@ varying vec4 vColor;
             this.bc.postMessage({
               state: 'export_tfbs_overlaps_end',
               msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
+              uid: this.id,
+              sid: this.sessionId,
+              data: toExport,
+            });
+          })
+      });
+    }
+
+    exportIndexDHSOverlaps() {
+      this.bc.postMessage({
+        state: 'export_indexDHS_overlaps_start',
+        msg: 'Begin Index DHS overlap export worker processing',
+        uid: this.id,
+        sid: this.sessionId,
+      });
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportIndexDHSOverlaps(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.indexDHSExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
+            this.bc.postMessage({
+              state: 'export_indexDHS_overlaps_end',
+              msg: 'Completed (exportIndexDHSOverlaps Promise fulfillment)',
               uid: this.id,
               sid: this.sessionId,
               data: toExport,
@@ -1324,6 +1402,10 @@ varying vec4 vColor;
 
             if (this.tfbsExportData) {
               this.tfbsExportData = null;
+            }
+
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
             }
 
             if (this.signalMatrixExportData) {
