@@ -1725,14 +1725,20 @@ varying vec4 vColor;
                     const methylationOffset = position - (read.from - read.chrOffset);
                     for (const mo of read.methylationOffsets) {
                       const moQuery = mo.offsets.indexOf(methylationOffset);
+                      // if (eventText && eventProbability) break;
                       if (moQuery !== -1) {
-                        // console.log(`mo @ ${methylationOffset} ${moQuery} | ${mo.unmodifiedBase} ${mo.strand} ${mo.probabilities[moQuery]}`);
-                        eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : '5mC';
-                        eventProbability = parseInt(mo.probabilities[moQuery]);
-                        if (eventProbability < this.options.methylation.probabilityThresholdRange[0]) {
-                          eventProbability = null;
+                        // console.log(`mo @ ${methylationOffset} ${moQuery} | ${JSON.stringify(mo)} ${mo.unmodifiedBase} ${mo.strand} ${mo.code} ${mo.probabilities[moQuery]}`);
+                        const candidateEventProbability = parseInt(mo.probabilities[moQuery]);
+                        if (eventProbability && eventProbability < candidateEventProbability) {
+                          eventProbability = candidateEventProbability;
+                          eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
                         }
-                        break;
+                        else if (!eventProbability) {
+                          if (candidateEventProbability >= this.options.methylation.probabilityThresholdRange[0]) {
+                            eventProbability = candidateEventProbability;
+                            eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
+                          }
+                        }
                       }
                     }
                   }

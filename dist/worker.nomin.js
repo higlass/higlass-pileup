@@ -35777,8 +35777,8 @@ const PILEUP_COLORS = {
   MM_M6A_REV: [0.4, 0.2, 0.6, 1], // purple for m6A methylation events
   MM_M5C_FOR: [1, 0, 0, 1], // red for CpG events
   MM_M5C_REV: [1, 0, 0, 1], // red for CpG events
-  MM_HM5C_FOR: [0.42, 0.20, 0.62, 1], // purple for 5hmC events
-  MM_HM5C_REV: [0.42, 0.20, 0.62, 1], // purple for 5hmC events
+  MM_HM5C_FOR: [1, 0.6, 0.2, 1], // purple for 5hmC events
+  MM_HM5C_REV: [1, 0.6, 0.2, 1], // purple for 5hmC events
   HIGHLIGHTS_CG: [0.95, 0.84, 0.84, 1], // CG highlights
   HIGHLIGHTS_A: [0.95, 0.89, 0.71, 1], // A highlights
   HIGHLIGHTS_T: [0.95, 0.89, 0.71, 1], // T highlights
@@ -36115,6 +36115,8 @@ const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
       currentOffsetCount += nOffsets;
     });
   }
+
+  // console.log(`methylationOffsets ${JSON.stringify(methylationOffsets, null, 2)}`);
 
   return methylationOffsets;
 }
