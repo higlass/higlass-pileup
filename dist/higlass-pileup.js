@@ -5225,7 +5225,7 @@ var PileupTrack = function PileupTrack(HGC) {
         this.loadingText.visible = true;
         this.loadingText.text = '';
         if (this.maxTileWidthReached) return;
-        if (!this.tilesetInfo) {
+        if (!this.tilesetInfo && this.bc) {
           this.loadingText.text = 'Fetching tileset info...';
           this.bc.postMessage({
             state: 'fetching_tileset_info',
@@ -5235,7 +5235,7 @@ var PileupTrack = function PileupTrack(HGC) {
           });
           return;
         }
-        if (this.fetching.size) {
+        if (this.fetching.size && this.bc) {
           this.loadingText.text = "Fetching... ".concat(PileupTrack_toConsumableArray(this.fetching).map(function (x) {
             return x.split('|')[0];
           }).join(' '));
@@ -5246,7 +5246,7 @@ var PileupTrack = function PileupTrack(HGC) {
             sid: this.sessionId
           });
         }
-        if (this.rendering.size) {
+        if (this.rendering.size && this.bc) {
           this.loadingText.text = "Rendering... ".concat(PileupTrack_toConsumableArray(this.rendering).join(' '));
           this.bc.postMessage({
             state: 'rendering',

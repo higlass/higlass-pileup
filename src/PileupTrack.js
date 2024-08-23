@@ -1450,7 +1450,7 @@ varying vec4 vColor;
 
       if (this.maxTileWidthReached) return;
 
-      if (!this.tilesetInfo) {
+      if (!this.tilesetInfo && this.bc) {
         this.loadingText.text = 'Fetching tileset info...';
         this.bc.postMessage({
           state: 'fetching_tileset_info',
@@ -1461,7 +1461,7 @@ varying vec4 vColor;
         return;
       }
 
-      if (this.fetching.size) {
+      if (this.fetching.size && this.bc) {
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map((x) => x.split('|')[0])
           .join(' ')}`;
@@ -1473,7 +1473,7 @@ varying vec4 vColor;
         });
       }
 
-      if (this.rendering.size) {
+      if (this.rendering.size && this.bc) {
         this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
         this.bc.postMessage({
           state: 'rendering',
