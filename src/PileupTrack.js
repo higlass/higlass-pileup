@@ -190,7 +190,7 @@ const PileupTrack = (HGC, ...args) => {
 
 class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
-      console.log("Workers available :", workersAvail.length)
+      // console.log("Workers available :", workersAvail.length);
       const worker = workersAvail.length > 0 ? workersAvail.pop() : spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
@@ -1608,13 +1608,13 @@ varying vec4 vColor;
       // Prevents 'stuck' read outlines when hovering quickly
       requestAnimationFrame(this.animate);
 
-      const msg = {
-        state: 'mouseover',
-        msg: 'mouseover event',
-        uid: this.id,
-        sid: this.sessionId,
-      };
-      this.monitor.postMessage(msg);
+      // const msg = {
+      //   state: 'mouseover',
+      //   msg: 'mouseover event',
+      //   uid: this.id,
+      //   sid: this.sessionId,
+      // };
+      // this.monitor.postMessage(msg);
 
       const trackY = invY(trackYIn, this.valueScaleTransform);
 

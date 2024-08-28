@@ -57759,7 +57759,7 @@ const renderSegments = (
 };
 
 const cleanup = () => {
-  console.log("[higlass-pileup] cleanup function");
+  // console.log("[higlass-pileup] cleanup function");
   Object.keys(bamFiles).forEach(key => delete bamFiles[key]);
   Object.keys(bamHeaders).forEach(key => delete bamHeaders[key]);
   Object.keys(dataOptions).forEach(key => delete dataOptions[key]);
