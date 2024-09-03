@@ -5368,6 +5368,7 @@ var PileupTrack = function PileupTrack(HGC) {
 
         // const trackY = this.valueScaleTransform.invert(track)
         this.mouseOverGraphics.clear();
+
         // Prevents 'stuck' read outlines when hovering quickly
         requestAnimationFrame(this.animate);
 
@@ -5598,8 +5599,7 @@ var PileupTrack = function PileupTrack(HGC) {
                       if (this.options.methylation) {
                         var readLength = "".concat(read.to - read.from);
                         output += "<div class=\"track-mouseover-menu-table-item\">\n                      <label for=\"readLength\" class=\"track-mouseover-menu-table-item-label\">Length</label>\n                      <div name=\"readLength\" class=\"track-mouseover-menu-table-item-value\">".concat(readLength, "</div>\n                    </div>");
-                      }
-                      if (this.options.tfbs) {
+                      } else if (this.options.tfbs) {
                         var tfbsScore = read.metadata.score;
                         if (tfbsScore) {
                           output += "<div class=\"track-mouseover-menu-table-item\">\n                        <label for=\"tfbsScore\" class=\"track-mouseover-menu-table-item-label\">Score</label>\n                        <div name=\"tfbsScore\" class=\"track-mouseover-menu-table-item-value\">".concat(tfbsScore, "</div>\n                      </div>");
@@ -5629,8 +5629,7 @@ var PileupTrack = function PileupTrack(HGC) {
                             output += "<div class=\"track-mouseover-menu-table-item\">\n                          <label for=\"tfbsSequence\" class=\"track-mouseover-menu-table-item-label\">Sequence</label>\n                          <div name=\"tfbsSequence\" class=\"track-mouseover-menu-table-item-value track-mouseover-menu-table-item-value-sequence\">".concat(tfbsSequence, "</div>\n                        </div>");
                           }
                         }
-                      }
-                      if (this.options.indexDHS) {
+                      } else if (this.options.indexDHS) {
                         var metadata = read.metadata;
                         // const realId = metadata.dhs.id;
                         var elementSummit = "".concat(read.chrName, ":").concat(parseInt(metadata.summit.start + (metadata.summit.end - metadata.summit.start) / 2));

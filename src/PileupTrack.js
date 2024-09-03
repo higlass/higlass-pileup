@@ -1605,6 +1605,7 @@ varying vec4 vColor;
 
       // const trackY = this.valueScaleTransform.invert(track)
       this.mouseOverGraphics.clear();
+
       // Prevents 'stuck' read outlines when hovering quickly
       requestAnimationFrame(this.animate);
 
@@ -1717,6 +1718,7 @@ varying vec4 vColor;
                   let positionText = null;
                   let eventText = null;
                   let eventProbability = null;
+                  
                   if (this.options.chromInfo) {
                     const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
                     const chrom = atcX[0];
@@ -1839,6 +1841,7 @@ varying vec4 vColor;
                       <div name="readName" class="track-mouseover-menu-table-item-value">${genericBedNameValue}</div>
                     </div>`;
                   }
+
                   else if (this.options.tfbs) {
                     const tfbsValue = read.readName;
                     const [tfbsClusterName, tfbsModelName] = tfbsValue.split('%%');
@@ -1853,6 +1856,7 @@ varying vec4 vColor;
                       <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsModelName}</div>
                     </div>`;
                   }
+
                   else if (this.options.indexDHS) {
                     const readNameLabel = 'Index DHS';
                     const readNameValue = `${read.readName} | ${this.options.name}`;
@@ -1861,6 +1865,7 @@ varying vec4 vColor;
                       <div name="readName" class="track-mouseover-menu-table-item-value">${readNameValue}</div>
                     </div>`;
                   }
+
                   else {
                     const readNameLabel = 'Name';
                     const readNameValue = read.readName;
@@ -1886,7 +1891,7 @@ varying vec4 vColor;
                     </div>`;
                   }
 
-                  if (this.options.tfbs) {
+                  else if (this.options.tfbs) {
                     const tfbsScore = read.metadata.score;
                     if (tfbsScore) {
                       output += `<div class="track-mouseover-menu-table-item">
@@ -1930,7 +1935,7 @@ varying vec4 vColor;
                     }
                   }
 
-                  if (this.options.indexDHS) {
+                  else if (this.options.indexDHS) {
                     const metadata = read.metadata;
                     // const realId = metadata.dhs.id;
                     const elementSummit = `${read.chrName}:${parseInt(metadata.summit.start + (metadata.summit.end - metadata.summit.start)/2)}`;
