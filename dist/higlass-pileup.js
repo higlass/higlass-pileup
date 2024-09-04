@@ -5369,6 +5369,9 @@ var PileupTrack = function PileupTrack(HGC) {
     }, {
       key: "getMouseOverHtml",
       value: function getMouseOverHtml(trackX, trackYIn) {
+        if (!this.options || !this.options.showTooltip) {
+          return '';
+        }
         if (this.maxTileWidthReached) return;
 
         // const trackY = this.valueScaleTransform.invert(track)
@@ -5469,33 +5472,39 @@ var PileupTrack = function PileupTrack(HGC) {
                       var positionText = null;
                       var eventText = null;
                       var eventProbability = null;
-
-                      // if (this.options.chromInfo) {
-                      //   const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
-                      //   const chrom = atcX[0];
-                      //   position = Math.ceil(atcX[1]);
-                      //   positionText = `${chrom}:${position}`;
-                      //   const methylationOffset = position - (read.from - read.chrOffset);
-                      //   for (const mo of read.methylationOffsets) {
-                      //     const moQuery = mo.offsets.indexOf(methylationOffset);
-                      //     // if (eventText && eventProbability) break;
-                      //     if (moQuery !== -1) {
-                      //       // console.log(`mo @ ${methylationOffset} ${moQuery} | ${JSON.stringify(mo)} ${mo.unmodifiedBase} ${mo.strand} ${mo.code} ${mo.probabilities[moQuery]}`);
-                      //       const candidateEventProbability = parseInt(mo.probabilities[moQuery]);
-                      //       if (eventProbability && eventProbability < candidateEventProbability) {
-                      //         eventProbability = candidateEventProbability;
-                      //         eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
-                      //       }
-                      //       else if (!eventProbability) {
-                      //         if (candidateEventProbability >= this.options.methylation.probabilityThresholdRange[0]) {
-                      //           eventProbability = candidateEventProbability;
-                      //           eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
-                      //         }
-                      //       }
-                      //     }
-                      //   }
-                      // }
-
+                      if (this.options.chromInfo) {
+                        var atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
+                        var chrom = atcX[0];
+                        position = Math.ceil(atcX[1]);
+                        positionText = "".concat(chrom, ":").concat(position);
+                        var methylationOffset = position - (read.from - read.chrOffset);
+                        var _iterator9 = PileupTrack_createForOfIteratorHelper(read.methylationOffsets),
+                          _step9;
+                        try {
+                          for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+                            var mo = _step9.value;
+                            var moQuery = mo.offsets.indexOf(methylationOffset);
+                            // if (eventText && eventProbability) break;
+                            if (moQuery !== -1) {
+                              // console.log(`mo @ ${methylationOffset} ${moQuery} | ${JSON.stringify(mo)} ${mo.unmodifiedBase} ${mo.strand} ${mo.code} ${mo.probabilities[moQuery]}`);
+                              var candidateEventProbability = parseInt(mo.probabilities[moQuery]);
+                              if (eventProbability && eventProbability < candidateEventProbability) {
+                                eventProbability = candidateEventProbability;
+                                eventText = mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' ? 'm6A' : mo.unmodifiedBase === 'C' && mo.code === 'm' ? '5mC' : '5hmC';
+                              } else if (!eventProbability) {
+                                if (candidateEventProbability >= this.options.methylation.probabilityThresholdRange[0]) {
+                                  eventProbability = candidateEventProbability;
+                                  eventText = mo.unmodifiedBase === 'A' || mo.unmodifiedBase === 'T' ? 'm6A' : mo.unmodifiedBase === 'C' && mo.code === 'm' ? '5mC' : '5hmC';
+                                }
+                              }
+                            }
+                          }
+                        } catch (err) {
+                          _iterator9.e(err);
+                        } finally {
+                          _iterator9.f();
+                        }
+                      }
                       var output = "<div class=\"track-mouseover-menu-table\">";
                       if (positionText) {
                         output += "\n                    <div class=\"track-mouseover-menu-table-item\">\n                      <label for=\"position\" class=\"track-mouseover-menu-table-item-label\">Position</label>\n                      <div name=\"position\" class=\"track-mouseover-menu-table-item-value\">".concat(positionText, "</div>\n                    </div>\n                    ");
@@ -5718,11 +5727,11 @@ var PileupTrack = function PileupTrack(HGC) {
     }, {
       key: "outlineMate",
       value: function outlineMate(read, yScaleBand) {
-        var _iterator9 = PileupTrack_createForOfIteratorHelper(read.mate_ids),
-          _step9;
+        var _iterator10 = PileupTrack_createForOfIteratorHelper(read.mate_ids),
+          _step10;
         try {
-          for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-            var mate_id = _step9.value;
+          for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
+            var mate_id = _step10.value;
             if (!this.readsById[mate_id]) {
               return;
             }
@@ -5765,9 +5774,9 @@ var PileupTrack = function PileupTrack(HGC) {
           //   );
           // });
         } catch (err) {
-          _iterator9.e(err);
+          _iterator10.e(err);
         } finally {
-          _iterator9.f();
+          _iterator10.f();
         }
         this.animate();
       }
@@ -5780,11 +5789,11 @@ var PileupTrack = function PileupTrack(HGC) {
       key: "calculateVisibleTiles",
       value: function calculateVisibleTiles() {
         var tiles = HGC.utils.trackUtils.calculate1DVisibleTiles(this.tilesetInfo, this._xScale);
-        var _iterator10 = PileupTrack_createForOfIteratorHelper(tiles),
-          _step10;
+        var _iterator11 = PileupTrack_createForOfIteratorHelper(tiles),
+          _step11;
         try {
-          for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
-            var tile = _step10.value;
+          for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
+            var tile = _step11.value;
             var _getTilePosAndDimensi = getTilePosAndDimensions(tile[0], [tile[1]], this.tilesetInfo.tile_size, this.tilesetInfo),
               tileX = _getTilePosAndDimensi.tileX,
               tileWidth = _getTilePosAndDimensi.tileWidth;
@@ -5830,9 +5839,9 @@ var PileupTrack = function PileupTrack(HGC) {
           //   this.calculateZoomLevel(),
           // )
         } catch (err) {
-          _iterator10.e(err);
+          _iterator11.e(err);
         } finally {
-          _iterator10.f();
+          _iterator11.f();
         }
         this.setVisibleTiles(tiles);
       }
