@@ -579,6 +579,11 @@ varying vec4 vColor;
               break;
             if (data.sid !== this.sessionId)
               break;
+            // console.log(`this.options.fire | ${JSON.stringify(this.options.fire)}`);
+            // console.log(`this.trackUpdatesAreFrozen | ${JSON.stringify(this.trackUpdatesAreFrozen)}`);
+            // console.log(`data.sid | ${JSON.stringify(data.sid)}`);
+            // console.log(`this.sessionId | ${JSON.stringify(this.sessionId)}`);
+            // console.log(`this.id | ${JSON.stringify(this.id)}`);
             // console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
             this.dataFetcher = new BAMDataFetcher(
               this.dataFetcher.dataConfig,

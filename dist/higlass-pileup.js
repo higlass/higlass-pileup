@@ -4538,19 +4538,29 @@ var PileupTrack = function PileupTrack(HGC) {
             case "refresh-fire-layout":
               if (!this.options.fire || this.trackUpdatesAreFrozen) break;
               if (data.sid !== this.sessionId) break;
+              console.log("this.options.fire | ".concat(JSON.stringify(this.options.fire)));
+              console.log("this.trackUpdatesAreFrozen | ".concat(JSON.stringify(this.trackUpdatesAreFrozen)));
+              console.log("data.sid | ".concat(JSON.stringify(data.sid)));
+              console.log("this.sessionId | ".concat(JSON.stringify(this.sessionId)));
+              console.log("this.id | ".concat(JSON.stringify(this.id)));
               // console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
-              this.dataFetcher = new bam_fetcher(this.dataFetcher.dataConfig, this.options, this.worker, HGC);
-              this.dataFetcher.track = this;
-              this.prevRows = [];
-              this.removeTiles(Object.keys(this.fetchedTiles));
-              this.fetching.clear();
-              this.refreshTiles();
-              this.externalInit(this.options);
+              // this.dataFetcher = new BAMDataFetcher(
+              //   this.dataFetcher.dataConfig,
+              //   this.options,
+              //   this.worker,
+              //   HGC,
+              // );
+              // this.dataFetcher.track = this;
+              // this.prevRows = [];
+              // this.removeTiles(Object.keys(this.fetchedTiles));
+              // this.fetching.clear();
+              // this.refreshTiles();
+              // this.externalInit(this.options);
               // this.fireIdentifierData = {
               //   identifiers: data.identifiers,
               // };
-              // this.updateExistingGraphics();
-              this.prevOptions = Object.assign({}, this.options);
+              this.updateExistingGraphics();
+              // this.prevOptions = Object.assign({}, this.options);
               break;
             case "refresh-fire-layout-post-clustering":
               if (!this.options.fire || this.trackUpdatesAreFrozen) return;
