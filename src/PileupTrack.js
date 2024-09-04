@@ -1719,31 +1719,31 @@ varying vec4 vColor;
                   let eventText = null;
                   let eventProbability = null;
                   
-                  if (this.options.chromInfo) {
-                    const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
-                    const chrom = atcX[0];
-                    position = Math.ceil(atcX[1]);
-                    positionText = `${chrom}:${position}`;
-                    const methylationOffset = position - (read.from - read.chrOffset);
-                    for (const mo of read.methylationOffsets) {
-                      const moQuery = mo.offsets.indexOf(methylationOffset);
-                      // if (eventText && eventProbability) break;
-                      if (moQuery !== -1) {
-                        // console.log(`mo @ ${methylationOffset} ${moQuery} | ${JSON.stringify(mo)} ${mo.unmodifiedBase} ${mo.strand} ${mo.code} ${mo.probabilities[moQuery]}`);
-                        const candidateEventProbability = parseInt(mo.probabilities[moQuery]);
-                        if (eventProbability && eventProbability < candidateEventProbability) {
-                          eventProbability = candidateEventProbability;
-                          eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
-                        }
-                        else if (!eventProbability) {
-                          if (candidateEventProbability >= this.options.methylation.probabilityThresholdRange[0]) {
-                            eventProbability = candidateEventProbability;
-                            eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
-                          }
-                        }
-                      }
-                    }
-                  }
+                  // if (this.options.chromInfo) {
+                  //   const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
+                  //   const chrom = atcX[0];
+                  //   position = Math.ceil(atcX[1]);
+                  //   positionText = `${chrom}:${position}`;
+                  //   const methylationOffset = position - (read.from - read.chrOffset);
+                  //   for (const mo of read.methylationOffsets) {
+                  //     const moQuery = mo.offsets.indexOf(methylationOffset);
+                  //     // if (eventText && eventProbability) break;
+                  //     if (moQuery !== -1) {
+                  //       // console.log(`mo @ ${methylationOffset} ${moQuery} | ${JSON.stringify(mo)} ${mo.unmodifiedBase} ${mo.strand} ${mo.code} ${mo.probabilities[moQuery]}`);
+                  //       const candidateEventProbability = parseInt(mo.probabilities[moQuery]);
+                  //       if (eventProbability && eventProbability < candidateEventProbability) {
+                  //         eventProbability = candidateEventProbability;
+                  //         eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
+                  //       }
+                  //       else if (!eventProbability) {
+                  //         if (candidateEventProbability >= this.options.methylation.probabilityThresholdRange[0]) {
+                  //           eventProbability = candidateEventProbability;
+                  //           eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
+                  //         }
+                  //       }
+                  //     }
+                  //   }
+                  // }
 
                   let output = `<div class="track-mouseover-menu-table">`;
 
