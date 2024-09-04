@@ -1605,18 +1605,21 @@ varying vec4 vColor;
       requestAnimationFrame(this.animate);
     }
 
-    getMouseOverHtml(trackX, trackYIn) {
-      if (!this.options || !this.options.showTooltip) {
+    getMouseOverHtml(trackX, trackYIn, isShiftDown) {
+      this.mouseOverGraphics.clear();
+      requestAnimationFrame(this.animate);
+
+      if (!this.options || (!this.options.showTooltip && !isShiftDown)) {
         return '';
       }
 
       if (this.maxTileWidthReached) return;
 
       // const trackY = this.valueScaleTransform.invert(track)
-      this.mouseOverGraphics.clear();
+      // this.mouseOverGraphics.clear();
 
       // Prevents 'stuck' read outlines when hovering quickly
-      requestAnimationFrame(this.animate);
+      // requestAnimationFrame(this.animate);
 
       // const msg = {
       //   state: 'mouseover',
