@@ -240,6 +240,9 @@ export const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
   // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
   // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
 
+  // console.log(`segment.mm | ${JSON.stringify(segment.mm)}`);
+  // console.log(`segment.ml | ${JSON.stringify(segment.ml)}`);
+
   if (segment.mm && segment.ml) {
     let currentOffsetCount = 0;
     const baseModifications = segment.mm.split(';');

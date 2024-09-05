@@ -35196,138 +35196,138 @@ class bamFile_BamFile {
     async getHeaderPre(origOpts) {
         const opts = makeOpts(origOpts);
         // console.log(`[bam-js] getHeaderPre: ${JSON.stringify(opts)}`)
-        if (opts.assemblyName && opts.assemblyName === 'hg38') {
-            this.chrToIndex = {
-                chr1: 0,
-                chr10: 1,
-                chr11: 2,
-                chr12: 3,
-                chr13: 4,
-                chr14: 5,
-                chr15: 6,
-                chr16: 7,
-                chr17: 8,
-                chr18: 9,
-                chr19: 10,
-                chr2: 11,
-                chr20: 12,
-                chr21: 13,
-                chr22: 14,
-                chr3: 15,
-                chr4: 16,
-                chr5: 17,
-                chr6: 18,
-                chr7: 19,
-                chr8: 20,
-                chr9: 21,
-                chrM: 22,
-                chrX: 23,
-                chrY: 24,
-            };
-            this.indexToChr = [
-                {
-                    refName: 'chr1',
-                    length: 248956422,
-                },
-                {
-                    refName: 'chr10',
-                    length: 133797422,
-                },
-                {
-                    refName: 'chr11',
-                    length: 135086622,
-                },
-                {
-                    refName: 'chr12',
-                    length: 133275309,
-                },
-                {
-                    refName: 'chr13',
-                    length: 114364328,
-                },
-                {
-                    refName: 'chr14',
-                    length: 107043718,
-                },
-                {
-                    refName: 'chr15',
-                    length: 101991189,
-                },
-                {
-                    refName: 'chr16',
-                    length: 90338345,
-                },
-                {
-                    refName: 'chr17',
-                    length: 83257441,
-                },
-                {
-                    refName: 'chr18',
-                    length: 80373285,
-                },
-                {
-                    refName: 'chr19',
-                    length: 58617616,
-                },
-                {
-                    refName: 'chr2',
-                    length: 242193529,
-                },
-                {
-                    refName: 'chr20',
-                    length: 64444167,
-                },
-                {
-                    refName: 'chr21',
-                    length: 46709983,
-                },
-                {
-                    refName: 'chr22',
-                    length: 50818468,
-                },
-                {
-                    refName: 'chr3',
-                    length: 198295559,
-                },
-                {
-                    refName: 'chr4',
-                    length: 190214555,
-                },
-                {
-                    refName: 'chr5',
-                    length: 181538259,
-                },
-                {
-                    refName: 'chr6',
-                    length: 170805979,
-                },
-                {
-                    refName: 'chr7',
-                    length: 159345973,
-                },
-                {
-                    refName: 'chr8',
-                    length: 145138636,
-                },
-                {
-                    refName: 'chr9',
-                    length: 138394717,
-                },
-                {
-                    refName: 'chrM',
-                    length: 16569,
-                },
-                {
-                    refName: 'chrX',
-                    length: 156040895,
-                },
-                {
-                    refName: 'chrY',
-                    length: 57227415,
-                },
-            ];
-            return;
-        }
+        // if (opts.assemblyName && opts.assemblyName === 'hg38') {
+        //   this.chrToIndex = {
+        //     chr1: 0,
+        //     chr10: 1,
+        //     chr11: 2,
+        //     chr12: 3,
+        //     chr13: 4,
+        //     chr14: 5,
+        //     chr15: 6,
+        //     chr16: 7,
+        //     chr17: 8,
+        //     chr18: 9,
+        //     chr19: 10,
+        //     chr2: 11,
+        //     chr20: 12,
+        //     chr21: 13,
+        //     chr22: 14,
+        //     chr3: 15,
+        //     chr4: 16,
+        //     chr5: 17,
+        //     chr6: 18,
+        //     chr7: 19,
+        //     chr8: 20,
+        //     chr9: 21,
+        //     chrM: 22,
+        //     chrX: 23,
+        //     chrY: 24,
+        //   }
+        //   this.indexToChr = [
+        //     {
+        //       refName: 'chr1',
+        //       length: 248956422,
+        //     },
+        //     {
+        //       refName: 'chr10',
+        //       length: 133797422,
+        //     },
+        //     {
+        //       refName: 'chr11',
+        //       length: 135086622,
+        //     },
+        //     {
+        //       refName: 'chr12',
+        //       length: 133275309,
+        //     },
+        //     {
+        //       refName: 'chr13',
+        //       length: 114364328,
+        //     },
+        //     {
+        //       refName: 'chr14',
+        //       length: 107043718,
+        //     },
+        //     {
+        //       refName: 'chr15',
+        //       length: 101991189,
+        //     },
+        //     {
+        //       refName: 'chr16',
+        //       length: 90338345,
+        //     },
+        //     {
+        //       refName: 'chr17',
+        //       length: 83257441,
+        //     },
+        //     {
+        //       refName: 'chr18',
+        //       length: 80373285,
+        //     },
+        //     {
+        //       refName: 'chr19',
+        //       length: 58617616,
+        //     },
+        //     {
+        //       refName: 'chr2',
+        //       length: 242193529,
+        //     },
+        //     {
+        //       refName: 'chr20',
+        //       length: 64444167,
+        //     },
+        //     {
+        //       refName: 'chr21',
+        //       length: 46709983,
+        //     },
+        //     {
+        //       refName: 'chr22',
+        //       length: 50818468,
+        //     },
+        //     {
+        //       refName: 'chr3',
+        //       length: 198295559,
+        //     },
+        //     {
+        //       refName: 'chr4',
+        //       length: 190214555,
+        //     },
+        //     {
+        //       refName: 'chr5',
+        //       length: 181538259,
+        //     },
+        //     {
+        //       refName: 'chr6',
+        //       length: 170805979,
+        //     },
+        //     {
+        //       refName: 'chr7',
+        //       length: 159345973,
+        //     },
+        //     {
+        //       refName: 'chr8',
+        //       length: 145138636,
+        //     },
+        //     {
+        //       refName: 'chr9',
+        //       length: 138394717,
+        //     },
+        //     {
+        //       refName: 'chrM',
+        //       length: 16569,
+        //     },
+        //     {
+        //       refName: 'chrX',
+        //       length: 156040895,
+        //     },
+        //     {
+        //       refName: 'chrY',
+        //       length: 57227415,
+        //     },
+        //   ]
+        //   return
+        // }
         if (!this.index) {
             return;
         }
@@ -35411,7 +35411,9 @@ class bamFile_BamFile {
     }
     async *streamRecordsForRange(chr, min, max, opts) {
         var _a;
-        // console.log(`[bam-js] streamRecordsForRange: ${JSON.stringify(opts)}`)
+        // console.log(
+        //   `[bam-js] streamRecordsForRange | ${chr} | ${min} | ${max} | ${JSON.stringify(opts)}`,
+        // )
         // console.log(`[bam-js] opts?.assemblyName ${opts?.assemblyName}`)
         if ((opts === null || opts === void 0 ? void 0 : opts.assemblyName) && (opts === null || opts === void 0 ? void 0 : opts.assemblyName) !== 'hg38') {
             await this.getHeader(opts);
@@ -35990,6 +35992,9 @@ const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
   };
   // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
   // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
+
+  // console.log(`segment.mm | ${JSON.stringify(segment.mm)}`);
+  // console.log(`segment.ml | ${JSON.stringify(segment.ml)}`);
 
   if (segment.mm && segment.ml) {
     let currentOffsetCount = 0;
@@ -51695,6 +51700,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     mappingOrientation: null,
     substitutions: [],
     methylationOffsets: [],
+    mm: bamRecord.get('MM'),
+    ml: bamRecord.get('ML'),
   };
 
   if (basicSegmentAttributesOnly) {
@@ -51712,9 +51719,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
 
   segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
   if (trackOptions.methylation) {
-    segment.mm = bamRecord.get('MM');
-    segment.ml = bamRecord.get('ML');
     segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
+    // console.log(`segment.methylationOffsets | ${JSON.stringify(segment.methylationOffsets)}`);
   }
 
   if (trackOptions.fire) {

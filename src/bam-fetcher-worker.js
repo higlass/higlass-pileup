@@ -169,6 +169,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     mappingOrientation: null,
     substitutions: [],
     methylationOffsets: [],
+    mm: bamRecord.get('MM'),
+    ml: bamRecord.get('ML'),
   };
 
   if (basicSegmentAttributesOnly) {
@@ -186,9 +188,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
 
   segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
   if (trackOptions.methylation) {
-    segment.mm = bamRecord.get('MM');
-    segment.ml = bamRecord.get('ML');
     segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
+    // console.log(`segment.methylationOffsets | ${JSON.stringify(segment.methylationOffsets)}`);
   }
 
   if (trackOptions.fire) {
