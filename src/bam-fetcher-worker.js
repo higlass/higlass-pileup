@@ -192,7 +192,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // console.log(`segment.methylationOffsets | ${JSON.stringify(segment.methylationOffsets)}`);
   }
 
-  if (trackOptions.fire) {
+  else if (trackOptions.fire) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     // segment.fireColors = fireColors(trackOptions);
     // const newPileupColorIdxs = {};
@@ -207,11 +207,11 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
   }
 
-  if (trackOptions.tfbs) {
+  else if (trackOptions.tfbs) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
   }
 
-  if (trackOptions.genericBed) {
+  else if (trackOptions.genericBed) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     segment.genericBedColors = genericBedColors(trackOptions);
     const newPileupColorIdxs = {};
@@ -222,7 +222,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     replaceColorIdxs(newPileupColorIdxs);
   }
 
-  if (trackOptions.indexDHS) {
+  else if (trackOptions.indexDHS) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
     segment.indexDHSColors = indexDHSColors(trackOptions);
@@ -236,27 +236,27 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     segment.color = PILEUP_COLOR_IXS.INDEX_DHS_BG;
   }
 
-  let fromClippingAdjustment = 0;
-  let toClippingAdjustment = 0;
+  // let fromClippingAdjustment = 0;
+  // let toClippingAdjustment = 0;
 
-  // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
-  for (const sub of segment.substitutions) {
-    if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
-      fromClippingAdjustment = -sub.length;
-    } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
-      toClippingAdjustment = sub.length;
-    }
-  }
-  // segment.substitutions.forEach((sub) => {
-  //   // left soft clipped region
+  // // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
+  // for (const sub of segment.substitutions) {
   //   if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
   //     fromClippingAdjustment = -sub.length;
   //   } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
   //     toClippingAdjustment = sub.length;
   //   }
-  // });
-  segment.fromWithClipping += fromClippingAdjustment;
-  segment.toWithClipping += toClippingAdjustment;
+  // }
+  // // segment.substitutions.forEach((sub) => {
+  // //   // left soft clipped region
+  // //   if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
+  // //     fromClippingAdjustment = -sub.length;
+  // //   } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
+  // //     toClippingAdjustment = sub.length;
+  // //   }
+  // // });
+  // segment.fromWithClipping += fromClippingAdjustment;
+  // segment.toWithClipping += toClippingAdjustment;
 
   return segment;
 };
@@ -405,7 +405,10 @@ const tabularJsonToRowJson = (tabularJson) => {
       // format: x[0] : start of region
       // x[1]: type of region (e.g. 'S', 'H', 'I', etc...)
       // x[2]: the length of the region
-      for (const x of newRow.cigars) {
+      const newRowCigarsLength = newRow.cigars.length;
+      // for (const x of newRow.cigars) {
+      for (let newRowCigarsIdx = 0; newRowCigarsIdx < newRowCigarsLength; newRowCigarsIdx++) {
+        const x = newRow.cigars[newRowCigarsIdx];
         newRow.substitutions.push({
           pos: x[0] - (newRow.from - newRow.chrOffset) + 1,
           type: x[1].toUpperCase(),
@@ -3702,7 +3705,11 @@ const renderSegments = (
   let coverageSamplingDistance;
   let ATPositions = null;
 
-  for (const tileId of tileIds) {
+  const tileIdsLength = tileIds.length;
+
+  // for (const tileId of tileIds) {
+  for (let tileIdIdx = 0; tileIdIdx < tileIdsLength; tileIdIdx++) {
+    const tileId = tileIds[tileIdIdx];
     let tileValue = null;
     try {
       tileValue = tileValues.get(`${uid}.${tileId}`);
@@ -3719,10 +3726,16 @@ const renderSegments = (
     }
     if (!tileValue) continue;
 
+    const tileValueLength = tileValue.length;
     if (trackOptions.methylation && alignCpGEvents) {
-      for (const segment of tileValue) {
+      // for (const segment of tileValue) {
+      for (let segmentIdx = 0; segmentIdx < tileValueLength; segmentIdx++) {
+        const segment = tileValue[segmentIdx];
         // console.log(`segment ${JSON.stringify(segment)}`);
-        for (const mo of segment.methylationOffsets) {
+        const segmentMethylationOffsetsLength = segment.methylationOffsets.length;
+        // for (const mo of segment.methylationOffsets) {
+        for (let moIdx = 0; moIdx < segmentMethylationOffsetsLength; moIdx++) {
+          const mo = segment.methylationOffsets[moIdx];
           if (mo.unmodifiedBase === 'C' && segment.strand === '-') {
             mo.offsets = mo.offsets.map(offset => offset - 1);
           }
@@ -3730,7 +3743,9 @@ const renderSegments = (
       }
     }
 
-    for (const segment of tileValue) {
+    // for (const segment of tileValue) {
+    for (let segmentIdx = 0; segmentIdx < tileValueLength; segmentIdx++) {
+      const segment = tileValue[segmentIdx];
       allSegments[segment.id] = segment;
     }
 
@@ -3739,11 +3754,17 @@ const renderSegments = (
     if (sequenceTileValue && trackOptions.methylation && trackOptions.methylation.highlights) {
       // console.log(`renderSegments | ${uid} | ${JSON.stringify(tileIds)} | ${JSON.stringify(trackOptions)}`);
       const highlights = Object.keys(trackOptions.methylation.highlights);
-      for (const sequence of sequenceTileValue) {
+      const sequenceTileValueLength = sequenceTileValue.length;
+      // for (const sequence of sequenceTileValue) {
+      for (let sequenceIdx = 0; sequenceIdx < sequenceTileValueLength; sequenceIdx++) {
+        const sequence = sequenceTileValue[sequenceIdx];
         // allSequences[parseInt(sequence.start)] = sequence.data;
         const absPosStart = parseInt(sequence.start) + parseInt(sequence.chromOffset);
         const seq = sequence.data.toUpperCase();
-        for (const highlight of highlights) {
+        const highlightsLength = highlights.length;
+        // for (const highlight of highlights) {
+        for (let highlightIdx = 0; highlightIdx < highlightsLength; highlightIdx++) {
+          const highlight = highlights[highlightIdx];
           // console.log(`highlight ${JSON.stringify(highlight)}`);
           if (highlight !== 'M0A') {
             const highlightUC = highlight.toUpperCase();
@@ -3812,33 +3833,33 @@ const renderSegments = (
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
-  prepareHighlightedReads(segmentList, trackOptions);
+  // prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterDataObj) {
-    // At this point reads are colored correctly, but we only want to align those reads that
-    // are within the visible tiles - not mates that are far away, as this can mess up the alignment
-    let tileMinPos = Number.MAX_VALUE;
-    let tileMaxPos = -Number.MAX_VALUE;
-    const tsInfo = tilesetInfos[uid];
-    for (const id of tileIds) {
-      const z = id.split('.')[0];
-      const x = id.split('.')[1];
-      const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-      tileMinPos = Math.min(tileMinPos, startEnd[0]);
-      tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    }
-    // tileIds.forEach((id) => {
-    //   const z = id.split('.')[0];
-    //   const x = id.split('.')[1];
-    //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-    //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
-    //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    // });
+  // if (areMatesRequired(trackOptions) && !clusterDataObj) {
+  //   // At this point reads are colored correctly, but we only want to align those reads that
+  //   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
+  //   let tileMinPos = Number.MAX_VALUE;
+  //   let tileMaxPos = -Number.MAX_VALUE;
+  //   const tsInfo = tilesetInfos[uid];
+  //   for (const id of tileIds) {
+  //     const z = id.split('.')[0];
+  //     const x = id.split('.')[1];
+  //     const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //     tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //     tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   }
+  //   // tileIds.forEach((id) => {
+  //   //   const z = id.split('.')[0];
+  //   //   const x = id.split('.')[1];
+  //   //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //   //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //   //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   // });
 
-    segmentList = segmentList.filter(
-      (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
-    );
-  }
+  //   segmentList = segmentList.filter(
+  //     (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
+  //   );
+  // }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
@@ -3851,16 +3872,14 @@ const renderSegments = (
       maxPos = segmentList[i].to;
     }
   }
-  let grouped = null;
+  let grouped = { null: segmentList };
 
   // group by some attribute or don't
-  if (groupBy) {
-    let groupByOption = trackOptions && trackOptions.groupBy;
-    groupByOption = groupByOption ? groupByOption : null;
-    grouped = groupBy(segmentList, groupByOption);
-  } else {
-    grouped = { null: segmentList };
-  }
+  // if (groupBy) {
+  //   let groupByOption = trackOptions && trackOptions.groupBy;
+  //   groupByOption = groupByOption ? groupByOption : null;
+  //   grouped = groupBy(segmentList, groupByOption);
+  // }
 
   // if (trackOptions.methylation) {
   //   console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
@@ -5727,54 +5746,54 @@ const renderSegments = (
   // background
   addRect(0, 0, dimensions[0], dimensions[1], PILEUP_COLOR_IXS.WHITE);
 
-  if (trackOptions.showCoverage) {
-    const maxCoverageSamples = 10000;
-    coverageSamplingDistance = Math.max(
-      Math.floor((maxPos - minPos) / maxCoverageSamples),
-      1,
-    );
-    const result = getCoverage(uid, segmentList, coverageSamplingDistance);
+  // if (trackOptions.showCoverage) {
+  //   const maxCoverageSamples = 10000;
+  //   coverageSamplingDistance = Math.max(
+  //     Math.floor((maxPos - minPos) / maxCoverageSamples),
+  //     1,
+  //   );
+  //   const result = getCoverage(uid, segmentList, coverageSamplingDistance);
 
-    allReadCounts = result.coverage;
-    const maxReadCount = result.maxCoverage;
+  //   allReadCounts = result.coverage;
+  //   const maxReadCount = result.maxCoverage;
 
-    const d = range(0, trackOptions.coverageHeight);
-    const groupStart = yGlobalScale(0);
-    const groupEnd =
-      yGlobalScale(trackOptions.coverageHeight - 1) + yGlobalScale.bandwidth();
-    const r = [groupStart, groupEnd];
+  //   const d = range(0, trackOptions.coverageHeight);
+  //   const groupStart = yGlobalScale(0);
+  //   const groupEnd =
+  //     yGlobalScale(trackOptions.coverageHeight - 1) + yGlobalScale.bandwidth();
+  //   const r = [groupStart, groupEnd];
 
-    const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
+  //   const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
 
-    let xLeft, yTop, barHeight;
-    let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
-    const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
-    const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
-    const scalingFactor = groupHeight / maxReadCount;
+  //   let xLeft, yTop, barHeight;
+  //   let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
+  //   const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
+  //   const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
+  //   const scalingFactor = groupHeight / maxReadCount;
 
-    for (const pos of Object.keys(allReadCounts)) {
-      xLeft = xScale(pos);
-      yTop = groupHeight;
+  //   for (const pos of Object.keys(allReadCounts)) {
+  //     xLeft = xScale(pos);
+  //     yTop = groupHeight;
 
-      // Draw rects for variants counts on top of each other
-      for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
-        barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
-        yTop -= barHeight;
-        // When the coverage is not exact, we don't color variants.
-        let variantColor =
-          coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
-        addRect(xLeft, yTop, width, barHeight, variantColor);
-      }
+  //     // Draw rects for variants counts on top of each other
+  //     for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
+  //       barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
+  //       yTop -= barHeight;
+  //       // When the coverage is not exact, we don't color variants.
+  //       let variantColor =
+  //         coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
+  //       addRect(xLeft, yTop, width, barHeight, variantColor);
+  //     }
 
-      barHeight = allReadCounts[pos]['matches'] * scalingFactor;
-      yTop -= barHeight;
-      if (coverageSamplingDistance === 1) {
-        bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
-      }
+  //     barHeight = allReadCounts[pos]['matches'] * scalingFactor;
+  //     yTop -= barHeight;
+  //     if (coverageSamplingDistance === 1) {
+  //       bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+  //     }
 
-      addRect(xLeft, yTop, width, barHeight, bgColor);
-    }
-  }
+  //     addRect(xLeft, yTop, width, barHeight, bgColor);
+  //   }
+  // }
 
   for (const group of Object.values(grouped)) {
     const { rows } = group;

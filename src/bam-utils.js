@@ -306,8 +306,11 @@ export const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
       let clipLength = 0;
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
+      const substitionsLength = segment.substitutions.length;
 
-      for (const sub of segment.substitutions) {
+      for (let subIdx = 0; subIdx < substitionsLength; ++subIdx) {
+        const sub = segment.substitutions[subIdx];
+      // for (const sub of segment.substitutions) {
         //
         // if the read starts or ends with soft or hard clipping
         //
@@ -385,10 +388,13 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
 
   if (segment.cigar) {
     const cigarSubs = parseMD(segment.cigar, true);
+    const cigarSubsLength = cigarSubs.length;
 
     let currPos = 0;
 
-    for (const sub of cigarSubs) {
+    for (let subIdx = 0; subIdx < cigarSubsLength; ++subIdx) {
+      const sub = cigarSubs[subIdx];
+    // for (const sub of cigarSubs) {
       if (includeClippingOps && ((sub.type === 'S') || (sub.type === 'H'))) {
         substitutions.push({
           pos: currPos,
@@ -501,8 +507,11 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
 
   if (segment.md) {
     const mdSubstitutions = parseMD(segment.md, false);
+    const mdSubstitutionsLength = mdSubstitutions.length;
 
-    mdSubstitutions.forEach(function (substitution) {
+    for (let subIdx = 0; subIdx < mdSubstitutionsLength; ++subIdx) {
+      const substitution = mdSubstitutions[subIdx];
+    // mdSubstitutions.forEach(function (substitution) {
       let posStart = substitution['pos'] + substitution['bamSeqShift'];
       let posEnd = posStart + substitution['length'];
       // When there is soft clipping at the beginning,
@@ -514,7 +523,7 @@ export const getSubstitutions = (segment, seq, includeClippingOps) => {
       }
       substitution['variant'] = seq.substring(posStart, posEnd);
       delete substitution['bamSeqShift'];
-    });
+    }
 
     substitutions = mdSubstitutions.concat(substitutions);
   }

@@ -33058,7 +33058,7 @@ var locale_map = Array.prototype.map,
 
 
 var defaultLocale_locale;
-var format;
+var defaultLocale_format;
 var formatPrefix;
 
 defaultLocale({
@@ -33069,7 +33069,7 @@ defaultLocale({
 
 function defaultLocale(definition) {
   defaultLocale_locale = locale(definition);
-  format = defaultLocale_locale.format;
+  defaultLocale_format = defaultLocale_locale.format;
   formatPrefix = defaultLocale_locale.formatPrefix;
   return defaultLocale_locale;
 }
@@ -33117,7 +33117,7 @@ function tickFormat(start, stop, count, specifier) {
       break;
     }
   }
-  return format(specifier);
+  return defaultLocale_format(specifier);
 }
 
 ;// CONCATENATED MODULE: ./node_modules/d3-scale/src/linear.js
@@ -33190,353 +33190,6 @@ function linear_linear() {
   initRange.apply(scale, arguments);
 
   return linearish(scale);
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatDecimal.js
-/* harmony default export */ function src_formatDecimal(x) {
-  return Math.abs(x = Math.round(x)) >= 1e21
-      ? x.toLocaleString("en").replace(/,/g, "")
-      : x.toString(10);
-}
-
-// Computes the decimal coefficient and exponent of the specified number x with
-// significant digits p, where x is positive and p is in [1, 21] or undefined.
-// For example, formatDecimalParts(1.23) returns ["123", 0].
-function formatDecimal_formatDecimalParts(x, p) {
-  if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
-  var i, coefficient = x.slice(0, i);
-
-  // The string returned by toExponential either has the form \d\.\d+e[-+]\d+
-  // (e.g., 1.2e+3) or the form \de[-+]\d+ (e.g., 1e+3).
-  return [
-    coefficient.length > 1 ? coefficient[0] + coefficient.slice(2) : coefficient,
-    +x.slice(i + 1)
-  ];
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/exponent.js
-
-
-/* harmony default export */ function src_exponent(x) {
-  return x = formatDecimal_formatDecimalParts(Math.abs(x)), x ? x[1] : NaN;
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatGroup.js
-/* harmony default export */ function src_formatGroup(grouping, thousands) {
-  return function(value, width) {
-    var i = value.length,
-        t = [],
-        j = 0,
-        g = grouping[0],
-        length = 0;
-
-    while (i > 0 && g > 0) {
-      if (length + g + 1 > width) g = Math.max(1, width - length);
-      t.push(value.substring(i -= g, i + g));
-      if ((length += g + 1) > width) break;
-      g = grouping[j = (j + 1) % grouping.length];
-    }
-
-    return t.reverse().join(thousands);
-  };
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatNumerals.js
-/* harmony default export */ function src_formatNumerals(numerals) {
-  return function(value) {
-    return value.replace(/[0-9]/g, function(i) {
-      return numerals[+i];
-    });
-  };
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatSpecifier.js
-// [[fill]align][sign][symbol][0][width][,][.precision][~][type]
-var formatSpecifier_re = /^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([a-z%])?$/i;
-
-function formatSpecifier_formatSpecifier(specifier) {
-  if (!(match = formatSpecifier_re.exec(specifier))) throw new Error("invalid format: " + specifier);
-  var match;
-  return new formatSpecifier_FormatSpecifier({
-    fill: match[1],
-    align: match[2],
-    sign: match[3],
-    symbol: match[4],
-    zero: match[5],
-    width: match[6],
-    comma: match[7],
-    precision: match[8] && match[8].slice(1),
-    trim: match[9],
-    type: match[10]
-  });
-}
-
-formatSpecifier_formatSpecifier.prototype = formatSpecifier_FormatSpecifier.prototype; // instanceof
-
-function formatSpecifier_FormatSpecifier(specifier) {
-  this.fill = specifier.fill === undefined ? " " : specifier.fill + "";
-  this.align = specifier.align === undefined ? ">" : specifier.align + "";
-  this.sign = specifier.sign === undefined ? "-" : specifier.sign + "";
-  this.symbol = specifier.symbol === undefined ? "" : specifier.symbol + "";
-  this.zero = !!specifier.zero;
-  this.width = specifier.width === undefined ? undefined : +specifier.width;
-  this.comma = !!specifier.comma;
-  this.precision = specifier.precision === undefined ? undefined : +specifier.precision;
-  this.trim = !!specifier.trim;
-  this.type = specifier.type === undefined ? "" : specifier.type + "";
-}
-
-formatSpecifier_FormatSpecifier.prototype.toString = function() {
-  return this.fill
-      + this.align
-      + this.sign
-      + this.symbol
-      + (this.zero ? "0" : "")
-      + (this.width === undefined ? "" : Math.max(1, this.width | 0))
-      + (this.comma ? "," : "")
-      + (this.precision === undefined ? "" : "." + Math.max(0, this.precision | 0))
-      + (this.trim ? "~" : "")
-      + this.type;
-};
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatTrim.js
-// Trims insignificant zeros, e.g., replaces 1.2000k with 1.2k.
-/* harmony default export */ function src_formatTrim(s) {
-  out: for (var n = s.length, i = 1, i0 = -1, i1; i < n; ++i) {
-    switch (s[i]) {
-      case ".": i0 = i1 = i; break;
-      case "0": if (i0 === 0) i0 = i; i1 = i; break;
-      default: if (!+s[i]) break out; if (i0 > 0) i0 = 0; break;
-    }
-  }
-  return i0 > 0 ? s.slice(0, i0) + s.slice(i1 + 1) : s;
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatPrefixAuto.js
-
-
-var formatPrefixAuto_prefixExponent;
-
-/* harmony default export */ function src_formatPrefixAuto(x, p) {
-  var d = formatDecimal_formatDecimalParts(x, p);
-  if (!d) return x + "";
-  var coefficient = d[0],
-      exponent = d[1],
-      i = exponent - (formatPrefixAuto_prefixExponent = Math.max(-8, Math.min(8, Math.floor(exponent / 3))) * 3) + 1,
-      n = coefficient.length;
-  return i === n ? coefficient
-      : i > n ? coefficient + new Array(i - n + 1).join("0")
-      : i > 0 ? coefficient.slice(0, i) + "." + coefficient.slice(i)
-      : "0." + new Array(1 - i).join("0") + formatDecimal_formatDecimalParts(x, Math.max(0, p + i - 1))[0]; // less than 1y!
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatRounded.js
-
-
-/* harmony default export */ function src_formatRounded(x, p) {
-  var d = formatDecimal_formatDecimalParts(x, p);
-  if (!d) return x + "";
-  var coefficient = d[0],
-      exponent = d[1];
-  return exponent < 0 ? "0." + new Array(-exponent).join("0") + coefficient
-      : coefficient.length > exponent + 1 ? coefficient.slice(0, exponent + 1) + "." + coefficient.slice(exponent + 1)
-      : coefficient + new Array(exponent - coefficient.length + 2).join("0");
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/formatTypes.js
-
-
-
-
-/* harmony default export */ const src_formatTypes = ({
-  "%": (x, p) => (x * 100).toFixed(p),
-  "b": (x) => Math.round(x).toString(2),
-  "c": (x) => x + "",
-  "d": src_formatDecimal,
-  "e": (x, p) => x.toExponential(p),
-  "f": (x, p) => x.toFixed(p),
-  "g": (x, p) => x.toPrecision(p),
-  "o": (x) => Math.round(x).toString(8),
-  "p": (x, p) => src_formatRounded(x * 100, p),
-  "r": src_formatRounded,
-  "s": src_formatPrefixAuto,
-  "X": (x) => Math.round(x).toString(16).toUpperCase(),
-  "x": (x) => Math.round(x).toString(16)
-});
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/identity.js
-/* harmony default export */ function d3_format_src_identity(x) {
-  return x;
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/locale.js
-
-
-
-
-
-
-
-
-
-var src_locale_map = Array.prototype.map,
-    locale_prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
-
-/* harmony default export */ function src_locale(locale) {
-  var group = locale.grouping === undefined || locale.thousands === undefined ? d3_format_src_identity : src_formatGroup(src_locale_map.call(locale.grouping, Number), locale.thousands + ""),
-      currencyPrefix = locale.currency === undefined ? "" : locale.currency[0] + "",
-      currencySuffix = locale.currency === undefined ? "" : locale.currency[1] + "",
-      decimal = locale.decimal === undefined ? "." : locale.decimal + "",
-      numerals = locale.numerals === undefined ? d3_format_src_identity : src_formatNumerals(src_locale_map.call(locale.numerals, String)),
-      percent = locale.percent === undefined ? "%" : locale.percent + "",
-      minus = locale.minus === undefined ? "−" : locale.minus + "",
-      nan = locale.nan === undefined ? "NaN" : locale.nan + "";
-
-  function newFormat(specifier) {
-    specifier = formatSpecifier_formatSpecifier(specifier);
-
-    var fill = specifier.fill,
-        align = specifier.align,
-        sign = specifier.sign,
-        symbol = specifier.symbol,
-        zero = specifier.zero,
-        width = specifier.width,
-        comma = specifier.comma,
-        precision = specifier.precision,
-        trim = specifier.trim,
-        type = specifier.type;
-
-    // The "n" type is an alias for ",g".
-    if (type === "n") comma = true, type = "g";
-
-    // The "" type, and any invalid type, is an alias for ".12~g".
-    else if (!src_formatTypes[type]) precision === undefined && (precision = 12), trim = true, type = "g";
-
-    // If zero fill is specified, padding goes after sign and before digits.
-    if (zero || (fill === "0" && align === "=")) zero = true, fill = "0", align = "=";
-
-    // Compute the prefix and suffix.
-    // For SI-prefix, the suffix is lazily computed.
-    var prefix = symbol === "$" ? currencyPrefix : symbol === "#" && /[boxX]/.test(type) ? "0" + type.toLowerCase() : "",
-        suffix = symbol === "$" ? currencySuffix : /[%p]/.test(type) ? percent : "";
-
-    // What format function should we use?
-    // Is this an integer type?
-    // Can this type generate exponential notation?
-    var formatType = src_formatTypes[type],
-        maybeSuffix = /[defgprs%]/.test(type);
-
-    // Set the default precision if not specified,
-    // or clamp the specified precision to the supported range.
-    // For significant precision, it must be in [1, 21].
-    // For fixed precision, it must be in [0, 20].
-    precision = precision === undefined ? 6
-        : /[gprs]/.test(type) ? Math.max(1, Math.min(21, precision))
-        : Math.max(0, Math.min(20, precision));
-
-    function format(value) {
-      var valuePrefix = prefix,
-          valueSuffix = suffix,
-          i, n, c;
-
-      if (type === "c") {
-        valueSuffix = formatType(value) + valueSuffix;
-        value = "";
-      } else {
-        value = +value;
-
-        // Determine the sign. -0 is not less than 0, but 1 / -0 is!
-        var valueNegative = value < 0 || 1 / value < 0;
-
-        // Perform the initial formatting.
-        value = isNaN(value) ? nan : formatType(Math.abs(value), precision);
-
-        // Trim insignificant zeros.
-        if (trim) value = src_formatTrim(value);
-
-        // If a negative value rounds to zero after formatting, and no explicit positive sign is requested, hide the sign.
-        if (valueNegative && +value === 0 && sign !== "+") valueNegative = false;
-
-        // Compute the prefix and suffix.
-        valuePrefix = (valueNegative ? (sign === "(" ? sign : minus) : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
-        valueSuffix = (type === "s" ? locale_prefixes[8 + formatPrefixAuto_prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : "");
-
-        // Break the formatted value into the integer “value” part that can be
-        // grouped, and fractional or exponential “suffix” part that is not.
-        if (maybeSuffix) {
-          i = -1, n = value.length;
-          while (++i < n) {
-            if (c = value.charCodeAt(i), 48 > c || c > 57) {
-              valueSuffix = (c === 46 ? decimal + value.slice(i + 1) : value.slice(i)) + valueSuffix;
-              value = value.slice(0, i);
-              break;
-            }
-          }
-        }
-      }
-
-      // If the fill character is not "0", grouping is applied before padding.
-      if (comma && !zero) value = group(value, Infinity);
-
-      // Compute the padding.
-      var length = valuePrefix.length + value.length + valueSuffix.length,
-          padding = length < width ? new Array(width - length + 1).join(fill) : "";
-
-      // If the fill character is "0", grouping is applied after padding.
-      if (comma && zero) value = group(padding + value, padding.length ? width - valueSuffix.length : Infinity), padding = "";
-
-      // Reconstruct the final output based on the desired alignment.
-      switch (align) {
-        case "<": value = valuePrefix + value + valueSuffix + padding; break;
-        case "=": value = valuePrefix + padding + value + valueSuffix; break;
-        case "^": value = padding.slice(0, length = padding.length >> 1) + valuePrefix + value + valueSuffix + padding.slice(length); break;
-        default: value = padding + valuePrefix + value + valueSuffix; break;
-      }
-
-      return numerals(value);
-    }
-
-    format.toString = function() {
-      return specifier + "";
-    };
-
-    return format;
-  }
-
-  function formatPrefix(specifier, value) {
-    var f = newFormat((specifier = formatSpecifier_formatSpecifier(specifier), specifier.type = "f", specifier)),
-        e = Math.max(-8, Math.min(8, Math.floor(src_exponent(value) / 3))) * 3,
-        k = Math.pow(10, -e),
-        prefix = locale_prefixes[8 + e / 3];
-    return function(value) {
-      return f(k * value) + prefix;
-    };
-  }
-
-  return {
-    format: newFormat,
-    formatPrefix: formatPrefix
-  };
-}
-
-;// CONCATENATED MODULE: ./node_modules/d3-format/src/defaultLocale.js
-
-
-var src_defaultLocale_locale;
-var defaultLocale_format;
-var defaultLocale_formatPrefix;
-
-defaultLocale_defaultLocale({
-  thousands: ",",
-  grouping: [3],
-  currency: ["$", ""]
-});
-
-function defaultLocale_defaultLocale(definition) {
-  src_defaultLocale_locale = src_locale(definition);
-  defaultLocale_format = src_defaultLocale_locale.format;
-  defaultLocale_formatPrefix = src_defaultLocale_locale.formatPrefix;
-  return src_defaultLocale_locale;
 }
 
 // EXTERNAL MODULE: ./node_modules/threads/dist/worker/index.js
@@ -35804,20 +35457,20 @@ const PILEUP_COLORS = {
   "FIRE_139,0,0": [0.54, 0, 0],
 };
 
-let PILEUP_COLOR_IXS = {};
+let bam_utils_PILEUP_COLOR_IXS = {};
 Object.keys(PILEUP_COLORS).map((x, i) => {
-  PILEUP_COLOR_IXS[x] = i;
+  bam_utils_PILEUP_COLOR_IXS[x] = i;
   return null;
 });
 
 function replaceColorIdxs(newColorIdxs) {
-  PILEUP_COLOR_IXS = newColorIdxs;
+  bam_utils_PILEUP_COLOR_IXS = newColorIdxs;
 }
 
 function appendColorIdxs(newColorIdxs) {
-  const currentColorTableLength = Object.keys(PILEUP_COLOR_IXS).length;
+  const currentColorTableLength = Object.keys(bam_utils_PILEUP_COLOR_IXS).length;
   Object.keys(newColorIdxs).map((x, i) => { newColorIdxs[x] = i + currentColorTableLength; })
-  PILEUP_COLOR_IXS = {...PILEUP_COLOR_IXS, ...newColorIdxs};
+  bam_utils_PILEUP_COLOR_IXS = {...bam_utils_PILEUP_COLOR_IXS, ...newColorIdxs};
 }
 
 const hexToRGBRawTriplet = (hex) => {
@@ -36059,8 +35712,11 @@ const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
       let clipLength = 0;
       const modifiedOffsets = new Array();
       const modifiedProbabilities = new Array();
+      const substitionsLength = segment.substitutions.length;
 
-      for (const sub of segment.substitutions) {
+      for (let subIdx = 0; subIdx < substitionsLength; ++subIdx) {
+        const sub = segment.substitutions[subIdx];
+      // for (const sub of segment.substitutions) {
         //
         // if the read starts or ends with soft or hard clipping
         //
@@ -36138,10 +35794,13 @@ const getSubstitutions = (segment, seq, includeClippingOps) => {
 
   if (segment.cigar) {
     const cigarSubs = parseMD(segment.cigar, true);
+    const cigarSubsLength = cigarSubs.length;
 
     let currPos = 0;
 
-    for (const sub of cigarSubs) {
+    for (let subIdx = 0; subIdx < cigarSubsLength; ++subIdx) {
+      const sub = cigarSubs[subIdx];
+    // for (const sub of cigarSubs) {
       if (includeClippingOps && ((sub.type === 'S') || (sub.type === 'H'))) {
         substitutions.push({
           pos: currPos,
@@ -36254,8 +35913,11 @@ const getSubstitutions = (segment, seq, includeClippingOps) => {
 
   if (segment.md) {
     const mdSubstitutions = parseMD(segment.md, false);
+    const mdSubstitutionsLength = mdSubstitutions.length;
 
-    mdSubstitutions.forEach(function (substitution) {
+    for (let subIdx = 0; subIdx < mdSubstitutionsLength; ++subIdx) {
+      const substitution = mdSubstitutions[subIdx];
+    // mdSubstitutions.forEach(function (substitution) {
       let posStart = substitution['pos'] + substitution['bamSeqShift'];
       let posEnd = posStart + substitution['length'];
       // When there is soft clipping at the beginning,
@@ -36267,7 +35929,7 @@ const getSubstitutions = (segment, seq, includeClippingOps) => {
       }
       substitution['variant'] = seq.substring(posStart, posEnd);
       delete substitution['bamSeqShift'];
-    });
+    }
 
     substitutions = mdSubstitutions.concat(substitutions);
   }
@@ -36288,7 +35950,7 @@ const areMatesRequired = (trackOptions) => {
 /**
  * Calculates insert size between read segements
  */
- const calculateInsertSize = (segment1, segment2) => {
+ const bam_utils_calculateInsertSize = (segment1, segment2) => {
   return segment1.from < segment2.from
     ? Math.max(0, segment2.from - segment1.to)
     : Math.max(0, segment1.from - segment2.to);
@@ -40421,7 +40083,7 @@ function brush(dim) {
 
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatDecimal.js
-/* harmony default export */ function d3_format_src_formatDecimal(x) {
+/* harmony default export */ function src_formatDecimal(x) {
   return Math.abs(x = Math.round(x)) >= 1e21
       ? x.toLocaleString("en").replace(/,/g, "")
       : x.toString(10);
@@ -40430,7 +40092,7 @@ function brush(dim) {
 // Computes the decimal coefficient and exponent of the specified number x with
 // significant digits p, where x is positive and p is in [1, 21] or undefined.
 // For example, formatDecimalParts(1.23) returns ["123", 0].
-function src_formatDecimal_formatDecimalParts(x, p) {
+function formatDecimal_formatDecimalParts(x, p) {
   if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
   var i, coefficient = x.slice(0, i);
 
@@ -40445,12 +40107,12 @@ function src_formatDecimal_formatDecimalParts(x, p) {
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/exponent.js
 
 
-/* harmony default export */ function d3_format_src_exponent(x) {
-  return x = src_formatDecimal_formatDecimalParts(Math.abs(x)), x ? x[1] : NaN;
+/* harmony default export */ function src_exponent(x) {
+  return x = formatDecimal_formatDecimalParts(Math.abs(x)), x ? x[1] : NaN;
 }
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatGroup.js
-/* harmony default export */ function d3_format_src_formatGroup(grouping, thousands) {
+/* harmony default export */ function src_formatGroup(grouping, thousands) {
   return function(value, width) {
     var i = value.length,
         t = [],
@@ -40470,7 +40132,7 @@ function src_formatDecimal_formatDecimalParts(x, p) {
 }
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatNumerals.js
-/* harmony default export */ function d3_format_src_formatNumerals(numerals) {
+/* harmony default export */ function src_formatNumerals(numerals) {
   return function(value) {
     return value.replace(/[0-9]/g, function(i) {
       return numerals[+i];
@@ -40480,12 +40142,12 @@ function src_formatDecimal_formatDecimalParts(x, p) {
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatSpecifier.js
 // [[fill]align][sign][symbol][0][width][,][.precision][~][type]
-var src_formatSpecifier_re = /^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([a-z%])?$/i;
+var formatSpecifier_re = /^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([a-z%])?$/i;
 
-function src_formatSpecifier_formatSpecifier(specifier) {
-  if (!(match = src_formatSpecifier_re.exec(specifier))) throw new Error("invalid format: " + specifier);
+function formatSpecifier_formatSpecifier(specifier) {
+  if (!(match = formatSpecifier_re.exec(specifier))) throw new Error("invalid format: " + specifier);
   var match;
-  return new src_formatSpecifier_FormatSpecifier({
+  return new formatSpecifier_FormatSpecifier({
     fill: match[1],
     align: match[2],
     sign: match[3],
@@ -40499,9 +40161,9 @@ function src_formatSpecifier_formatSpecifier(specifier) {
   });
 }
 
-src_formatSpecifier_formatSpecifier.prototype = src_formatSpecifier_FormatSpecifier.prototype; // instanceof
+formatSpecifier_formatSpecifier.prototype = formatSpecifier_FormatSpecifier.prototype; // instanceof
 
-function src_formatSpecifier_FormatSpecifier(specifier) {
+function formatSpecifier_FormatSpecifier(specifier) {
   this.fill = specifier.fill === undefined ? " " : specifier.fill + "";
   this.align = specifier.align === undefined ? ">" : specifier.align + "";
   this.sign = specifier.sign === undefined ? "-" : specifier.sign + "";
@@ -40514,7 +40176,7 @@ function src_formatSpecifier_FormatSpecifier(specifier) {
   this.type = specifier.type === undefined ? "" : specifier.type + "";
 }
 
-src_formatSpecifier_FormatSpecifier.prototype.toString = function() {
+formatSpecifier_FormatSpecifier.prototype.toString = function() {
   return this.fill
       + this.align
       + this.sign
@@ -40529,7 +40191,7 @@ src_formatSpecifier_FormatSpecifier.prototype.toString = function() {
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatTrim.js
 // Trims insignificant zeros, e.g., replaces 1.2000k with 1.2k.
-/* harmony default export */ function d3_format_src_formatTrim(s) {
+/* harmony default export */ function src_formatTrim(s) {
   out: for (var n = s.length, i = 1, i0 = -1, i1; i < n; ++i) {
     switch (s[i]) {
       case ".": i0 = i1 = i; break;
@@ -40543,26 +40205,26 @@ src_formatSpecifier_FormatSpecifier.prototype.toString = function() {
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatPrefixAuto.js
 
 
-var src_formatPrefixAuto_prefixExponent;
+var formatPrefixAuto_prefixExponent;
 
-/* harmony default export */ function d3_format_src_formatPrefixAuto(x, p) {
-  var d = src_formatDecimal_formatDecimalParts(x, p);
+/* harmony default export */ function src_formatPrefixAuto(x, p) {
+  var d = formatDecimal_formatDecimalParts(x, p);
   if (!d) return x + "";
   var coefficient = d[0],
       exponent = d[1],
-      i = exponent - (src_formatPrefixAuto_prefixExponent = Math.max(-8, Math.min(8, Math.floor(exponent / 3))) * 3) + 1,
+      i = exponent - (formatPrefixAuto_prefixExponent = Math.max(-8, Math.min(8, Math.floor(exponent / 3))) * 3) + 1,
       n = coefficient.length;
   return i === n ? coefficient
       : i > n ? coefficient + new Array(i - n + 1).join("0")
       : i > 0 ? coefficient.slice(0, i) + "." + coefficient.slice(i)
-      : "0." + new Array(1 - i).join("0") + src_formatDecimal_formatDecimalParts(x, Math.max(0, p + i - 1))[0]; // less than 1y!
+      : "0." + new Array(1 - i).join("0") + formatDecimal_formatDecimalParts(x, Math.max(0, p + i - 1))[0]; // less than 1y!
 }
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/formatRounded.js
 
 
-/* harmony default export */ function d3_format_src_formatRounded(x, p) {
-  var d = src_formatDecimal_formatDecimalParts(x, p);
+/* harmony default export */ function src_formatRounded(x, p) {
+  var d = formatDecimal_formatDecimalParts(x, p);
   if (!d) return x + "";
   var coefficient = d[0],
       exponent = d[1];
@@ -40576,24 +40238,24 @@ var src_formatPrefixAuto_prefixExponent;
 
 
 
-/* harmony default export */ const d3_format_src_formatTypes = ({
+/* harmony default export */ const src_formatTypes = ({
   "%": (x, p) => (x * 100).toFixed(p),
   "b": (x) => Math.round(x).toString(2),
   "c": (x) => x + "",
-  "d": d3_format_src_formatDecimal,
+  "d": src_formatDecimal,
   "e": (x, p) => x.toExponential(p),
   "f": (x, p) => x.toFixed(p),
   "g": (x, p) => x.toPrecision(p),
   "o": (x) => Math.round(x).toString(8),
-  "p": (x, p) => d3_format_src_formatRounded(x * 100, p),
-  "r": d3_format_src_formatRounded,
-  "s": d3_format_src_formatPrefixAuto,
+  "p": (x, p) => src_formatRounded(x * 100, p),
+  "r": src_formatRounded,
+  "s": src_formatPrefixAuto,
   "X": (x) => Math.round(x).toString(16).toUpperCase(),
   "x": (x) => Math.round(x).toString(16)
 });
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/identity.js
-/* harmony default export */ function node_modules_d3_format_src_identity(x) {
+/* harmony default export */ function d3_format_src_identity(x) {
   return x;
 }
 
@@ -40607,21 +40269,21 @@ var src_formatPrefixAuto_prefixExponent;
 
 
 
-var d3_format_src_locale_map = Array.prototype.map,
-    src_locale_prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
+var src_locale_map = Array.prototype.map,
+    locale_prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
 
-/* harmony default export */ function d3_format_src_locale(locale) {
-  var group = locale.grouping === undefined || locale.thousands === undefined ? node_modules_d3_format_src_identity : d3_format_src_formatGroup(d3_format_src_locale_map.call(locale.grouping, Number), locale.thousands + ""),
+/* harmony default export */ function src_locale(locale) {
+  var group = locale.grouping === undefined || locale.thousands === undefined ? d3_format_src_identity : src_formatGroup(src_locale_map.call(locale.grouping, Number), locale.thousands + ""),
       currencyPrefix = locale.currency === undefined ? "" : locale.currency[0] + "",
       currencySuffix = locale.currency === undefined ? "" : locale.currency[1] + "",
       decimal = locale.decimal === undefined ? "." : locale.decimal + "",
-      numerals = locale.numerals === undefined ? node_modules_d3_format_src_identity : d3_format_src_formatNumerals(d3_format_src_locale_map.call(locale.numerals, String)),
+      numerals = locale.numerals === undefined ? d3_format_src_identity : src_formatNumerals(src_locale_map.call(locale.numerals, String)),
       percent = locale.percent === undefined ? "%" : locale.percent + "",
       minus = locale.minus === undefined ? "−" : locale.minus + "",
       nan = locale.nan === undefined ? "NaN" : locale.nan + "";
 
   function newFormat(specifier) {
-    specifier = src_formatSpecifier_formatSpecifier(specifier);
+    specifier = formatSpecifier_formatSpecifier(specifier);
 
     var fill = specifier.fill,
         align = specifier.align,
@@ -40638,7 +40300,7 @@ var d3_format_src_locale_map = Array.prototype.map,
     if (type === "n") comma = true, type = "g";
 
     // The "" type, and any invalid type, is an alias for ".12~g".
-    else if (!d3_format_src_formatTypes[type]) precision === undefined && (precision = 12), trim = true, type = "g";
+    else if (!src_formatTypes[type]) precision === undefined && (precision = 12), trim = true, type = "g";
 
     // If zero fill is specified, padding goes after sign and before digits.
     if (zero || (fill === "0" && align === "=")) zero = true, fill = "0", align = "=";
@@ -40651,7 +40313,7 @@ var d3_format_src_locale_map = Array.prototype.map,
     // What format function should we use?
     // Is this an integer type?
     // Can this type generate exponential notation?
-    var formatType = d3_format_src_formatTypes[type],
+    var formatType = src_formatTypes[type],
         maybeSuffix = /[defgprs%]/.test(type);
 
     // Set the default precision if not specified,
@@ -40680,14 +40342,14 @@ var d3_format_src_locale_map = Array.prototype.map,
         value = isNaN(value) ? nan : formatType(Math.abs(value), precision);
 
         // Trim insignificant zeros.
-        if (trim) value = d3_format_src_formatTrim(value);
+        if (trim) value = src_formatTrim(value);
 
         // If a negative value rounds to zero after formatting, and no explicit positive sign is requested, hide the sign.
         if (valueNegative && +value === 0 && sign !== "+") valueNegative = false;
 
         // Compute the prefix and suffix.
         valuePrefix = (valueNegative ? (sign === "(" ? sign : minus) : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
-        valueSuffix = (type === "s" ? src_locale_prefixes[8 + src_formatPrefixAuto_prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : "");
+        valueSuffix = (type === "s" ? locale_prefixes[8 + formatPrefixAuto_prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : "");
 
         // Break the formatted value into the integer “value” part that can be
         // grouped, and fractional or exponential “suffix” part that is not.
@@ -40732,10 +40394,10 @@ var d3_format_src_locale_map = Array.prototype.map,
   }
 
   function formatPrefix(specifier, value) {
-    var f = newFormat((specifier = src_formatSpecifier_formatSpecifier(specifier), specifier.type = "f", specifier)),
-        e = Math.max(-8, Math.min(8, Math.floor(d3_format_src_exponent(value) / 3))) * 3,
+    var f = newFormat((specifier = formatSpecifier_formatSpecifier(specifier), specifier.type = "f", specifier)),
+        e = Math.max(-8, Math.min(8, Math.floor(src_exponent(value) / 3))) * 3,
         k = Math.pow(10, -e),
-        prefix = src_locale_prefixes[8 + e / 3];
+        prefix = locale_prefixes[8 + e / 3];
     return function(value) {
       return f(k * value) + prefix;
     };
@@ -40750,21 +40412,21 @@ var d3_format_src_locale_map = Array.prototype.map,
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/defaultLocale.js
 
 
-var d3_format_src_defaultLocale_locale;
+var src_defaultLocale_locale;
 var src_defaultLocale_format;
-var src_defaultLocale_formatPrefix;
+var defaultLocale_formatPrefix;
 
-src_defaultLocale_defaultLocale({
+defaultLocale_defaultLocale({
   thousands: ",",
   grouping: [3],
   currency: ["$", ""]
 });
 
-function src_defaultLocale_defaultLocale(definition) {
-  d3_format_src_defaultLocale_locale = d3_format_src_locale(definition);
-  src_defaultLocale_format = d3_format_src_defaultLocale_locale.format;
-  src_defaultLocale_formatPrefix = d3_format_src_defaultLocale_locale.formatPrefix;
-  return d3_format_src_defaultLocale_locale;
+function defaultLocale_defaultLocale(definition) {
+  src_defaultLocale_locale = src_locale(definition);
+  src_defaultLocale_format = src_defaultLocale_locale.format;
+  defaultLocale_formatPrefix = src_defaultLocale_locale.formatPrefix;
+  return src_defaultLocale_locale;
 }
 
 ;// CONCATENATED MODULE: ./node_modules/d3/node_modules/d3-format/src/index.js
@@ -42446,7 +42108,7 @@ var timeParse;
 var utcFormat;
 var utcParse;
 
-d3_time_format_src_defaultLocale_defaultLocale({
+src_defaultLocale_defaultLocale({
   dateTime: "%x, %X",
   date: "%-m/%-d/%Y",
   time: "%-I:%M:%S %p",
@@ -42457,7 +42119,7 @@ d3_time_format_src_defaultLocale_defaultLocale({
   shortMonths: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 });
 
-function d3_time_format_src_defaultLocale_defaultLocale(definition) {
+function src_defaultLocale_defaultLocale(definition) {
   d3_time_format_src_defaultLocale_locale = formatLocale(definition);
   timeFormat = d3_time_format_src_defaultLocale_locale.format;
   timeParse = d3_time_format_src_defaultLocale_locale.parse;
@@ -51695,7 +51357,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     row: null,
     readName: bamRecord.get('name'),
     seq: seq,
-    color: PILEUP_COLOR_IXS.BG,
+    color: bam_utils_PILEUP_COLOR_IXS.BG,
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
@@ -51709,10 +51371,10 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
   }
 
   if (segment.strand === '+' && trackOptions && trackOptions.plusStrandColor) {
-    segment.color = PILEUP_COLOR_IXS.PLUS_STRAND;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.PLUS_STRAND;
   }
   else if (segment.strand === '-' && trackOptions && trackOptions.minusStrandColor) {
-    segment.color = PILEUP_COLOR_IXS.MINUS_STRAND;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.MINUS_STRAND;
   }
 
   const includeClippingOps = true;
@@ -51723,7 +51385,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // console.log(`segment.methylationOffsets | ${JSON.stringify(segment.methylationOffsets)}`);
   }
 
-  if (trackOptions.fire) {
+  else if (trackOptions.fire) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     // segment.fireColors = fireColors(trackOptions);
     // const newPileupColorIdxs = {};
@@ -51734,15 +51396,15 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // });
     // replaceColorIdxs(newPileupColorIdxs);
     // appendColorIdxs(newPileupColorIdxs);
-    segment.color = PILEUP_COLOR_IXS.FIRE_BG;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.FIRE_BG;
     // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
   }
 
-  if (trackOptions.tfbs) {
+  else if (trackOptions.tfbs) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
   }
 
-  if (trackOptions.genericBed) {
+  else if (trackOptions.genericBed) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     segment.genericBedColors = genericBedColors(trackOptions);
     const newPileupColorIdxs = {};
@@ -51753,7 +51415,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     replaceColorIdxs(newPileupColorIdxs);
   }
 
-  if (trackOptions.indexDHS) {
+  else if (trackOptions.indexDHS) {
     segment.metadata = JSON.parse(bamRecord.get('CO'));
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
     segment.indexDHSColors = indexDHSColors(trackOptions);
@@ -51764,30 +51426,30 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
       return null;
     })
     replaceColorIdxs(newPileupColorIdxs);
-    segment.color = PILEUP_COLOR_IXS.INDEX_DHS_BG;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.INDEX_DHS_BG;
   }
 
-  let fromClippingAdjustment = 0;
-  let toClippingAdjustment = 0;
+  // let fromClippingAdjustment = 0;
+  // let toClippingAdjustment = 0;
 
-  // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
-  for (const sub of segment.substitutions) {
-    if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
-      fromClippingAdjustment = -sub.length;
-    } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
-      toClippingAdjustment = sub.length;
-    }
-  }
-  // segment.substitutions.forEach((sub) => {
-  //   // left soft clipped region
+  // // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
+  // for (const sub of segment.substitutions) {
   //   if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
   //     fromClippingAdjustment = -sub.length;
   //   } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
   //     toClippingAdjustment = sub.length;
   //   }
-  // });
-  segment.fromWithClipping += fromClippingAdjustment;
-  segment.toWithClipping += toClippingAdjustment;
+  // }
+  // // segment.substitutions.forEach((sub) => {
+  // //   // left soft clipped region
+  // //   if ((sub.type === "S" || sub.type === "H") && sub.pos < 0) {
+  // //     fromClippingAdjustment = -sub.length;
+  // //   } else if ((sub.type === "S" || sub.type === "H") && sub.pos > 0) {
+  // //     toClippingAdjustment = sub.length;
+  // //   }
+  // // });
+  // segment.fromWithClipping += fromClippingAdjustment;
+  // segment.toWithClipping += toClippingAdjustment;
 
   return segment;
 };
@@ -51936,7 +51598,10 @@ const tabularJsonToRowJson = (tabularJson) => {
       // format: x[0] : start of region
       // x[1]: type of region (e.g. 'S', 'H', 'I', etc...)
       // x[2]: the length of the region
-      for (const x of newRow.cigars) {
+      const newRowCigarsLength = newRow.cigars.length;
+      // for (const x of newRow.cigars) {
+      for (let newRowCigarsIdx = 0; newRowCigarsIdx < newRowCigarsLength; newRowCigarsIdx++) {
+        const x = newRow.cigars[newRowCigarsIdx];
         newRow.substitutions.push({
           pos: x[0] - (newRow.from - newRow.chrOffset) + 1,
           type: x[1].toUpperCase(),
@@ -52157,10 +51822,10 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
   Object.entries(coverage).forEach(
       ([pos, entry]) => {
         const from = absToChr(pos);
-        let range = from[0] + ":" + defaultLocale_format(',')(from[1]);
+        let range = from[0] + ":" + format(',')(from[1]);
         if(samplingDistance > 1){
           const to = absToChr(parseInt(pos,10)+samplingDistance-1);
-          range += "-" + defaultLocale_format(',')(to[1]);
+          range += "-" + format(',')(to[1]);
         }
         entry.range = range;
       }
@@ -55152,12 +54817,12 @@ const exportSegmentsAsBED12 = (
                 break;
               case 'A':
                 if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_FOR;
                 }
                 break
               case 'T':
                 if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_REV;
                 }
                 break;
               default:
@@ -55233,7 +54898,11 @@ const renderSegments = (
   let coverageSamplingDistance;
   let ATPositions = null;
 
-  for (const tileId of tileIds) {
+  const tileIdsLength = tileIds.length;
+
+  // for (const tileId of tileIds) {
+  for (let tileIdIdx = 0; tileIdIdx < tileIdsLength; tileIdIdx++) {
+    const tileId = tileIds[tileIdIdx];
     let tileValue = null;
     try {
       tileValue = tileValues.get(`${uid}.${tileId}`);
@@ -55250,10 +54919,16 @@ const renderSegments = (
     }
     if (!tileValue) continue;
 
+    const tileValueLength = tileValue.length;
     if (trackOptions.methylation && alignCpGEvents) {
-      for (const segment of tileValue) {
+      // for (const segment of tileValue) {
+      for (let segmentIdx = 0; segmentIdx < tileValueLength; segmentIdx++) {
+        const segment = tileValue[segmentIdx];
         // console.log(`segment ${JSON.stringify(segment)}`);
-        for (const mo of segment.methylationOffsets) {
+        const segmentMethylationOffsetsLength = segment.methylationOffsets.length;
+        // for (const mo of segment.methylationOffsets) {
+        for (let moIdx = 0; moIdx < segmentMethylationOffsetsLength; moIdx++) {
+          const mo = segment.methylationOffsets[moIdx];
           if (mo.unmodifiedBase === 'C' && segment.strand === '-') {
             mo.offsets = mo.offsets.map(offset => offset - 1);
           }
@@ -55261,7 +54936,9 @@ const renderSegments = (
       }
     }
 
-    for (const segment of tileValue) {
+    // for (const segment of tileValue) {
+    for (let segmentIdx = 0; segmentIdx < tileValueLength; segmentIdx++) {
+      const segment = tileValue[segmentIdx];
       allSegments[segment.id] = segment;
     }
 
@@ -55270,11 +54947,17 @@ const renderSegments = (
     if (sequenceTileValue && trackOptions.methylation && trackOptions.methylation.highlights) {
       // console.log(`renderSegments | ${uid} | ${JSON.stringify(tileIds)} | ${JSON.stringify(trackOptions)}`);
       const highlights = Object.keys(trackOptions.methylation.highlights);
-      for (const sequence of sequenceTileValue) {
+      const sequenceTileValueLength = sequenceTileValue.length;
+      // for (const sequence of sequenceTileValue) {
+      for (let sequenceIdx = 0; sequenceIdx < sequenceTileValueLength; sequenceIdx++) {
+        const sequence = sequenceTileValue[sequenceIdx];
         // allSequences[parseInt(sequence.start)] = sequence.data;
         const absPosStart = parseInt(sequence.start) + parseInt(sequence.chromOffset);
         const seq = sequence.data.toUpperCase();
-        for (const highlight of highlights) {
+        const highlightsLength = highlights.length;
+        // for (const highlight of highlights) {
+        for (let highlightIdx = 0; highlightIdx < highlightsLength; highlightIdx++) {
+          const highlight = highlights[highlightIdx];
           // console.log(`highlight ${JSON.stringify(highlight)}`);
           if (highlight !== 'M0A') {
             const highlightUC = highlight.toUpperCase();
@@ -55343,33 +55026,33 @@ const renderSegments = (
     segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
   }
 
-  prepareHighlightedReads(segmentList, trackOptions);
+  // prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterDataObj) {
-    // At this point reads are colored correctly, but we only want to align those reads that
-    // are within the visible tiles - not mates that are far away, as this can mess up the alignment
-    let tileMinPos = Number.MAX_VALUE;
-    let tileMaxPos = -Number.MAX_VALUE;
-    const tsInfo = tilesetInfos[uid];
-    for (const id of tileIds) {
-      const z = id.split('.')[0];
-      const x = id.split('.')[1];
-      const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-      tileMinPos = Math.min(tileMinPos, startEnd[0]);
-      tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    }
-    // tileIds.forEach((id) => {
-    //   const z = id.split('.')[0];
-    //   const x = id.split('.')[1];
-    //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-    //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
-    //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    // });
+  // if (areMatesRequired(trackOptions) && !clusterDataObj) {
+  //   // At this point reads are colored correctly, but we only want to align those reads that
+  //   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
+  //   let tileMinPos = Number.MAX_VALUE;
+  //   let tileMaxPos = -Number.MAX_VALUE;
+  //   const tsInfo = tilesetInfos[uid];
+  //   for (const id of tileIds) {
+  //     const z = id.split('.')[0];
+  //     const x = id.split('.')[1];
+  //     const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //     tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //     tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   }
+  //   // tileIds.forEach((id) => {
+  //   //   const z = id.split('.')[0];
+  //   //   const x = id.split('.')[1];
+  //   //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //   //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //   //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   // });
 
-    segmentList = segmentList.filter(
-      (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
-    );
-  }
+  //   segmentList = segmentList.filter(
+  //     (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
+  //   );
+  // }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
@@ -55382,16 +55065,14 @@ const renderSegments = (
       maxPos = segmentList[i].to;
     }
   }
-  let grouped = null;
+  let grouped = { null: segmentList };
 
   // group by some attribute or don't
-  if (bam_fetcher_worker_groupBy) {
-    let groupByOption = trackOptions && trackOptions.groupBy;
-    groupByOption = groupByOption ? groupByOption : null;
-    grouped = bam_fetcher_worker_groupBy(segmentList, groupByOption);
-  } else {
-    grouped = { null: segmentList };
-  }
+  // if (groupBy) {
+  //   let groupByOption = trackOptions && trackOptions.groupBy;
+  //   groupByOption = groupByOption ? groupByOption : null;
+  //   grouped = groupBy(segmentList, groupByOption);
+  // }
 
   // if (trackOptions.methylation) {
   //   console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
@@ -57256,56 +56937,56 @@ const renderSegments = (
     groupCounter += 1;
   }
   // background
-  addRect(0, 0, dimensions[0], dimensions[1], PILEUP_COLOR_IXS.WHITE);
+  addRect(0, 0, dimensions[0], dimensions[1], bam_utils_PILEUP_COLOR_IXS.WHITE);
 
-  if (trackOptions.showCoverage) {
-    const maxCoverageSamples = 10000;
-    coverageSamplingDistance = Math.max(
-      Math.floor((maxPos - minPos) / maxCoverageSamples),
-      1,
-    );
-    const result = getCoverage(uid, segmentList, coverageSamplingDistance);
+  // if (trackOptions.showCoverage) {
+  //   const maxCoverageSamples = 10000;
+  //   coverageSamplingDistance = Math.max(
+  //     Math.floor((maxPos - minPos) / maxCoverageSamples),
+  //     1,
+  //   );
+  //   const result = getCoverage(uid, segmentList, coverageSamplingDistance);
 
-    allReadCounts = result.coverage;
-    const maxReadCount = result.maxCoverage;
+  //   allReadCounts = result.coverage;
+  //   const maxReadCount = result.maxCoverage;
 
-    const d = range(0, trackOptions.coverageHeight);
-    const groupStart = yGlobalScale(0);
-    const groupEnd =
-      yGlobalScale(trackOptions.coverageHeight - 1) + yGlobalScale.bandwidth();
-    const r = [groupStart, groupEnd];
+  //   const d = range(0, trackOptions.coverageHeight);
+  //   const groupStart = yGlobalScale(0);
+  //   const groupEnd =
+  //     yGlobalScale(trackOptions.coverageHeight - 1) + yGlobalScale.bandwidth();
+  //   const r = [groupStart, groupEnd];
 
-    const yScale = band().domain(d).range(r).paddingInner(0.05);
+  //   const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
 
-    let xLeft, yTop, barHeight;
-    let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
-    const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
-    const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
-    const scalingFactor = groupHeight / maxReadCount;
+  //   let xLeft, yTop, barHeight;
+  //   let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
+  //   const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
+  //   const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
+  //   const scalingFactor = groupHeight / maxReadCount;
 
-    for (const pos of Object.keys(allReadCounts)) {
-      xLeft = xScale(pos);
-      yTop = groupHeight;
+  //   for (const pos of Object.keys(allReadCounts)) {
+  //     xLeft = xScale(pos);
+  //     yTop = groupHeight;
 
-      // Draw rects for variants counts on top of each other
-      for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
-        barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
-        yTop -= barHeight;
-        // When the coverage is not exact, we don't color variants.
-        let variantColor =
-          coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
-        addRect(xLeft, yTop, width, barHeight, variantColor);
-      }
+  //     // Draw rects for variants counts on top of each other
+  //     for (const variant of Object.keys(allReadCounts[pos]['variants'])) {
+  //       barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
+  //       yTop -= barHeight;
+  //       // When the coverage is not exact, we don't color variants.
+  //       let variantColor =
+  //         coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
+  //       addRect(xLeft, yTop, width, barHeight, variantColor);
+  //     }
 
-      barHeight = allReadCounts[pos]['matches'] * scalingFactor;
-      yTop -= barHeight;
-      if (coverageSamplingDistance === 1) {
-        bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
-      }
+  //     barHeight = allReadCounts[pos]['matches'] * scalingFactor;
+  //     yTop -= barHeight;
+  //     if (coverageSamplingDistance === 1) {
+  //       bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+  //     }
 
-      addRect(xLeft, yTop, width, barHeight, bgColor);
-    }
-  }
+  //     addRect(xLeft, yTop, width, barHeight, bgColor);
+  //   }
+  // }
 
   for (const group of Object.values(grouped)) {
     const { rows } = group;
@@ -57349,13 +57030,13 @@ const renderSegments = (
         }
         else if (trackOptions && trackOptions.indexDHS) {
           // console.log(`PILEUP_COLOR_IXS.INDEX_DHS_BG ${PILEUP_COLOR_IXS.INDEX_DHS_BG} vs segment.color ${segment.color} or segment.colorOverride ${segment.colorOverride}`);
-          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
+          addRect(xLeft, yTop, xRight - xLeft, height, bam_utils_PILEUP_COLOR_IXS.INDEX_DHS_BG);
         }
         else if (trackOptions && trackOptions.tfbs) {
-          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
+          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, bam_utils_PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
         }
         else if (trackOptions && trackOptions.genericBed) {
-          let colorIdx = PILEUP_COLOR_IXS.GENERIC_BED_SEGMENT_BG;
+          let colorIdx = bam_utils_PILEUP_COLOR_IXS.GENERIC_BED_SEGMENT_BG;
           // if (trackOptions.genericBed.colors) {
           //   const colorRgb = trackOptions.genericBed.colors[0];
           //   console.log(`colorRgb ${colorRgb}`);
@@ -57378,7 +57059,7 @@ const renderSegments = (
             for (const highlight of highlights) {
               const highlightLen = highlight.length;
               const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-              const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
+              const highlightColor = bam_utils_PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
               const highlightPosns = highlightPositions[highlight];
               if (highlight !== 'M0A') {
                 for (const posn of highlightPosns) {
@@ -57416,28 +57097,28 @@ const renderSegments = (
             switch (mo.unmodifiedBase) {
               case 'C':
                 if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M5C_FOR;
                 }
                 else if ((mo.code === 'h') && (mo.strand === '+') && showHM5CForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_HM5C_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_HM5C_FOR;
                 }
                 break;
               case 'G':
                 if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M5C_REV;
                 }
                 else if ((mo.code === 'h') && (mo.strand === '-') && showHM5CReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_HM5C_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_HM5C_REV;
                 }
                 break;
               case 'A':
                 if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_FOR;
                 }
                 break
               case 'T':
                 if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_REV;
                 }
                 break;
               default:
@@ -57452,7 +57133,7 @@ const renderSegments = (
                 const highlight = 'M0A';
                 const highlightLen = 1;
                 const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-                const highlightColor = PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
+                const highlightColor = bam_utils_PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
                 // console.log(`highlightColor ${highlightColor}`);
                 // const highlightPosns = highlightPositions[highlight].filter(d => !segmentModifiedOffsets.includes(d));
                 const highlightPosns = [...ATPositions].filter(d => !segmentModifiedOffsets.has(d));
@@ -57520,9 +57201,9 @@ const renderSegments = (
           // apply color to segment, if available
           //
           const indexDHSMetadata = (trackOptions.indexDHS) ? segment.metadata : {};
-          let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
+          let defaultSegmentColor = bam_utils_PILEUP_COLOR_IXS.BLACK;
           if (trackOptions.indexDHS) {
-            defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
+            defaultSegmentColor = bam_utils_PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
             // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
             // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
           }
@@ -57577,23 +57258,23 @@ const renderSegments = (
             xRight = xLeft + width;
 
             if (substitution.variant === 'A') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.A);
             } else if (substitution.variant === 'C') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.C);
             } else if (substitution.variant === 'G') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.G);
             } else if (substitution.variant === 'T') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.T);
             } else if (substitution.type === 'S') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.S);
             } else if (substitution.type === 'H') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.H);
             } else if (substitution.type === 'X') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.X);
             } else if (substitution.type === 'I') {
-              addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
+              addRect(xLeft, yTop, insertionWidth, height, bam_utils_PILEUP_COLOR_IXS.I);
             } else if (substitution.type === 'D') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.D);
 
               // add some stripes
               const numStripes = 6;
@@ -57695,7 +57376,7 @@ const renderSegments = (
           // console.log(`fireEnabledCategories ${JSON.stringify(fireEnabledCategories)}`);
           // fireMetadata.defaultRGB = '169,169,169';
           // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
-          let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
+          let defaultSegmentColor = bam_utils_PILEUP_COLOR_IXS.FIRE_BG;
           // let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
           const fireElementHeight = yScale.bandwidth() * 0.25;
           const topCorrection = fireElementHeight * 1.75;
@@ -57716,7 +57397,7 @@ const renderSegments = (
             const blockSizes = blocks.sizes;
             const blockOffsets = blocks.offsets;
             const blockColors = blocks.colors.map((d => colorMap[d]));
-            const blockColorIdxs = blocks.colors.map(d => PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
+            const blockColorIdxs = blocks.colors.map(d => bam_utils_PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
             const blockHeightFactors = blocks.colors.map(d => trackOptions.fire.metadata.itemRGBMap[colorMap[d]].heightFactor);
 
             // console.log(`blocks ${JSON.stringify(blocks)}`);

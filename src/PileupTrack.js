@@ -353,60 +353,84 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
 
       let colorDict = PILEUP_COLORS;
 
-      if (options && options.colorScale && options.colorScale.length == 6) {
-        [
-          colorDict.A,
-          colorDict.T,
-          colorDict.G,
-          colorDict.C,
-          colorDict.N,
-          colorDict.X,
-        ] = options.colorScale.map((x) => this.colorToArray(x));
-      }
-      else if (options && options.colorScale && options.colorScale.length == 11) {
-        [
-          colorDict.A,
-          colorDict.T,
-          colorDict.G,
-          colorDict.C,
-          colorDict.N,
-          colorDict.X,
-          colorDict.LARGE_INSERT_SIZE,
-          colorDict.SMALL_INSERT_SIZE,
-          colorDict.LL,
-          colorDict.RR,
-          colorDict.RL,
-        ] = options.colorScale.map((x) => this.colorToArray(x));
-      } else if (options && options.colorScale){
-        console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
-      }
+      // if (options && options.colorScale && options.colorScale.length == 6) {
+      //   [
+      //     colorDict.A,
+      //     colorDict.T,
+      //     colorDict.G,
+      //     colorDict.C,
+      //     colorDict.N,
+      //     colorDict.X,
+      //   ] = options.colorScale.map((x) => this.colorToArray(x));
+      // }
+      // else if (options && options.colorScale && options.colorScale.length == 11) {
+      //   [
+      //     colorDict.A,
+      //     colorDict.T,
+      //     colorDict.G,
+      //     colorDict.C,
+      //     colorDict.N,
+      //     colorDict.X,
+      //     colorDict.LARGE_INSERT_SIZE,
+      //     colorDict.SMALL_INSERT_SIZE,
+      //     colorDict.LL,
+      //     colorDict.RR,
+      //     colorDict.RL,
+      //   ] = options.colorScale.map((x) => this.colorToArray(x));
+      // } else if (options && options.colorScale){
+      //   console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
+      // }
 
       // console.log(`this.options.methylationTagColor ${this.options.methylationTagColor}`);
       // if (this.options && this.options.methylationTagColor) {
       //   colorDict.MM = this.colorToArray(this.options.methylationTagColor);
       // }
-      if (options && options.methylation && options.methylation.categories && options.methylation.colors) {
-        options.methylation.categories.forEach((category, index) => {
-          if (category.unmodifiedBase === 'A' && category.code === 'a' && category.strand === '+') {
-            colorDict.MM_M6A_FOR = this.colorToArray(options.methylation.colors[index]);
-          }
-          else if (category.unmodifiedBase === 'T' && category.code === 'a' && category.strand === '-') {
-            colorDict.MM_M6A_REV = this.colorToArray(options.methylation.colors[index]);
-          }
-          else if (category.unmodifiedBase === 'C' && category.code === 'm' && category.strand === '+') {
-            colorDict.MM_M5C_FOR = this.colorToArray(options.methylation.colors[index]);
-          }
-          else if (category.unmodifiedBase === 'G' && category.code === 'm' && category.strand === '-') {
-            colorDict.MM_M5C_REV = this.colorToArray(options.methylation.colors[index]);
-          }
-        });
-      }
 
-      if (options && options.methylation && options.methylation.highlights) {
-        const highlights = Object.keys(options.methylation.highlights);
-        highlights.forEach((highlight) => {
-          colorDict[`HIGHLIGHTS_${highlight}`] = this.colorToArray(options.methylation.highlights[highlight]);
-        })
+      if (options && options.methylation) {
+        if (options.methylation.categories && options.methylation.colors) {
+          options.methylation.categories.forEach((category, index) => {
+            if (category.unmodifiedBase === 'A' && category.code === 'a' && category.strand === '+') {
+              colorDict.MM_M6A_FOR = this.colorToArray(options.methylation.colors[index]);
+            }
+            else if (category.unmodifiedBase === 'T' && category.code === 'a' && category.strand === '-') {
+              colorDict.MM_M6A_REV = this.colorToArray(options.methylation.colors[index]);
+            }
+            else if (category.unmodifiedBase === 'C' && category.code === 'm' && category.strand === '+') {
+              colorDict.MM_M5C_FOR = this.colorToArray(options.methylation.colors[index]);
+            }
+            else if (category.unmodifiedBase === 'G' && category.code === 'm' && category.strand === '-') {
+              colorDict.MM_M5C_REV = this.colorToArray(options.methylation.colors[index]);
+            }
+          });
+        }
+        if (options.methylation.highlights) {
+          const highlights = Object.keys(options.methylation.highlights);
+          highlights.forEach((highlight) => {
+            colorDict[`HIGHLIGHTS_${highlight}`] = this.colorToArray(options.methylation.highlights[highlight]);
+          })
+        }
+      }
+      else if (options && options.indexDHS) {
+        //
+        // add Index DHS color table data, if available
+        //
+        const indexDHSColorDict = indexDHSColors(options);
+        colorDict = {...colorDict, ...indexDHSColorDict};
+        if (options.indexDHS.backgroundColor) {
+          // console.log(`[PileupTrack] options.indexDHS.backgroundColor ${options.indexDHS.backgroundColor}`);
+          colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
+        }
+      }
+      else if (options && options.fire) {
+        //
+        // add FIRE color table data, if available
+        //
+        const fireColorDict = fireColors(options);
+        colorDict = {...colorDict, ...fireColorDict};
+        if (options.fire.metadata && options.fire.metadata.backgroundColor) {
+          // console.log(`[PileupTrack] options.fire.metadata.backgroundColor ${options.fire.metadata.backgroundColor}`);
+          colorDict.FIRE_BG = this.colorToArray(options.fire.metadata.backgroundColor);
+        }
       }
 
       if (options && typeof options.plusStrandColor !== 'undefined') {
@@ -417,29 +441,6 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
         colorDict.MINUS_STRAND = this.colorToArray(options.minusStrandColor);
       }
 
-      //
-      // add Index DHS color table data, if available
-      //
-      if (options && options.indexDHS) {
-        const indexDHSColorDict = indexDHSColors(options);
-        colorDict = {...colorDict, ...indexDHSColorDict};
-        if (options.indexDHS.backgroundColor) {
-          // console.log(`[PileupTrack] options.indexDHS.backgroundColor ${options.indexDHS.backgroundColor}`);
-          colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
-        }
-      }
-
-      //
-      // add FIRE color table data, if available
-      //
-      if (options && options.fire) {
-        const fireColorDict = fireColors(options);
-        colorDict = {...colorDict, ...fireColorDict};
-        if (options.fire.metadata && options.fire.metadata.backgroundColor) {
-          // console.log(`[PileupTrack] options.fire.metadata.backgroundColor ${options.fire.metadata.backgroundColor}`);
-          colorDict.FIRE_BG = this.colorToArray(options.fire.metadata.backgroundColor);
-        }
-      }
 
       const colors = Object.values(colorDict);
 
@@ -752,52 +753,52 @@ varying vec4 vColor;
     }
 
     rerender(options) {
-      super.rerender(options);
+      // super.rerender(options);
 
       this.options = options;
 
-      if (this.options.showMousePosition && !this.hideMousePosition) {
-        this.hideMousePosition = HGC.utils.showMousePosition(
-          this,
-          this.is2d,
-          this.isShowGlobalMousePosition(),
-        );
-      }
+      // if (this.options.showMousePosition && !this.hideMousePosition) {
+      //   this.hideMousePosition = HGC.utils.showMousePosition(
+      //     this,
+      //     this.is2d,
+      //     this.isShowGlobalMousePosition(),
+      //   );
+      // }
 
-      if (!this.options.showMousePosition && this.hideMousePosition) {
-        this.hideMousePosition();
-        this.hideMousePosition = undefined;
-      }
+      // if (!this.options.showMousePosition && this.hideMousePosition) {
+      //   this.hideMousePosition();
+      //   this.hideMousePosition = undefined;
+      // }
 
-      this.setUpShaderAndTextures(options);
+      if (!this.shader) this.setUpShaderAndTextures(options);
       // Reset the following, so the graphic actually updates
       this.previousTileIdsUsedForRendering = {};
 
       // Reset everything and overwrite the datafetcher if the data needs to be loaded differently,
       // we need to realign or we need to recolor. Expensive, but only happens if options change.
-      if (
-        areMatesRequired(options) !== this.loadMates ||
-        JSON.stringify(this.prevOptions.highlightReadsBy) !==
-          JSON.stringify(options.highlightReadsBy) ||
-        this.prevOptions.largeInsertSizeThreshold !==
-          options.largeInsertSizeThreshold ||
-        this.prevOptions.smallInsertSizeThreshold !==
-          options.smallInsertSizeThreshold ||
-        this.prevOptions.minMappingQuality !== options.minMappingQuality
-      ) {
-        this.dataFetcher = new BAMDataFetcher(
-          this.dataFetcher.dataConfig,
-          options,
-          this.worker,
-          HGC,
-        );
-        this.dataFetcher.track = this;
-        this.prevRows = [];
-        this.removeTiles(Object.keys(this.fetchedTiles));
-        this.fetching.clear();
-        this.refreshTiles();
-        this.externalInit(options);
-      }
+      // if (
+      //   areMatesRequired(options) !== this.loadMates ||
+      //   JSON.stringify(this.prevOptions.highlightReadsBy) !==
+      //     JSON.stringify(options.highlightReadsBy) ||
+      //   this.prevOptions.largeInsertSizeThreshold !==
+      //     options.largeInsertSizeThreshold ||
+      //   this.prevOptions.smallInsertSizeThreshold !==
+      //     options.smallInsertSizeThreshold ||
+      //   this.prevOptions.minMappingQuality !== options.minMappingQuality
+      // ) {
+      //   this.dataFetcher = new BAMDataFetcher(
+      //     this.dataFetcher.dataConfig,
+      //     options,
+      //     this.worker,
+      //     HGC,
+      //   );
+      //   this.dataFetcher.track = this;
+      //   this.prevRows = [];
+      //   this.removeTiles(Object.keys(this.fetchedTiles));
+      //   this.fetching.clear();
+      //   this.refreshTiles();
+      //   this.externalInit(options);
+      // }
 
       this.updateExistingGraphics();
       this.prevOptions = Object.assign({}, options);
@@ -1175,8 +1176,11 @@ varying vec4 vColor;
       // console.log(`updateExistingGraphics (B2+) | ${this.id}`);
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
+      const fetchedTileKeysLength = fetchedTileKeys.length;
 
-      for (const fetchedTileKey of fetchedTileKeys) {
+      // for (const fetchedTileKey of fetchedTileKeys) {
+      for (let fetchedTileKeyIdx = 0; fetchedTileKeyIdx < fetchedTileKeysLength; fetchedTileKeyIdx++) {
+        const fetchedTileKey = fetchedTileKeys[fetchedTileKeyIdx];
         this.fetching.delete(fetchedTileKey);
         this.rendering.add(fetchedTileKey);
       }
@@ -1306,27 +1310,18 @@ varying vec4 vColor;
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
-            if (this.loadMates) {
-              this.readsById = {};
-              for (let key in this.prevRows) {
-
-                for (const row of this.prevRows[key].rows) {
-                  for (const segment of row) {
-                    if (segment.id in this.readsById) return;
-                    this.readsById[segment.id] = segment;
-                    this.readsById[segment.id]['groupKey'] = key;
-                  }
-                }
-                // this.prevRows[key].rows.forEach((row) => {
-                //   row.forEach((segment) => {
-                //     if (segment.id in this.readsById) return;
-                //     this.readsById[segment.id] = segment;
-                //     // Will be needed later in the mouseover to determine the correct yPos for the mate
-                //     this.readsById[segment.id]['groupKey'] = key;
-                //   });
-                // });
-              }
-            }
+            // if (this.loadMates) {
+            //   this.readsById = {};
+            //   for (let key in this.prevRows) {
+            //     for (const row of this.prevRows[key].rows) {
+            //       for (const segment of row) {
+            //         if (segment.id in this.readsById) return;
+            //         this.readsById[segment.id] = segment;
+            //         this.readsById[segment.id]['groupKey'] = key;
+            //       }
+            //     }
+            //   }
+            // }
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
               'position',
@@ -1361,7 +1356,11 @@ varying vec4 vColor;
             this.pMain.addChild(this.mouseOverGraphics);
 
             this.yScaleBands = {};
-            for (let key in this.prevRows) {
+            const prevRowsLength = this.prevRows.length;
+
+            // for (let key in this.prevRows) {
+            for (let keyIdx = 0; keyIdx < prevRowsLength; keyIdx++) {
+              const key = this.prevRows[keyIdx];
               this.yScaleBands[key] = HGC.libraries.d3Scale
                 .scaleBand()
                 .domain(
@@ -2176,7 +2175,7 @@ varying vec4 vColor;
           }
 
           this.errorTextText = (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage) ? this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage : "Zoom in to load data";
-          this.drawError();
+          // this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
 
@@ -2267,7 +2266,7 @@ varying vec4 vColor;
         );
       }
       this.mouseOverGraphics.clear();
-      this.animate();
+      this.animate();    
     }
 
     exportSVG() {
