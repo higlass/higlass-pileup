@@ -630,6 +630,7 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
+            // console.log(`[higlass-pileup] ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.clusterData} | ${this.trackUpdatesAreFrozen}`);
             if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
             if (data.sid !== this.sessionId)
@@ -1217,9 +1218,9 @@ varying vec4 vColor;
               this.fireIdentifierData = null;
             }
 
-            // console.log(`this.clusterResultsReadyToExport[${this.id}] ${JSON.stringify(this.clusterResultsReadyToExport[this.id])}`);
             if (toRender.clusterResultsToExport) {
               this.clusterResultsReadyToExport[this.id] = true;
+              // console.log(`[higlass-pileup] toRender.clusterResultsToExport ${JSON.stringify(toRender.clusterResultsToExport)}`);
               this.bc.postMessage({
                 state: 'export_subregion_clustering_results',
                 msg: 'Completed subregion clustering',

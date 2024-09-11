@@ -33797,6 +33797,7 @@ class BAI extends IndexFile {
             let stats;
             curr += 4;
             const binIndex = {};
+            // console.log(`[bam-js] binCount ${binCount}`)
             for (let j = 0; j < binCount; j += 1) {
                 const bin = bytes.readUInt32LE(curr);
                 curr += 4;
@@ -33823,6 +33824,8 @@ class BAI extends IndexFile {
                     binIndex[bin] = chunks;
                 }
             }
+            // console.log(`[bam-js] binCount ${binCount}`)
+            // console.log(`[bam-js] binIndex ${JSON.stringify(binIndex)}`)
             const linearCount = bytes.readInt32LE(curr);
             curr += 4;
             // as we're going through the linear index, figure out the smallest
@@ -33835,7 +33838,7 @@ class BAI extends IndexFile {
                 firstDataLine = findFirstData(firstDataLine, offset);
                 linearIndex[j] = offset;
             }
-            // console.log(`indices[i]: ${JSON.stringify(indices[i])}`)
+            // console.log(`[bam-js] indices[i]: ${JSON.stringify(indices[i])}`)
             indices[i] = { binIndex, linearIndex, stats };
         }
         return {
@@ -35328,6 +35331,400 @@ class bamFile_BamFile {
         //   ]
         //   return
         // }
+        if (opts.assemblyName && opts.assemblyName === 'hg38') {
+            this.chrToIndex = {
+                chr1: 0,
+                chr2: 1,
+                chr3: 2,
+                chr4: 3,
+                chr5: 4,
+                chr6: 5,
+                chr7: 6,
+                chr8: 7,
+                chr9: 8,
+                chr10: 9,
+                chr11: 10,
+                chr12: 11,
+                chr13: 12,
+                chr14: 13,
+                chr15: 14,
+                chr16: 15,
+                chr17: 16,
+                chr18: 17,
+                chr19: 18,
+                chr20: 19,
+                chr21: 20,
+                chr22: 21,
+                chrX: 22,
+                chrY: 23,
+                chrM: 24,
+                'GL000008.2': 25,
+                'GL000009.2': 26,
+                'GL000194.1': 27,
+                'GL000195.1': 28,
+                'GL000205.2': 29,
+                'GL000208.1': 30,
+                'GL000213.1': 31,
+                'GL000214.1': 32,
+                'GL000216.2': 33,
+                'GL000218.1': 34,
+                'GL000219.1': 35,
+                'GL000220.1': 36,
+                'GL000221.1': 37,
+                'GL000224.1': 38,
+                'GL000225.1': 39,
+                'GL000226.1': 40,
+                'KI270302.1': 41,
+                'KI270303.1': 42,
+                'KI270304.1': 43,
+                'KI270305.1': 44,
+                'KI270310.1': 45,
+                'KI270311.1': 46,
+                'KI270312.1': 47,
+                'KI270315.1': 48,
+                'KI270316.1': 49,
+                'KI270317.1': 50,
+                'KI270320.1': 51,
+                'KI270322.1': 52,
+                'KI270329.1': 53,
+                'KI270330.1': 54,
+                'KI270333.1': 55,
+                'KI270334.1': 56,
+                'KI270335.1': 57,
+                'KI270336.1': 58,
+                'KI270337.1': 59,
+                'KI270338.1': 60,
+                'KI270340.1': 61,
+                'KI270362.1': 62,
+                'KI270363.1': 63,
+                'KI270364.1': 64,
+                'KI270366.1': 65,
+                'KI270371.1': 66,
+                'KI270372.1': 67,
+                'KI270373.1': 68,
+                'KI270374.1': 69,
+                'KI270375.1': 70,
+                'KI270376.1': 71,
+                'KI270378.1': 72,
+                'KI270379.1': 73,
+                'KI270381.1': 74,
+                'KI270382.1': 75,
+                'KI270383.1': 76,
+                'KI270384.1': 77,
+                'KI270385.1': 78,
+                'KI270386.1': 79,
+                'KI270387.1': 80,
+                'KI270388.1': 81,
+                'KI270389.1': 82,
+                'KI270390.1': 83,
+                'KI270391.1': 84,
+                'KI270392.1': 85,
+                'KI270393.1': 86,
+                'KI270394.1': 87,
+                'KI270395.1': 88,
+                'KI270396.1': 89,
+                'KI270411.1': 90,
+                'KI270412.1': 91,
+                'KI270414.1': 92,
+                'KI270417.1': 93,
+                'KI270418.1': 94,
+                'KI270419.1': 95,
+                'KI270420.1': 96,
+                'KI270422.1': 97,
+                'KI270423.1': 98,
+                'KI270424.1': 99,
+                'KI270425.1': 100,
+                'KI270429.1': 101,
+                'KI270435.1': 102,
+                'KI270438.1': 103,
+                'KI270442.1': 104,
+                'KI270448.1': 105,
+                'KI270465.1': 106,
+                'KI270466.1': 107,
+                'KI270467.1': 108,
+                'KI270468.1': 109,
+                'KI270507.1': 110,
+                'KI270508.1': 111,
+                'KI270509.1': 112,
+                'KI270510.1': 113,
+                'KI270511.1': 114,
+                'KI270512.1': 115,
+                'KI270515.1': 116,
+                'KI270516.1': 117,
+                'KI270517.1': 118,
+                'KI270518.1': 119,
+                'KI270519.1': 120,
+                'KI270521.1': 121,
+                'KI270522.1': 122,
+                'KI270528.1': 123,
+                'KI270529.1': 124,
+                'KI270530.1': 125,
+                'KI270538.1': 126,
+                'KI270539.1': 127,
+                'KI270544.1': 128,
+                'KI270548.1': 129,
+                'KI270579.1': 130,
+                'KI270580.1': 131,
+                'KI270581.1': 132,
+                'KI270582.1': 133,
+                'KI270583.1': 134,
+                'KI270584.1': 135,
+                'KI270587.1': 136,
+                'KI270588.1': 137,
+                'KI270589.1': 138,
+                'KI270590.1': 139,
+                'KI270591.1': 140,
+                'KI270593.1': 141,
+                'KI270706.1': 142,
+                'KI270707.1': 143,
+                'KI270708.1': 144,
+                'KI270709.1': 145,
+                'KI270710.1': 146,
+                'KI270711.1': 147,
+                'KI270712.1': 148,
+                'KI270713.1': 149,
+                'KI270714.1': 150,
+                'KI270715.1': 151,
+                'KI270716.1': 152,
+                'KI270717.1': 153,
+                'KI270718.1': 154,
+                'KI270719.1': 155,
+                'KI270720.1': 156,
+                'KI270721.1': 157,
+                'KI270722.1': 158,
+                'KI270723.1': 159,
+                'KI270724.1': 160,
+                'KI270725.1': 161,
+                'KI270726.1': 162,
+                'KI270727.1': 163,
+                'KI270728.1': 164,
+                'KI270729.1': 165,
+                'KI270730.1': 166,
+                'KI270731.1': 167,
+                'KI270732.1': 168,
+                'KI270733.1': 169,
+                'KI270734.1': 170,
+                'KI270735.1': 171,
+                'KI270736.1': 172,
+                'KI270737.1': 173,
+                'KI270738.1': 174,
+                'KI270739.1': 175,
+                'KI270740.1': 176,
+                'KI270741.1': 177,
+                'KI270742.1': 178,
+                'KI270743.1': 179,
+                'KI270744.1': 180,
+                'KI270745.1': 181,
+                'KI270746.1': 182,
+                'KI270747.1': 183,
+                'KI270748.1': 184,
+                'KI270749.1': 185,
+                'KI270750.1': 186,
+                'KI270751.1': 187,
+                'KI270752.1': 188,
+                'KI270753.1': 189,
+                'KI270754.1': 190,
+                'KI270755.1': 191,
+                'KI270756.1': 192,
+                'KI270757.1': 193,
+            };
+            this.indexToChr = [
+                { refName: 'chr1', length: 248956422 },
+                { refName: 'chr2', length: 242193529 },
+                { refName: 'chr3', length: 198295559 },
+                { refName: 'chr4', length: 190214555 },
+                { refName: 'chr5', length: 181538259 },
+                { refName: 'chr6', length: 170805979 },
+                { refName: 'chr7', length: 159345973 },
+                { refName: 'chr8', length: 145138636 },
+                { refName: 'chr9', length: 138394717 },
+                { refName: 'chr10', length: 133797422 },
+                { refName: 'chr11', length: 135086622 },
+                { refName: 'chr12', length: 133275309 },
+                { refName: 'chr13', length: 114364328 },
+                { refName: 'chr14', length: 107043718 },
+                { refName: 'chr15', length: 101991189 },
+                { refName: 'chr16', length: 90338345 },
+                { refName: 'chr17', length: 83257441 },
+                { refName: 'chr18', length: 80373285 },
+                { refName: 'chr19', length: 58617616 },
+                { refName: 'chr20', length: 64444167 },
+                { refName: 'chr21', length: 46709983 },
+                { refName: 'chr22', length: 50818468 },
+                { refName: 'chrX', length: 156040895 },
+                { refName: 'chrY', length: 57227415 },
+                { refName: 'chrM', length: 16569 },
+                { refName: 'GL000008.2', length: 209709 },
+                { refName: 'GL000009.2', length: 201709 },
+                { refName: 'GL000194.1', length: 191469 },
+                { refName: 'GL000195.1', length: 182896 },
+                { refName: 'GL000205.2', length: 185591 },
+                { refName: 'GL000208.1', length: 92689 },
+                { refName: 'GL000213.1', length: 164239 },
+                { refName: 'GL000214.1', length: 137718 },
+                { refName: 'GL000216.2', length: 176608 },
+                { refName: 'GL000218.1', length: 161147 },
+                { refName: 'GL000219.1', length: 179198 },
+                { refName: 'GL000220.1', length: 161802 },
+                { refName: 'GL000221.1', length: 155397 },
+                { refName: 'GL000224.1', length: 179693 },
+                { refName: 'GL000225.1', length: 211173 },
+                { refName: 'GL000226.1', length: 15008 },
+                { refName: 'KI270302.1', length: 2274 },
+                { refName: 'KI270303.1', length: 1942 },
+                { refName: 'KI270304.1', length: 2165 },
+                { refName: 'KI270305.1', length: 1472 },
+                { refName: 'KI270310.1', length: 1201 },
+                { refName: 'KI270311.1', length: 12399 },
+                { refName: 'KI270312.1', length: 998 },
+                { refName: 'KI270315.1', length: 2276 },
+                { refName: 'KI270316.1', length: 1444 },
+                { refName: 'KI270317.1', length: 37690 },
+                { refName: 'KI270320.1', length: 4416 },
+                { refName: 'KI270322.1', length: 21476 },
+                { refName: 'KI270329.1', length: 1040 },
+                { refName: 'KI270330.1', length: 1652 },
+                { refName: 'KI270333.1', length: 2699 },
+                { refName: 'KI270334.1', length: 1368 },
+                { refName: 'KI270335.1', length: 1048 },
+                { refName: 'KI270336.1', length: 1026 },
+                { refName: 'KI270337.1', length: 1121 },
+                { refName: 'KI270338.1', length: 1428 },
+                { refName: 'KI270340.1', length: 1428 },
+                { refName: 'KI270362.1', length: 3530 },
+                { refName: 'KI270363.1', length: 1803 },
+                { refName: 'KI270364.1', length: 2855 },
+                { refName: 'KI270366.1', length: 8320 },
+                { refName: 'KI270371.1', length: 2805 },
+                { refName: 'KI270372.1', length: 1650 },
+                { refName: 'KI270373.1', length: 1451 },
+                { refName: 'KI270374.1', length: 2656 },
+                { refName: 'KI270375.1', length: 2378 },
+                { refName: 'KI270376.1', length: 1136 },
+                { refName: 'KI270378.1', length: 1048 },
+                { refName: 'KI270379.1', length: 1045 },
+                { refName: 'KI270381.1', length: 1930 },
+                { refName: 'KI270382.1', length: 4215 },
+                { refName: 'KI270383.1', length: 1750 },
+                { refName: 'KI270384.1', length: 1658 },
+                { refName: 'KI270385.1', length: 990 },
+                { refName: 'KI270386.1', length: 1788 },
+                { refName: 'KI270387.1', length: 1537 },
+                { refName: 'KI270388.1', length: 1216 },
+                { refName: 'KI270389.1', length: 1298 },
+                { refName: 'KI270390.1', length: 2387 },
+                { refName: 'KI270391.1', length: 1484 },
+                { refName: 'KI270392.1', length: 971 },
+                { refName: 'KI270393.1', length: 1308 },
+                { refName: 'KI270394.1', length: 970 },
+                { refName: 'KI270395.1', length: 1143 },
+                { refName: 'KI270396.1', length: 1880 },
+                { refName: 'KI270411.1', length: 2646 },
+                { refName: 'KI270412.1', length: 1179 },
+                { refName: 'KI270414.1', length: 2489 },
+                { refName: 'KI270417.1', length: 2043 },
+                { refName: 'KI270418.1', length: 2145 },
+                { refName: 'KI270419.1', length: 1029 },
+                { refName: 'KI270420.1', length: 2321 },
+                { refName: 'KI270422.1', length: 1445 },
+                { refName: 'KI270423.1', length: 981 },
+                { refName: 'KI270424.1', length: 2140 },
+                { refName: 'KI270425.1', length: 1884 },
+                { refName: 'KI270429.1', length: 1361 },
+                { refName: 'KI270435.1', length: 92983 },
+                { refName: 'KI270438.1', length: 112505 },
+                { refName: 'KI270442.1', length: 392061 },
+                { refName: 'KI270448.1', length: 7992 },
+                { refName: 'KI270465.1', length: 1774 },
+                { refName: 'KI270466.1', length: 1233 },
+                { refName: 'KI270467.1', length: 3920 },
+                { refName: 'KI270468.1', length: 4055 },
+                { refName: 'KI270507.1', length: 5353 },
+                { refName: 'KI270508.1', length: 1951 },
+                { refName: 'KI270509.1', length: 2318 },
+                { refName: 'KI270510.1', length: 2415 },
+                { refName: 'KI270511.1', length: 8127 },
+                { refName: 'KI270512.1', length: 22689 },
+                { refName: 'KI270515.1', length: 6361 },
+                { refName: 'KI270516.1', length: 1300 },
+                { refName: 'KI270517.1', length: 3253 },
+                { refName: 'KI270518.1', length: 2186 },
+                { refName: 'KI270519.1', length: 138126 },
+                { refName: 'KI270521.1', length: 7642 },
+                { refName: 'KI270522.1', length: 5674 },
+                { refName: 'KI270528.1', length: 2983 },
+                { refName: 'KI270529.1', length: 1899 },
+                { refName: 'KI270530.1', length: 2168 },
+                { refName: 'KI270538.1', length: 91309 },
+                { refName: 'KI270539.1', length: 993 },
+                { refName: 'KI270544.1', length: 1202 },
+                { refName: 'KI270548.1', length: 1599 },
+                { refName: 'KI270579.1', length: 31033 },
+                { refName: 'KI270580.1', length: 1553 },
+                { refName: 'KI270581.1', length: 7046 },
+                { refName: 'KI270582.1', length: 6504 },
+                { refName: 'KI270583.1', length: 1400 },
+                { refName: 'KI270584.1', length: 4513 },
+                { refName: 'KI270587.1', length: 2969 },
+                { refName: 'KI270588.1', length: 6158 },
+                { refName: 'KI270589.1', length: 44474 },
+                { refName: 'KI270590.1', length: 4685 },
+                { refName: 'KI270591.1', length: 5796 },
+                { refName: 'KI270593.1', length: 3041 },
+                { refName: 'KI270706.1', length: 175055 },
+                { refName: 'KI270707.1', length: 32032 },
+                { refName: 'KI270708.1', length: 127682 },
+                { refName: 'KI270709.1', length: 66860 },
+                { refName: 'KI270710.1', length: 40176 },
+                { refName: 'KI270711.1', length: 42210 },
+                { refName: 'KI270712.1', length: 176043 },
+                { refName: 'KI270713.1', length: 40745 },
+                { refName: 'KI270714.1', length: 41717 },
+                { refName: 'KI270715.1', length: 161471 },
+                { refName: 'KI270716.1', length: 153799 },
+                { refName: 'KI270717.1', length: 40062 },
+                { refName: 'KI270718.1', length: 38054 },
+                { refName: 'KI270719.1', length: 176845 },
+                { refName: 'KI270720.1', length: 39050 },
+                { refName: 'KI270721.1', length: 100316 },
+                { refName: 'KI270722.1', length: 194050 },
+                { refName: 'KI270723.1', length: 38115 },
+                { refName: 'KI270724.1', length: 39555 },
+                { refName: 'KI270725.1', length: 172810 },
+                { refName: 'KI270726.1', length: 43739 },
+                { refName: 'KI270727.1', length: 448248 },
+                { refName: 'KI270728.1', length: 1872759 },
+                { refName: 'KI270729.1', length: 280839 },
+                { refName: 'KI270730.1', length: 112551 },
+                { refName: 'KI270731.1', length: 150754 },
+                { refName: 'KI270732.1', length: 41543 },
+                { refName: 'KI270733.1', length: 179772 },
+                { refName: 'KI270734.1', length: 165050 },
+                { refName: 'KI270735.1', length: 42811 },
+                { refName: 'KI270736.1', length: 181920 },
+                { refName: 'KI270737.1', length: 103838 },
+                { refName: 'KI270738.1', length: 99375 },
+                { refName: 'KI270739.1', length: 73985 },
+                { refName: 'KI270740.1', length: 37240 },
+                { refName: 'KI270741.1', length: 157432 },
+                { refName: 'KI270742.1', length: 186739 },
+                { refName: 'KI270743.1', length: 210658 },
+                { refName: 'KI270744.1', length: 168472 },
+                { refName: 'KI270745.1', length: 41891 },
+                { refName: 'KI270746.1', length: 66486 },
+                { refName: 'KI270747.1', length: 198735 },
+                { refName: 'KI270748.1', length: 93321 },
+                { refName: 'KI270749.1', length: 158759 },
+                { refName: 'KI270750.1', length: 148850 },
+                { refName: 'KI270751.1', length: 150742 },
+                { refName: 'KI270752.1', length: 27745 },
+                { refName: 'KI270753.1', length: 62944 },
+                { refName: 'KI270754.1', length: 40191 },
+                { refName: 'KI270755.1', length: 36723 },
+                { refName: 'KI270756.1', length: 79590 },
+                { refName: 'KI270757.1', length: 71251 },
+            ];
+        }
         if (!this.index) {
             return;
         }
@@ -35355,10 +35752,13 @@ class bamFile_BamFile {
             throw new Error('Not a BAM file');
         }
         const headLen = uncba.readInt32LE(4);
+        // console.log(`[bam-js] headLen ${headLen}`);
         this.header = uncba.toString('utf8', 8, 8 + headLen);
         const { chrToIndex, indexToChr } = await this._readRefSeqs(headLen + 8, 65535, opts);
         this.chrToIndex = chrToIndex;
         this.indexToChr = indexToChr;
+        // console.log(`this.chrToIndex ${JSON.stringify(this.chrToIndex)}`)
+        // console.log(`this.indexToChr ${JSON.stringify(this.indexToChr)}`)
         return sam_parseHeaderText(this.header);
     }
     getHeader(opts) {
@@ -35804,20 +36204,20 @@ const PILEUP_COLORS = {
   "FIRE_139,0,0": [0.54, 0, 0],
 };
 
-let PILEUP_COLOR_IXS = {};
+let bam_utils_PILEUP_COLOR_IXS = {};
 Object.keys(PILEUP_COLORS).map((x, i) => {
-  PILEUP_COLOR_IXS[x] = i;
+  bam_utils_PILEUP_COLOR_IXS[x] = i;
   return null;
 });
 
 function replaceColorIdxs(newColorIdxs) {
-  PILEUP_COLOR_IXS = newColorIdxs;
+  bam_utils_PILEUP_COLOR_IXS = newColorIdxs;
 }
 
 function appendColorIdxs(newColorIdxs) {
-  const currentColorTableLength = Object.keys(PILEUP_COLOR_IXS).length;
+  const currentColorTableLength = Object.keys(bam_utils_PILEUP_COLOR_IXS).length;
   Object.keys(newColorIdxs).map((x, i) => { newColorIdxs[x] = i + currentColorTableLength; })
-  PILEUP_COLOR_IXS = {...PILEUP_COLOR_IXS, ...newColorIdxs};
+  bam_utils_PILEUP_COLOR_IXS = {...bam_utils_PILEUP_COLOR_IXS, ...newColorIdxs};
 }
 
 const hexToRGBRawTriplet = (hex) => {
@@ -36288,7 +36688,7 @@ const areMatesRequired = (trackOptions) => {
 /**
  * Calculates insert size between read segements
  */
- const calculateInsertSize = (segment1, segment2) => {
+ const bam_utils_calculateInsertSize = (segment1, segment2) => {
   return segment1.from < segment2.from
     ? Math.max(0, segment2.from - segment1.to)
     : Math.max(0, segment1.from - segment2.to);
@@ -51694,7 +52094,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     row: null,
     readName: bamRecord.get('name'),
     seq: seq,
-    color: PILEUP_COLOR_IXS.BG,
+    color: bam_utils_PILEUP_COLOR_IXS.BG,
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
@@ -51708,10 +52108,10 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
   }
 
   if (segment.strand === '+' && trackOptions && trackOptions.plusStrandColor) {
-    segment.color = PILEUP_COLOR_IXS.PLUS_STRAND;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.PLUS_STRAND;
   }
   else if (segment.strand === '-' && trackOptions && trackOptions.minusStrandColor) {
-    segment.color = PILEUP_COLOR_IXS.MINUS_STRAND;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.MINUS_STRAND;
   }
 
   const includeClippingOps = true;
@@ -51733,7 +52133,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // });
     // replaceColorIdxs(newPileupColorIdxs);
     // appendColorIdxs(newPileupColorIdxs);
-    segment.color = PILEUP_COLOR_IXS.FIRE_BG;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.FIRE_BG;
     // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
   }
 
@@ -51763,7 +52163,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
       return null;
     })
     replaceColorIdxs(newPileupColorIdxs);
-    segment.color = PILEUP_COLOR_IXS.INDEX_DHS_BG;
+    segment.color = bam_utils_PILEUP_COLOR_IXS.INDEX_DHS_BG;
   }
 
   let fromClippingAdjustment = 0;
@@ -55151,12 +55551,12 @@ const exportSegmentsAsBED12 = (
                 break;
               case 'A':
                 if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_FOR;
                 }
                 break
               case 'T':
                 if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_REV;
                 }
                 break;
               default:
@@ -55338,37 +55738,37 @@ const renderSegments = (
   //   segmentList = segmentList.filter((s) => (s.to - s.from) >= fiberMinLength && (s.to - s.from) <= fiberMaxLength);
   // }
 
-  if (trackOptions.minMappingQuality > 0){
-    segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
-  }
+  // if (trackOptions.minMappingQuality > 0){
+  //   segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
+  // }
 
-  prepareHighlightedReads(segmentList, trackOptions);
+  // prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterDataObj) {
-    // At this point reads are colored correctly, but we only want to align those reads that
-    // are within the visible tiles - not mates that are far away, as this can mess up the alignment
-    let tileMinPos = Number.MAX_VALUE;
-    let tileMaxPos = -Number.MAX_VALUE;
-    const tsInfo = tilesetInfos[uid];
-    for (const id of tileIds) {
-      const z = id.split('.')[0];
-      const x = id.split('.')[1];
-      const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-      tileMinPos = Math.min(tileMinPos, startEnd[0]);
-      tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    }
-    // tileIds.forEach((id) => {
-    //   const z = id.split('.')[0];
-    //   const x = id.split('.')[1];
-    //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-    //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
-    //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    // });
+  // if (areMatesRequired(trackOptions) && !clusterDataObj) {
+  //   // At this point reads are colored correctly, but we only want to align those reads that
+  //   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
+  //   let tileMinPos = Number.MAX_VALUE;
+  //   let tileMaxPos = -Number.MAX_VALUE;
+  //   const tsInfo = tilesetInfos[uid];
+  //   for (const id of tileIds) {
+  //     const z = id.split('.')[0];
+  //     const x = id.split('.')[1];
+  //     const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //     tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //     tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   }
+  //   // tileIds.forEach((id) => {
+  //   //   const z = id.split('.')[0];
+  //   //   const x = id.split('.')[1];
+  //   //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //   //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //   //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   // });
 
-    segmentList = segmentList.filter(
-      (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
-    );
-  }
+  //   segmentList = segmentList.filter(
+  //     (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
+  //   );
+  // }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
@@ -55381,27 +55781,27 @@ const renderSegments = (
       maxPos = segmentList[i].to;
     }
   }
-  let grouped = null;
+  let grouped = { null: segmentList };
 
   // group by some attribute or don't
-  if (bam_fetcher_worker_groupBy) {
-    let groupByOption = trackOptions && trackOptions.groupBy;
-    groupByOption = groupByOption ? groupByOption : null;
-    grouped = bam_fetcher_worker_groupBy(segmentList, groupByOption);
-  } else {
-    grouped = { null: segmentList };
-  }
+  // if (groupBy) {
+  //   let groupByOption = trackOptions && trackOptions.groupBy;
+  //   groupByOption = groupByOption ? groupByOption : null;
+  //   grouped = groupBy(segmentList, groupByOption);
+  // } else {
+  //   grouped = { null: segmentList };
+  // }
 
   // if (trackOptions.methylation) {
-  //   console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
-  //   console.log(`grouped | A2 | ${JSON.stringify(grouped)}`);
+  //   // console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
+  //   // console.log(`grouped | A2 | ${JSON.stringify(grouped)}`);
   // }
 
   let clusterResultsToExport = null;
 
   // calculate the the rows of reads for each group
   if (clusterDataObj && trackOptions.methylation) {
-    // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
+    // console.log(`[higlass-pileup] clusterDataObj ${JSON.stringify(clusterDataObj)}`);
     // const chromName = clusterDataObj.range.left.chrom;
 
     const clusterDataObjToUse = clusterDataObj;
@@ -55445,7 +55845,8 @@ const renderSegments = (
     const trueRow = {};
 
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
-    // console.log(`chromStart ${JSON.stringify(chromStart)} | chromEnd ${JSON.stringify(chromEnd)}`);
+    // console.log(`[higlass-pileup] method ${method} | distanceFn ${distanceFn} | eventCategories ${eventCategories} | linkage ${linkage} | epsilon ${epsilon} | minimumPoints ${minimumPoints} | probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)} | eventOverlapType ${eventOverlapType} | fiberMinLength ${fiberMinLength} | fiberMaxLength ${fiberMaxLength} | fiberStrands ${fiberStrands} | integerBasesPerPixel ${integerBasesPerPixel} | viewportWidthInPixels ${viewportWidthInPixels}`);
+    // console.log(`[higlass-pileup] chromStart ${JSON.stringify(chromStart)} | chromEnd ${JSON.stringify(chromEnd)}`);
 
     switch (method) {
       case 'AGNES':
@@ -57255,7 +57656,7 @@ const renderSegments = (
     groupCounter += 1;
   }
   // background
-  addRect(0, 0, dimensions[0], dimensions[1], PILEUP_COLOR_IXS.WHITE);
+  addRect(0, 0, dimensions[0], dimensions[1], bam_utils_PILEUP_COLOR_IXS.WHITE);
 
   if (trackOptions.showCoverage) {
     const maxCoverageSamples = 10000;
@@ -57277,7 +57678,7 @@ const renderSegments = (
     const yScale = band().domain(d).range(r).paddingInner(0.05);
 
     let xLeft, yTop, barHeight;
-    let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
+    let bgColor = bam_utils_PILEUP_COLOR_IXS.BG_MUTED;
     const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
     const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
     const scalingFactor = groupHeight / maxReadCount;
@@ -57292,14 +57693,14 @@ const renderSegments = (
         yTop -= barHeight;
         // When the coverage is not exact, we don't color variants.
         let variantColor =
-          coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
+          coverageSamplingDistance === 1 ? bam_utils_PILEUP_COLOR_IXS[variant] : bgColor;
         addRect(xLeft, yTop, width, barHeight, variantColor);
       }
 
       barHeight = allReadCounts[pos]['matches'] * scalingFactor;
       yTop -= barHeight;
       if (coverageSamplingDistance === 1) {
-        bgColor = pos % 2 === 0 ? PILEUP_COLOR_IXS.BG : PILEUP_COLOR_IXS.BG2;
+        bgColor = pos % 2 === 0 ? bam_utils_PILEUP_COLOR_IXS.BG : bam_utils_PILEUP_COLOR_IXS.BG2;
       }
 
       addRect(xLeft, yTop, width, barHeight, bgColor);
@@ -57348,13 +57749,13 @@ const renderSegments = (
         }
         else if (trackOptions && trackOptions.indexDHS) {
           // console.log(`PILEUP_COLOR_IXS.INDEX_DHS_BG ${PILEUP_COLOR_IXS.INDEX_DHS_BG} vs segment.color ${segment.color} or segment.colorOverride ${segment.colorOverride}`);
-          addRect(xLeft, yTop, xRight - xLeft, height, PILEUP_COLOR_IXS.INDEX_DHS_BG);
+          addRect(xLeft, yTop, xRight - xLeft, height, bam_utils_PILEUP_COLOR_IXS.INDEX_DHS_BG);
         }
         else if (trackOptions && trackOptions.tfbs) {
-          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
+          addRect(xLeft, yTop + (height * 0.125), xRight - xLeft, height * 0.75, bam_utils_PILEUP_COLOR_IXS.TFBS_SEGMENT_BG);
         }
         else if (trackOptions && trackOptions.genericBed) {
-          let colorIdx = PILEUP_COLOR_IXS.GENERIC_BED_SEGMENT_BG;
+          let colorIdx = bam_utils_PILEUP_COLOR_IXS.GENERIC_BED_SEGMENT_BG;
           // if (trackOptions.genericBed.colors) {
           //   const colorRgb = trackOptions.genericBed.colors[0];
           //   console.log(`colorRgb ${colorRgb}`);
@@ -57377,7 +57778,7 @@ const renderSegments = (
             for (const highlight of highlights) {
               const highlightLen = highlight.length;
               const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-              const highlightColor = PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
+              const highlightColor = bam_utils_PILEUP_COLOR_IXS[`HIGHLIGHTS_${highlight}`];
               const highlightPosns = highlightPositions[highlight];
               if (highlight !== 'M0A') {
                 for (const posn of highlightPosns) {
@@ -57415,28 +57816,28 @@ const renderSegments = (
             switch (mo.unmodifiedBase) {
               case 'C':
                 if ((mo.code === 'm') && (mo.strand === '+') && showM5CForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M5C_FOR;
                 }
                 else if ((mo.code === 'h') && (mo.strand === '+') && showHM5CForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_HM5C_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_HM5C_FOR;
                 }
                 break;
               case 'G':
                 if ((mo.code === 'm') && (mo.strand === '-') && showM5CReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M5C_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M5C_REV;
                 }
                 else if ((mo.code === 'h') && (mo.strand === '-') && showHM5CReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_HM5C_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_HM5C_REV;
                 }
                 break;
               case 'A':
                 if ((mo.code === 'a') && (mo.strand === '+') && showM6AForwardEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_FOR;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_FOR;
                 }
                 break
               case 'T':
                 if ((mo.code === 'a') && (mo.strand === '-') && showM6AReverseEvents) {
-                  mmSegmentColor = PILEUP_COLOR_IXS.MM_M6A_REV;
+                  mmSegmentColor = bam_utils_PILEUP_COLOR_IXS.MM_M6A_REV;
                 }
                 break;
               default:
@@ -57451,7 +57852,7 @@ const renderSegments = (
                 const highlight = 'M0A';
                 const highlightLen = 1;
                 const highlightWidth = Math.max(1, xScale(highlightLen) - xScale(0));
-                const highlightColor = PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
+                const highlightColor = bam_utils_PILEUP_COLOR_IXS.HIGHLIGHTS_MZEROA;
                 // console.log(`highlightColor ${highlightColor}`);
                 // const highlightPosns = highlightPositions[highlight].filter(d => !segmentModifiedOffsets.includes(d));
                 const highlightPosns = [...ATPositions].filter(d => !segmentModifiedOffsets.has(d));
@@ -57519,9 +57920,9 @@ const renderSegments = (
           // apply color to segment, if available
           //
           const indexDHSMetadata = (trackOptions.indexDHS) ? segment.metadata : {};
-          let defaultSegmentColor = PILEUP_COLOR_IXS.BLACK;
+          let defaultSegmentColor = bam_utils_PILEUP_COLOR_IXS.BLACK;
           if (trackOptions.indexDHS) {
-            defaultSegmentColor = PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
+            defaultSegmentColor = bam_utils_PILEUP_COLOR_IXS[`INDEX_DHS_${indexDHSMetadata.rgb}`];
             // if ('M0A' in highlightPositions) defaultSegmentColor += 1;
             // console.log(`indexDHSMetadata ${JSON.stringify(indexDHSMetadata)}`);
           }
@@ -57576,23 +57977,23 @@ const renderSegments = (
             xRight = xLeft + width;
 
             if (substitution.variant === 'A') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.A);
             } else if (substitution.variant === 'C') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.C);
             } else if (substitution.variant === 'G') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.G);
             } else if (substitution.variant === 'T') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.T);
             } else if (substitution.type === 'S') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.S);
             } else if (substitution.type === 'H') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.H);
             } else if (substitution.type === 'X') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.X);
             } else if (substitution.type === 'I') {
-              addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
+              addRect(xLeft, yTop, insertionWidth, height, bam_utils_PILEUP_COLOR_IXS.I);
             } else if (substitution.type === 'D') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
+              addRect(xLeft, yTop, width, height, bam_utils_PILEUP_COLOR_IXS.D);
 
               // add some stripes
               const numStripes = 6;
@@ -57694,7 +58095,7 @@ const renderSegments = (
           // console.log(`fireEnabledCategories ${JSON.stringify(fireEnabledCategories)}`);
           // fireMetadata.defaultRGB = '169,169,169';
           // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
-          let defaultSegmentColor = PILEUP_COLOR_IXS.FIRE_BG;
+          let defaultSegmentColor = bam_utils_PILEUP_COLOR_IXS.FIRE_BG;
           // let defaultSegmentColor = PILEUP_COLOR_IXS[`FIRE_${fireMetadata.defaultRGB}`];
           const fireElementHeight = yScale.bandwidth() * 0.25;
           const topCorrection = fireElementHeight * 1.75;
@@ -57715,7 +58116,7 @@ const renderSegments = (
             const blockSizes = blocks.sizes;
             const blockOffsets = blocks.offsets;
             const blockColors = blocks.colors.map((d => colorMap[d]));
-            const blockColorIdxs = blocks.colors.map(d => PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
+            const blockColorIdxs = blocks.colors.map(d => bam_utils_PILEUP_COLOR_IXS[`FIRE_${colorMap[d]}`]);
             const blockHeightFactors = blocks.colors.map(d => trackOptions.fire.metadata.itemRGBMap[colorMap[d]].heightFactor);
 
             // console.log(`blocks ${JSON.stringify(blocks)}`);

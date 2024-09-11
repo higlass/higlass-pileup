@@ -3808,37 +3808,37 @@ const renderSegments = (
   //   segmentList = segmentList.filter((s) => (s.to - s.from) >= fiberMinLength && (s.to - s.from) <= fiberMaxLength);
   // }
 
-  if (trackOptions.minMappingQuality > 0){
-    segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
-  }
+  // if (trackOptions.minMappingQuality > 0){
+  //   segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
+  // }
 
-  prepareHighlightedReads(segmentList, trackOptions);
+  // prepareHighlightedReads(segmentList, trackOptions);
 
-  if (areMatesRequired(trackOptions) && !clusterDataObj) {
-    // At this point reads are colored correctly, but we only want to align those reads that
-    // are within the visible tiles - not mates that are far away, as this can mess up the alignment
-    let tileMinPos = Number.MAX_VALUE;
-    let tileMaxPos = -Number.MAX_VALUE;
-    const tsInfo = tilesetInfos[uid];
-    for (const id of tileIds) {
-      const z = id.split('.')[0];
-      const x = id.split('.')[1];
-      const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-      tileMinPos = Math.min(tileMinPos, startEnd[0]);
-      tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    }
-    // tileIds.forEach((id) => {
-    //   const z = id.split('.')[0];
-    //   const x = id.split('.')[1];
-    //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-    //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
-    //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    // });
+  // if (areMatesRequired(trackOptions) && !clusterDataObj) {
+  //   // At this point reads are colored correctly, but we only want to align those reads that
+  //   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
+  //   let tileMinPos = Number.MAX_VALUE;
+  //   let tileMaxPos = -Number.MAX_VALUE;
+  //   const tsInfo = tilesetInfos[uid];
+  //   for (const id of tileIds) {
+  //     const z = id.split('.')[0];
+  //     const x = id.split('.')[1];
+  //     const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //     tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //     tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   }
+  //   // tileIds.forEach((id) => {
+  //   //   const z = id.split('.')[0];
+  //   //   const x = id.split('.')[1];
+  //   //   const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+  //   //   tileMinPos = Math.min(tileMinPos, startEnd[0]);
+  //   //   tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  //   // });
 
-    segmentList = segmentList.filter(
-      (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
-    );
-  }
+  //   segmentList = segmentList.filter(
+  //     (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
+  //   );
+  // }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
@@ -3851,27 +3851,27 @@ const renderSegments = (
       maxPos = segmentList[i].to;
     }
   }
-  let grouped = null;
+  let grouped = { null: segmentList };
 
   // group by some attribute or don't
-  if (groupBy) {
-    let groupByOption = trackOptions && trackOptions.groupBy;
-    groupByOption = groupByOption ? groupByOption : null;
-    grouped = groupBy(segmentList, groupByOption);
-  } else {
-    grouped = { null: segmentList };
-  }
+  // if (groupBy) {
+  //   let groupByOption = trackOptions && trackOptions.groupBy;
+  //   groupByOption = groupByOption ? groupByOption : null;
+  //   grouped = groupBy(segmentList, groupByOption);
+  // } else {
+  //   grouped = { null: segmentList };
+  // }
 
   // if (trackOptions.methylation) {
-  //   console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
-  //   console.log(`grouped | A2 | ${JSON.stringify(grouped)}`);
+  //   // console.log(`grouped | A1 | ${JSON.stringify(segmentList)}`);
+  //   // console.log(`grouped | A2 | ${JSON.stringify(grouped)}`);
   // }
 
   let clusterResultsToExport = null;
 
   // calculate the the rows of reads for each group
   if (clusterDataObj && trackOptions.methylation) {
-    // console.log(`clusterDataObj.range ${JSON.stringify(clusterDataObj.range)}`);
+    // console.log(`[higlass-pileup] clusterDataObj ${JSON.stringify(clusterDataObj)}`);
     // const chromName = clusterDataObj.range.left.chrom;
 
     const clusterDataObjToUse = clusterDataObj;
@@ -3915,7 +3915,8 @@ const renderSegments = (
     const trueRow = {};
 
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
-    // console.log(`chromStart ${JSON.stringify(chromStart)} | chromEnd ${JSON.stringify(chromEnd)}`);
+    // console.log(`[higlass-pileup] method ${method} | distanceFn ${distanceFn} | eventCategories ${eventCategories} | linkage ${linkage} | epsilon ${epsilon} | minimumPoints ${minimumPoints} | probabilityThresholdRange ${JSON.stringify(probabilityThresholdRange)} | eventOverlapType ${eventOverlapType} | fiberMinLength ${fiberMinLength} | fiberMaxLength ${fiberMaxLength} | fiberStrands ${fiberStrands} | integerBasesPerPixel ${integerBasesPerPixel} | viewportWidthInPixels ${viewportWidthInPixels}`);
+    // console.log(`[higlass-pileup] chromStart ${JSON.stringify(chromStart)} | chromEnd ${JSON.stringify(chromEnd)}`);
 
     switch (method) {
       case 'AGNES':
