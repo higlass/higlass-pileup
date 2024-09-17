@@ -2187,6 +2187,10 @@ varying vec4 vColor;
 
           return;
         } else {
+          this.errorTextText = null;
+          this.pBorder.clear();
+          this.drawError();
+          this.animate();
           this.maxTileWidthReached = false;
 
           if (this.options.collapseWhenMaxTileWidthReached) {
