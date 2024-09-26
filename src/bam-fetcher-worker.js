@@ -2952,6 +2952,7 @@ const exportUidTrackElements = (
     const rangeStart = uidTrackElementMidpointExportDataObj.range.left.start;
     const rangeEnd = uidTrackElementMidpointExportDataObj.range.right.stop;
     const rangeMidpoint = Math.floor((rangeStart + rangeEnd) / 2);
+    // console.log(`rangeChrom ${rangeChrom} | rangeStart ${rangeStart} | rangeEnd ${rangeEnd} | rangeMidpoint ${rangeMidpoint}`);
     const fetchOptions = {
       viewAsPairs: false,
       maxSampleSize: 1000,
@@ -2970,23 +2971,37 @@ const exportUidTrackElements = (
         const segmentList = records.map((rec) =>
           bamRecordToJson(rec, rangeChrom, rangeStart, trackOptions, basicSegmentAttributesOnly),
         );
-
+        // console.log(`segmentList.length ${JSON.stringify(segmentList.length)}`);
         for (let i = 0; i < segmentList.length; i++) {
           const segment = segmentList[i];
           const segmentStart = segment.from - segment.chrOffset;
           const segmentEnd = segment.to - segment.chrOffset;
           const segmentMidpoint = Math.floor((segmentStart + segmentEnd) / 2);
-          // console.log(`segmentStart ${segmentStart} | segmentEnd ${segmentEnd} | segmentMidpoint ${segmentMidpoint} || rangeStart ${rangeStart} | rangeEnd ${rangeEnd} | rangeMidpoint ${rangeMidpoint}`);
-          overlaps.push({
+          // if (i === 0) { console.log(`segmentStart ${segmentStart} | segmentEnd ${segmentEnd} | segmentMidpoint ${segmentMidpoint} || rangeStart ${rangeStart} | rangeEnd ${rangeEnd} | rangeMidpoint ${rangeMidpoint}`); }
+          const overlap = {
             absDistanceFromMidpoint: Math.abs(rangeMidpoint - segmentMidpoint),
-            signedDistanceFromMidpoint: (rangeMidpoint > segmentMidpoint) ? Math.abs(rangeMidpoint - segmentMidpoint) : -Math.abs(rangeMidpoint - segmentMidpoint),
+            signedDistanceFromMidpoint: (rangeMidpoint > segmentMidpoint) ? -Math.abs(rangeMidpoint - segmentMidpoint) : Math.abs(rangeMidpoint - segmentMidpoint),
             // viewportRange: uidTrackElementMidpointExportDataObj.range,
             segment: {
               chrName: segment.chrName,
               start: segmentStart,
               end: segmentEnd,
             },
-          });
+          };
+          // console.log(`uidTrackElementMidpointExportDataObj.offset ${uidTrackElementMidpointExportDataObj.offset} | overlap.signedDistanceFromMidpoint ${overlap.signedDistanceFromMidpoint}`);
+          if (
+            (uidTrackElementMidpointExportDataObj.offset === 0)
+            || 
+            (uidTrackElementMidpointExportDataObj.offset === 1 && overlap.signedDistanceFromMidpoint > 0) 
+            || 
+            (uidTrackElementMidpointExportDataObj.offset === -1 && overlap.signedDistanceFromMidpoint < 0)
+            ) 
+          {
+            // console.log(`pushing overlap ${JSON.stringify(overlap)}`);
+            overlaps.push(overlap);
+          }
+          // overlaps.push(overlap);
+          // if (i === 0) { console.log(`overlaps ${JSON.stringify(overlaps)}`); }
         }
 
         switch (uidTrackElementMidpointExportDataObj.offset) {
@@ -2998,7 +3013,7 @@ const exportUidTrackElements = (
           default:
             break;
         }
-
+        // console.log(`returned overlaps ${JSON.stringify(overlaps)}`);
         return overlaps;
       })
     );

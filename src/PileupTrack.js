@@ -1,6 +1,7 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, Thread, BlobWorker } from 'threads';
 import {
+  ASSEMBLY_ATTR_HG38,
   PILEUP_COLORS,
   indexDHSColors,
   fireColors,
@@ -742,6 +743,7 @@ varying vec4 vColor;
               uid: this.id,
               trackUid: data.trackUid,
               range: data.viewportRange,
+              rangeExtension: data.rangeExtension,
               offset: data.offset,
             };
             this.exportUidTrackElements();
@@ -1009,33 +1011,86 @@ varying vec4 vColor;
             this.uidTrackElementMidpointExportData,
           )
           .then((toExport) => {
-            if (this.clusterData) {
-              this.clusterData = null;
-            }
+            // console.log(`--------`);
+            // console.log(`toExport ${JSON.stringify(toExport)}`);
+            // console.log(`uidTrackElementMidpointExportData ${JSON.stringify(this.uidTrackElementMidpointExportData)}`);
 
-            if (this.bed12ExportData) {
-              this.bed12ExportData = null;
-            }
+            if (Object.hasOwn(toExport, 'overlaps') && toExport.overlaps.length > 0) {
+              if (this.clusterData) {
+                this.clusterData = null;
+              }
 
-            if (this.fireIdentifierData) {
-              this.fireIdentifierData = null;
-            }
+              if (this.bed12ExportData) {
+                this.bed12ExportData = null;
+              }
 
-            if (this.tfbsExportData) {
-              this.tfbsExportData = null;
-            }
+              if (this.fireIdentifierData) {
+                this.fireIdentifierData = null;
+              }
 
-            if (this.signalMatrixExportData) {
-              this.signalMatrixExportData = null;
-            }
+              if (this.tfbsExportData) {
+                this.tfbsExportData = null;
+              }
 
-            this.bc.postMessage({
-              state: 'export_uid_track_element_midpoint_end',
-              msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
-              uid: this.id,
-              sid: this.sessionId,
-              data: toExport,
-            });
+              if (this.signalMatrixExportData) {
+                this.signalMatrixExportData = null;
+              }
+
+              this.bc.postMessage({
+                state: 'export_uid_track_element_midpoint_end',
+                msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            }
+            else {
+              if (!this.uidTrackElementMidpointExportData.rangeExtension) {
+                this.uidTrackElementMidpointExportData.rangeExtension = 5000;
+              }
+              // expand search area and try again, if within bounds
+              // else, reset data structures and return with no results
+              const chrAttr = ASSEMBLY_ATTR_HG38.filter((x) => this.uidTrackElementMidpointExportData.range.left.chrom === x.refName);
+              // console.log(`chrAttr ${JSON.stringify(chrAttr)}`);
+              const chrLen = chrAttr[0]['length'];
+              // console.log(`chrLen ${JSON.stringify(chrLen)}`);
+              this.uidTrackElementMidpointExportData.rangeExtension *= 2;
+              this.uidTrackElementMidpointExportData.range.left.start = Math.max(0, this.uidTrackElementMidpointExportData.range.left.start - this.uidTrackElementMidpointExportData.rangeExtension);
+              this.uidTrackElementMidpointExportData.range.right.stop = Math.min(chrLen, this.uidTrackElementMidpointExportData.range.right.stop + this.uidTrackElementMidpointExportData.rangeExtension);
+
+              if (this.uidTrackElementMidpointExportData.range.left.start === 0 && this.uidTrackElementMidpointExportData.range.right.stop === chrLen) {
+                if (this.clusterData) {
+                  this.clusterData = null;
+                }
+  
+                if (this.bed12ExportData) {
+                  this.bed12ExportData = null;
+                }
+  
+                if (this.fireIdentifierData) {
+                  this.fireIdentifierData = null;
+                }
+  
+                if (this.tfbsExportData) {
+                  this.tfbsExportData = null;
+                }
+  
+                if (this.signalMatrixExportData) {
+                  this.signalMatrixExportData = null;
+                }
+  
+                this.bc.postMessage({
+                  state: 'export_uid_track_element_midpoint_end',
+                  msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                  uid: this.id,
+                  sid: this.sessionId,
+                  data: toExport,
+                });
+              }
+              else {
+                this.exportUidTrackElements();
+              }
+            }
           })
       });
     }
