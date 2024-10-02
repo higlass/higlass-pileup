@@ -52816,7 +52816,11 @@ const tilesetInfo = (uid) => {
 
 const tile = async (uid, z, x) => {
   if (!uid || !dataOptions[uid] || !dataOptions[uid].maxTileWidth) return;
-  const {maxTileWidth, maxSampleSize, fiberMinLength, fiberMaxLength, fiberStrands} = dataOptions[uid];
+  const {maxTileWidth, maxSampleSize} = dataOptions[uid];
+
+  const fiberMinLength = (Object.hasOwn(dataOptions[uid], fiberMinLength)) ? dataOptions[uid].fiberMinLength : 0;
+  const fiberMaxLength = (Object.hasOwn(dataOptions[uid], fiberMaxLength)) ? dataOptions[uid].fiberMaxLength : 30000;
+  const fiberStrands = (Object.hasOwn(dataOptions[uid], fiberStrands)) ? dataOptions[uid].fiberStrands : ['+', '-'];
 
   // console.log(`maxSampleSize ${maxSampleSize}`);
   // console.log(`dataOptions ${JSON.stringify(dataOptions)}`);
@@ -55848,8 +55852,11 @@ const renderSegments = (
     let tileValue = null;
     try {
       tileValue = tileValues.get(`${uid}.${tileId}`);
-      // console.log(`uid ${JSON.stringify(uid)}`);
-      // console.log(`tileId ${JSON.stringify(tileId)}`);
+
+      // if (trackOptions.fire) {
+      //   console.log(`uid ${JSON.stringify(uid)}`);
+      //   console.log(`tileId ${JSON.stringify(tileId)}`);
+      // }
 
       if (tileValue.error) {
         // throw new Error(tileValue.error);
@@ -55875,6 +55882,10 @@ const renderSegments = (
     for (const segment of tileValue) {
       allSegments[segment.id] = segment;
     }
+
+    // if (trackOptions.fire) {
+    //   console.log(`${tileId} | ${JSON.stringify(Object.keys(allSegments))}`);
+    // }
 
     const sequenceTileValue = sequenceTileValues.get(`${uid}.${tileId}`);
 
@@ -57763,7 +57774,7 @@ const renderSegments = (
     }
   }
 
-  // if (trackOptions.methylation) {
+  // if (trackOptions.fire) {
   //   console.log(`grouped | B1 | ${JSON.stringify(segmentList)}`);
   //   console.log(`grouped | B2 | ${JSON.stringify(grouped)}`);
   // }
@@ -58322,6 +58333,8 @@ const renderSegments = (
             const fireYTop = yTop + ((yBottom - yTop) * 0.5) - topCorrection;
             addRect(xLeft, fireYTop, width, fireElementHeight, defaultSegmentColor);
 
+            // console.log(`xLeft ${xLeft} | fireYTop ${fireYTop} | width ${width} | fireElementHeight ${fireElementHeight} | defaultSegmentColor ${defaultSegmentColor}`);
+
             const colorMap = segment.metadata.colors;
 
             const blocks = segment.metadata.blocks;
@@ -58334,10 +58347,11 @@ const renderSegments = (
             // console.log(`blocks ${JSON.stringify(blocks)}`);
             // console.log(`colorMap ${JSON.stringify(colorMap)}`);
             // console.log(`blockColors ${JSON.stringify(blockColors)}`);
+            // console.log(`fireEnabledCategories ${JSON.stringify(fireEnabledCategories)}`);
 
             for (let i = 0; i < blocks.count; i++) {
               const blockColorRgb = blockColors[i];
-              if (fireEnabledCategories.includes(blockColorRgb)) {
+              if (fireEnabledCategories.length === 0 || fireEnabledCategories.includes(blockColorRgb)) {
                 const blockSize = blockSizes[i];
                 const blockOffset = blockOffsets[i];
                 const blockColorIdx = blockColorIdxs[i];
@@ -58345,6 +58359,7 @@ const renderSegments = (
                 const blockXLeft = xScale(segment.from + blockOffset);
                 const blockYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * blockHeightFactors[i]))) - topCorrection;
                 addRect(blockXLeft, blockYTop, blockWidth, fireElementHeight * blockHeightFactors[i], blockColorIdx);
+                // console.log(`blockXLeft ${blockXLeft} | blockYTop ${blockYTop} | blockWidth ${blockWidth} | fireElementHeight ${fireElementHeight} | blockColorIdx ${blockColorIdx}`);
               }
             }
           }

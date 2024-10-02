@@ -530,7 +530,7 @@ varying vec4 vColor;
           case "refresh-layout":
             if (!this.options.methylation || this.trackUpdatesAreFrozen)
               break;
-            // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`)
+            // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`);
             // if (this.options.fire)
             //   break;
             if (data.sid !== this.sessionId)
@@ -576,32 +576,32 @@ varying vec4 vColor;
             });
             break;
           case "refresh-fire-layout":
+            // if (this.options.fire) console.log(`this.options.fire | ${JSON.stringify(this.options.fire)}`);
+            // if (this.options.fire) console.log(`this.trackUpdatesAreFrozen | ${JSON.stringify(this.trackUpdatesAreFrozen)}`);
+            // if (this.options.fire) console.log(`data.sid | ${JSON.stringify(data.sid)}`);
+            // if (this.options.fire) console.log(`this.sessionId | ${JSON.stringify(this.sessionId)}`);
+            // if (this.options.fire) console.log(`this.id | ${JSON.stringify(this.id)}`);
+            // if (this.options.fire) console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
             if (!this.options.fire || this.trackUpdatesAreFrozen)
               break;
             if (data.sid !== this.sessionId)
               break;
-            // console.log(`this.options.fire | ${JSON.stringify(this.options.fire)}`);
-            // console.log(`this.trackUpdatesAreFrozen | ${JSON.stringify(this.trackUpdatesAreFrozen)}`);
-            // console.log(`data.sid | ${JSON.stringify(data.sid)}`);
-            // console.log(`this.sessionId | ${JSON.stringify(this.sessionId)}`);
-            // console.log(`this.id | ${JSON.stringify(this.id)}`);
-            // console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
-            this.dataFetcher = new BAMDataFetcher(
-              this.dataFetcher.dataConfig,
-              this.options,
-              this.worker,
-              HGC,
-            );
-            this.dataFetcher.track = this;
-            this.prevRows = [];
-            this.removeTiles(Object.keys(this.fetchedTiles));
-            this.fetching.clear();
-            this.refreshTiles();
-            this.externalInit(this.options);
+            // this.dataFetcher = new BAMDataFetcher(
+            //   this.dataFetcher.dataConfig,
+            //   this.options,
+            //   this.worker,
+            //   HGC,
+            // );
+            // this.dataFetcher.track = this;
+            // this.prevRows = [];
+            // this.removeTiles(Object.keys(this.fetchedTiles));
+            // this.fetching.clear();
+            // this.refreshTiles();
+            // this.externalInit(this.options);
             // this.fireIdentifierData = {
             //   identifiers: data.identifiers,
             // };
-            // this.updateExistingGraphics();
+            this.updateExistingGraphics(true);
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "refresh-fire-layout-post-clustering":
@@ -1155,10 +1155,12 @@ varying vec4 vColor;
       });
     }
 
-    updateExistingGraphics() {
-      // console.log(`updateExistingGraphics (start) | ${this.id}`);
+    updateExistingGraphics(skip) {
+      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (start) | ${this.id}`);
 
       if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.methylation)) return;
+
+      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (post-start) | ${this.id}`);
 
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
@@ -1214,7 +1216,7 @@ varying vec4 vColor;
         return;
       }
 
-      // console.log(`updateExistingGraphics (B1) | ${this.id}`);
+      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (B1) | ${this.id}`);
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
         this.updateLoadingText();
@@ -1222,15 +1224,17 @@ varying vec4 vColor;
       }
 
       // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
-      // console.log(`updateExistingGraphics (B2) | ${this.id}`);
+      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (B2) | ${this.id} | fetchedTileIds ${JSON.stringify(fetchedTileIds)}`);
       if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
-        return;
+        if (!skip) return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
 
-      // console.log(`updateExistingGraphics (B2+) | ${this.id}`);
+      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (B2+) | ${this.id}`);
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
+
+      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`fetchedTileKeys ${JSON.stringify(fetchedTileKeys)}`);
 
       for (const fetchedTileKey of fetchedTileKeys) {
         this.fetching.delete(fetchedTileKey);
@@ -1264,10 +1268,12 @@ varying vec4 vColor;
             this.fireIdentifierData,
           )
           .then((toRender) => {
-            // console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
+            // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
 
             if (!toRender)
               return;
+
+            // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`toRender ${JSON.stringify(toRender)}`);
 
             if (this.fireIdentifierData) {
               this.fireIdentifierData = null;
