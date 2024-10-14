@@ -53502,7 +53502,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx];
                             const probability = probabilities[offsetIdx];
@@ -53584,7 +53587,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -53609,6 +53615,7 @@ const exportSignalMatrices = (
                         viewportAggregatedEventMatrix[allowedRowIdx] = viewportRawEventVec;
                       }
                       // viewportRawEventVec = [];
+                      // console.log(`viewportRawEventVec ${JSON.stringify(viewportRawEventVec)}`);
                     }
                     allowedRowIdx++;
                   }
@@ -53667,7 +53674,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -53745,7 +53755,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -53824,7 +53837,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -53903,7 +53919,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -53989,7 +54008,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx];
                             const probability = probabilities[offsetIdx];
@@ -54070,7 +54092,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54151,7 +54176,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54229,7 +54257,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54308,7 +54339,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54387,7 +54421,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54479,7 +54516,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx];
                             const probability = probabilities[offsetIdx];
@@ -54560,7 +54600,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54641,7 +54684,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54719,7 +54765,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54798,7 +54847,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -54877,7 +54929,10 @@ const exportSignalMatrices = (
                         const probabilities = mo.probabilities;
                         if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                           || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                          || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                          || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                          || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                           for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                             const offset = offsets[offsetIdx] - viewportOffsetStart;
                             const probability = probabilities[offsetIdx];
@@ -55259,7 +55314,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = probabilities[offsetIdx];
@@ -55282,7 +55340,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = probabilities[offsetIdx];
@@ -55302,7 +55363,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55323,7 +55387,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55344,7 +55411,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55381,7 +55451,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = probabilities[offsetIdx];
@@ -55404,7 +55477,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = probabilities[offsetIdx];
@@ -55424,7 +55500,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55445,7 +55524,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55466,7 +55548,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55510,7 +55595,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = probabilities[offsetIdx];
@@ -55533,7 +55621,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = probabilities[offsetIdx];
@@ -55553,7 +55644,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55574,7 +55668,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
@@ -55595,7 +55692,10 @@ const exportSegmentsAsBED12 = (
                       const probabilities = mo.probabilities;
                       if ((eventCategories.includes('m6A+') && mo.unmodifiedBase === 'A')
                         || (eventCategories.includes('m6A-') && mo.unmodifiedBase === 'T')
-                        || (eventCategories.includes('5mC') && mo.unmodifiedBase === 'C')) {
+                        || (eventCategories.includes('5mC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5mC-') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC+') && mo.unmodifiedBase === 'C')
+                        || (eventCategories.includes('5hmC-') && mo.unmodifiedBase === 'C')) {
                         for (let offsetIdx = 0; offsetIdx < offsets.length; offsetIdx++) {
                           const offset = offsets[offsetIdx];
                           const probability = parseInt(probabilities[offsetIdx]);
