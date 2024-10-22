@@ -5239,7 +5239,7 @@ var PileupTrack = function PileupTrack(HGC) {
               break;
             case "recalculate-signal-matrices":
               // console.log(`recalculate-signal-matrices (A) ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.trackUpdatesAreFrozen}`);
-              if (typeof this.options.methylation === 'undefined') break;
+              if (typeof this.options.methylation === 'undefined' || this.options.methylation == null) break;
               if (!this.trackUpdatesAreFrozen) break;
               if (data.sid !== this.sessionId) break;
               // console.log(`recalculate-signal-matrices (B)`);
@@ -5346,6 +5346,9 @@ var PileupTrack = function PileupTrack(HGC) {
             if (_this3.uidTrackElementMidpointExportData) {
               _this3.uidTrackElementMidpointExportData = null;
             }
+
+            // console.log(`toExport ${JSON.stringify(toExport)}`);
+
             _this3.bc.postMessage({
               state: 'export_signal_matrices_end',
               msg: 'Completed (exportSignalMatrices Promise fulfillment)',
@@ -5855,7 +5858,7 @@ var PileupTrack = function PileupTrack(HGC) {
               elapsedTime: elapsedTimeC
             };
             // console.log(`${JSON.stringify(msg)}`);
-            // this.bc.postMessage(msg);
+            _this8.bc.postMessage(msg);
           });
           // .catch(err => {
           //   // console.log('err:', err);

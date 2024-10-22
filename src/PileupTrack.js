@@ -711,7 +711,7 @@ varying vec4 vColor;
             break;
           case "recalculate-signal-matrices":
             // console.log(`recalculate-signal-matrices (A) ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.trackUpdatesAreFrozen}`);
-            if (typeof this.options.methylation === 'undefined') break;
+            if (typeof this.options.methylation === 'undefined' || this.options.methylation == null) break;
             if (!this.trackUpdatesAreFrozen) break;
             if (data.sid !== this.sessionId) break;
             // console.log(`recalculate-signal-matrices (B)`);
@@ -855,6 +855,8 @@ varying vec4 vColor;
             if (this.uidTrackElementMidpointExportData) {
               this.uidTrackElementMidpointExportData = null;
             }
+
+            // console.log(`toExport ${JSON.stringify(toExport)}`);
 
             this.bc.postMessage({
               state: 'export_signal_matrices_end',
@@ -1493,7 +1495,7 @@ varying vec4 vColor;
               elapsedTime: elapsedTimeC,
             };
             // console.log(`${JSON.stringify(msg)}`);
-            // this.bc.postMessage(msg);
+            this.bc.postMessage(msg);
           });
         // .catch(err => {
         //   // console.log('err:', err);
