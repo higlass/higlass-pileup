@@ -5130,6 +5130,7 @@ var PileupTrack = function PileupTrack(HGC) {
               // if (this.options.fire) console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
               if (!this.options.fire || this.trackUpdatesAreFrozen) break;
               if (data.sid !== this.sessionId) break;
+
               // this.dataFetcher = new BAMDataFetcher(
               //   this.dataFetcher.dataConfig,
               //   this.options,
@@ -5137,14 +5138,16 @@ var PileupTrack = function PileupTrack(HGC) {
               //   HGC,
               // );
               // this.dataFetcher.track = this;
-              // this.prevRows = [];
-              // this.removeTiles(Object.keys(this.fetchedTiles));
-              // this.fetching.clear();
-              // this.refreshTiles();
-              // this.externalInit(this.options);
+              this.prevRows = [];
+              this.removeTiles(Object.keys(this.fetchedTiles));
+              this.fetching.clear();
+              this.refreshTiles();
+              this.externalInit(this.options);
               // this.fireIdentifierData = {
+              //   sourceTrackUid: data.sourceTrackUid,
               //   identifiers: data.identifiers,
               // };
+
               this.updateExistingGraphics(true);
               this.prevOptions = Object.assign({}, this.options);
               break;
@@ -5678,7 +5681,7 @@ var PileupTrack = function PileupTrack(HGC) {
             }
             if (toRender.clusterResultsToExport) {
               _this8.clusterResultsReadyToExport[_this8.id] = true;
-              // console.log(`[higlass-pileup] toRender.clusterResultsToExport ${JSON.stringify(toRender.clusterResultsToExport)}`);
+              // if (this.id === 'd2_stim_sequel.fire.061324')  console.log(`[higlass-pileup] toRender.clusterResultsToExport ${JSON.stringify(toRender.clusterResultsToExport)}`);
               _this8.bc.postMessage({
                 state: 'export_subregion_clustering_results',
                 msg: 'Completed subregion clustering',
