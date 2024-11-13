@@ -1046,7 +1046,9 @@ const fetchTilesDebounced = async (uid, tileIds) => {
     for (let i = 0; i < values.length; i++) {
       const validTileId = validTileIds[i];
       tiles[validTileId] = values[i];
-      tiles[validTileId].tilePositionId = validTileId;
+      try {
+        tiles[validTileId].tilePositionId = validTileId;
+      } catch (e) {}
     }
 
     return tiles;
