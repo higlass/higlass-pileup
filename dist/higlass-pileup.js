@@ -4839,12 +4839,14 @@ var PileupTrack = function PileupTrack(HGC) {
         return _this.handlePileupTrackViewerMessage(event.data);
       };
       _this.bc = new BroadcastChannel("pileup-track-".concat(_this.id));
-      _this.bc.postMessage({
-        state: 'loading',
-        msg: _this.loadingText.text,
-        uid: _this.id,
-        sid: _this.sessionId
-      });
+      try {
+        _this.bc.postMessage({
+          state: 'loading',
+          msg: _this.loadingText.text,
+          uid: _this.id,
+          sid: _this.sessionId
+        });
+      } catch (e) {}
 
       // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
       return _this;
@@ -5115,11 +5117,13 @@ var PileupTrack = function PileupTrack(HGC) {
                 this.updateExistingGraphics();
                 this.prevOptions = Object.assign({}, this.options);
               }
-              this.bc.postMessage({
-                state: 'refresh_layout_end',
-                uid: this.id,
-                sid: this.sessionId
-              });
+              try {
+                this.bc.postMessage({
+                  state: 'refresh_layout_end',
+                  uid: this.id,
+                  sid: this.sessionId
+                });
+              } catch (e) {}
               break;
             case "refresh-fire-layout":
               // if (this.options.fire) console.log(`this.options.fire | ${JSON.stringify(this.options.fire)}`);
@@ -5318,12 +5322,14 @@ var PileupTrack = function PileupTrack(HGC) {
       key: "exportSignalMatrices",
       value: function exportSignalMatrices() {
         var _this3 = this;
-        this.bc.postMessage({
-          state: 'export_signal_matrices_start',
-          msg: 'Begin signal matrix export worker processing',
-          uid: this.id,
-          sid: this.sessionId
-        });
+        try {
+          this.bc.postMessage({
+            state: 'export_signal_matrices_start',
+            msg: 'Begin signal matrix export worker processing',
+            uid: this.id,
+            sid: this.sessionId
+          });
+        } catch (e) {}
         this.worker.then(function (tileFunctions) {
           tileFunctions.exportSignalMatrices(_this3.sessionId, _this3.dataFetcher.uid, Object.values(_this3.fetchedTiles).map(function (x) {
             return x.remoteId;
@@ -5352,13 +5358,15 @@ var PileupTrack = function PileupTrack(HGC) {
 
             // console.log(`toExport ${JSON.stringify(toExport)}`);
 
-            _this3.bc.postMessage({
-              state: 'export_signal_matrices_end',
-              msg: 'Completed (exportSignalMatrices Promise fulfillment)',
-              uid: _this3.id,
-              sid: _this3.sessionId,
-              data: toExport
-            });
+            try {
+              _this3.bc.postMessage({
+                state: 'export_signal_matrices_end',
+                msg: 'Completed (exportSignalMatrices Promise fulfillment)',
+                uid: _this3.id,
+                sid: _this3.sessionId,
+                data: toExport
+              });
+            } catch (e) {}
           });
         });
       }
@@ -5366,12 +5374,14 @@ var PileupTrack = function PileupTrack(HGC) {
       key: "exportTFBSOverlaps",
       value: function exportTFBSOverlaps() {
         var _this4 = this;
-        this.bc.postMessage({
-          state: 'export_tfbs_overlaps_start',
-          msg: 'Begin TFBS overlap export worker processing',
-          uid: this.id,
-          sid: this.sessionId
-        });
+        try {
+          this.bc.postMessage({
+            state: 'export_tfbs_overlaps_start',
+            msg: 'Begin TFBS overlap export worker processing',
+            uid: this.id,
+            sid: this.sessionId
+          });
+        } catch (e) {}
         this.worker.then(function (tileFunctions) {
           tileFunctions.exportTFBSOverlaps(_this4.sessionId, _this4.dataFetcher.uid, Object.values(_this4.fetchedTiles).map(function (x) {
             return x.remoteId;
@@ -5397,13 +5407,15 @@ var PileupTrack = function PileupTrack(HGC) {
             if (_this4.uidTrackElementMidpointExportData) {
               _this4.uidTrackElementMidpointExportData = null;
             }
-            _this4.bc.postMessage({
-              state: 'export_tfbs_overlaps_end',
-              msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
-              uid: _this4.id,
-              sid: _this4.sessionId,
-              data: toExport
-            });
+            try {
+              _this4.bc.postMessage({
+                state: 'export_tfbs_overlaps_end',
+                msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
+                uid: _this4.id,
+                sid: _this4.sessionId,
+                data: toExport
+              });
+            } catch (e) {}
           });
         });
       }
@@ -5411,12 +5423,14 @@ var PileupTrack = function PileupTrack(HGC) {
       key: "exportIndexDHSOverlaps",
       value: function exportIndexDHSOverlaps() {
         var _this5 = this;
-        this.bc.postMessage({
-          state: 'export_indexDHS_overlaps_start',
-          msg: 'Begin Index DHS overlap export worker processing',
-          uid: this.id,
-          sid: this.sessionId
-        });
+        try {
+          this.bc.postMessage({
+            state: 'export_indexDHS_overlaps_start',
+            msg: 'Begin Index DHS overlap export worker processing',
+            uid: this.id,
+            sid: this.sessionId
+          });
+        } catch (e) {}
         this.worker.then(function (tileFunctions) {
           tileFunctions.exportIndexDHSOverlaps(_this5.sessionId, _this5.dataFetcher.uid, Object.values(_this5.fetchedTiles).map(function (x) {
             return x.remoteId;
@@ -5442,13 +5456,15 @@ var PileupTrack = function PileupTrack(HGC) {
             if (_this5.uidTrackElementMidpointExportData) {
               _this5.uidTrackElementMidpointExportData = null;
             }
-            _this5.bc.postMessage({
-              state: 'export_indexDHS_overlaps_end',
-              msg: 'Completed (exportIndexDHSOverlaps Promise fulfillment)',
-              uid: _this5.id,
-              sid: _this5.sessionId,
-              data: toExport
-            });
+            try {
+              _this5.bc.postMessage({
+                state: 'export_indexDHS_overlaps_end',
+                msg: 'Completed (exportIndexDHSOverlaps Promise fulfillment)',
+                uid: _this5.id,
+                sid: _this5.sessionId,
+                data: toExport
+              });
+            } catch (e) {}
           });
         });
       }
@@ -5456,12 +5472,14 @@ var PileupTrack = function PileupTrack(HGC) {
       key: "exportUidTrackElements",
       value: function exportUidTrackElements() {
         var _this6 = this;
-        this.bc.postMessage({
-          state: 'export_uid_track_element_midpoint_start',
-          msg: 'Begin UID track element midpoint export worker processing',
-          uid: this.id,
-          sid: this.sessionId
-        });
+        try {
+          this.bc.postMessage({
+            state: 'export_uid_track_element_midpoint_start',
+            msg: 'Begin UID track element midpoint export worker processing',
+            uid: this.id,
+            sid: this.sessionId
+          });
+        } catch (e) {}
         this.worker.then(function (tileFunctions) {
           tileFunctions.exportUidTrackElements(_this6.sessionId, _this6.dataFetcher.uid, Object.values(_this6.fetchedTiles).map(function (x) {
             return x.remoteId;
@@ -5486,13 +5504,15 @@ var PileupTrack = function PileupTrack(HGC) {
               if (_this6.signalMatrixExportData) {
                 _this6.signalMatrixExportData = null;
               }
-              _this6.bc.postMessage({
-                state: 'export_uid_track_element_midpoint_end',
-                msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
-                uid: _this6.id,
-                sid: _this6.sessionId,
-                data: toExport
-              });
+              try {
+                _this6.bc.postMessage({
+                  state: 'export_uid_track_element_midpoint_end',
+                  msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                  uid: _this6.id,
+                  sid: _this6.sessionId,
+                  data: toExport
+                });
+              } catch (e) {}
             } else {
               if (!_this6.uidTrackElementMidpointExportData.rangeExtension) {
                 _this6.uidTrackElementMidpointExportData.rangeExtension = 5000;
@@ -5524,13 +5544,15 @@ var PileupTrack = function PileupTrack(HGC) {
                 if (_this6.signalMatrixExportData) {
                   _this6.signalMatrixExportData = null;
                 }
-                _this6.bc.postMessage({
-                  state: 'export_uid_track_element_midpoint_end',
-                  msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
-                  uid: _this6.id,
-                  sid: _this6.sessionId,
-                  data: toExport
-                });
+                try {
+                  _this6.bc.postMessage({
+                    state: 'export_uid_track_element_midpoint_end',
+                    msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                    uid: _this6.id,
+                    sid: _this6.sessionId,
+                    data: toExport
+                  });
+                } catch (e) {}
               } else {
                 _this6.exportUidTrackElements();
               }
@@ -5543,12 +5565,14 @@ var PileupTrack = function PileupTrack(HGC) {
       value: function exportBED12Layout() {
         var _this7 = this;
         // console.log(`exportBED12Layout called`);
-        this.bc.postMessage({
-          state: 'export_bed12_start',
-          msg: 'Begin BED12 export worker processing',
-          uid: this.id,
-          sid: this.sessionId
-        });
+        try {
+          this.bc.postMessage({
+            state: 'export_bed12_start',
+            msg: 'Begin BED12 export worker processing',
+            uid: this.id,
+            sid: this.sessionId
+          });
+        } catch (e) {}
         this.worker.then(function (tileFunctions) {
           tileFunctions.exportSegmentsAsBED12(_this7.sessionId, _this7.dataFetcher.uid, Object.values(_this7.fetchedTiles).map(function (x) {
             return x.remoteId;
@@ -5573,13 +5597,15 @@ var PileupTrack = function PileupTrack(HGC) {
             if (_this7.uidTrackElementMidpointExportData) {
               _this7.uidTrackElementMidpointExportData = null;
             }
-            _this7.bc.postMessage({
-              state: 'export_bed12_end',
-              msg: 'Completed (exportBED12Layout Promise fulfillment)',
-              uid: _this7.id,
-              sid: _this7.sessionId,
-              data: toExport
-            });
+            try {
+              _this7.bc.postMessage({
+                state: 'export_bed12_end',
+                msg: 'Completed (exportBED12Layout Promise fulfillment)',
+                uid: _this7.id,
+                sid: _this7.sessionId,
+                data: toExport
+              });
+            } catch (e) {}
           });
         });
       }
@@ -5596,12 +5622,14 @@ var PileupTrack = function PileupTrack(HGC) {
         var updateExistingGraphicsStart = performance.now();
         if (!this.maxTileWidthReached) {
           this.loadingText.text = 'Rendering...';
-          this.bc.postMessage({
-            state: 'update_start',
-            msg: this.loadingText.text,
-            uid: this.id,
-            sid: this.sessionId
-          });
+          try {
+            this.bc.postMessage({
+              state: 'update_start',
+              msg: this.loadingText.text,
+              uid: this.id,
+              sid: this.sessionId
+            });
+          } catch (e) {}
         } else {
           // console.log(`updateExistingGraphics (A) | ${this.id}`);
           this.worker.then(function (tileFunctions) {
@@ -5625,7 +5653,9 @@ var PileupTrack = function PileupTrack(HGC) {
                 elapsedTime: elapsedTimeA
               };
               // console.log(`${JSON.stringify(msg)}`);
-              _this8.bc.postMessage(msg);
+              try {
+                _this8.bc.postMessage(msg);
+              } catch (e) {}
             });
           });
           return;
@@ -5682,13 +5712,15 @@ var PileupTrack = function PileupTrack(HGC) {
             if (toRender.clusterResultsToExport) {
               _this8.clusterResultsReadyToExport[_this8.id] = true;
               // if (this.id === 'd2_stim_sequel.fire.061324')  console.log(`[higlass-pileup] toRender.clusterResultsToExport ${JSON.stringify(toRender.clusterResultsToExport)}`);
-              _this8.bc.postMessage({
-                state: 'export_subregion_clustering_results',
-                msg: 'Completed subregion clustering',
-                uid: _this8.id,
-                sid: _this8.sessionId,
-                data: toRender.clusterResultsToExport
-              });
+              try {
+                _this8.bc.postMessage({
+                  state: 'export_subregion_clustering_results',
+                  msg: 'Completed subregion clustering',
+                  uid: _this8.id,
+                  sid: _this8.sessionId,
+                  data: toRender.clusterResultsToExport
+                });
+              } catch (e) {}
               toRender.clusterResultsToExport = null;
             }
             if (toRender.clusterResultsToExport && !_this8.clusterResultsReadyToExport[_this8.id]) return;
@@ -5745,7 +5777,9 @@ var PileupTrack = function PileupTrack(HGC) {
                 elapsedTime: elapsedTimeB
               };
               // console.log(`${JSON.stringify(msg)}`);
-              _this8.bc.postMessage(_msg);
+              try {
+                _this8.bc.postMessage(_msg);
+              } catch (e) {}
               return;
             }
             _this8.errorTextText = null;
@@ -5861,7 +5895,9 @@ var PileupTrack = function PileupTrack(HGC) {
               elapsedTime: elapsedTimeC
             };
             // console.log(`${JSON.stringify(msg)}`);
-            _this8.bc.postMessage(msg);
+            try {
+              _this8.bc.postMessage(msg);
+            } catch (e) {}
           });
           // .catch(err => {
           //   // console.log('err:', err);
@@ -5886,33 +5922,39 @@ var PileupTrack = function PileupTrack(HGC) {
         if (this.maxTileWidthReached) return;
         if (!this.tilesetInfo && this.bc) {
           this.loadingText.text = 'Fetching tileset info...';
-          this.bc.postMessage({
-            state: 'fetching_tileset_info',
-            msg: this.loadingText.text,
-            uid: this.id,
-            sid: this.sessionId
-          });
+          try {
+            this.bc.postMessage({
+              state: 'fetching_tileset_info',
+              msg: this.loadingText.text,
+              uid: this.id,
+              sid: this.sessionId
+            });
+          } catch (e) {}
           return;
         }
         if (this.fetching.size && this.bc) {
           this.loadingText.text = "Fetching... ".concat(PileupTrack_toConsumableArray(this.fetching).map(function (x) {
             return x.split('|')[0];
           }).join(' '));
-          this.bc.postMessage({
-            state: 'fetching',
-            msg: this.loadingText.text,
-            uid: this.id,
-            sid: this.sessionId
-          });
+          try {
+            this.bc.postMessage({
+              state: 'fetching',
+              msg: this.loadingText.text,
+              uid: this.id,
+              sid: this.sessionId
+            });
+          } catch (e) {}
         }
         if (this.rendering.size && this.bc) {
           this.loadingText.text = "Rendering... ".concat(PileupTrack_toConsumableArray(this.rendering).join(' '));
-          this.bc.postMessage({
-            state: 'rendering',
-            msg: this.loadingText.text,
-            uid: this.id,
-            sid: this.sessionId
-          });
+          try {
+            this.bc.postMessage({
+              state: 'rendering',
+              msg: this.loadingText.text,
+              uid: this.id,
+              sid: this.sessionId
+            });
+          } catch (e) {}
         }
         if (!this.fetching.size && !this.rendering.size && this.tilesetInfo) {
           this.loadingText.visible = false;
@@ -6473,7 +6515,9 @@ var PileupTrack = function PileupTrack(HGC) {
                 uid: this.id
               };
               // console.log(`${JSON.stringify(msg)}`);
-              this.bc.postMessage(msg);
+              try {
+                this.bc.postMessage(msg);
+              } catch (e) {}
               return;
             } else {
               this.errorTextText = null;

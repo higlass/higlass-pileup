@@ -263,12 +263,14 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
       this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
 
       this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
-      this.bc.postMessage({
-        state: 'loading',
-        msg: this.loadingText.text,
-        uid: this.id,
-        sid: this.sessionId,
-      });
+      try {
+        this.bc.postMessage({
+          state: 'loading',
+          msg: this.loadingText.text,
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
 
       // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
     }
@@ -569,11 +571,13 @@ varying vec4 vColor;
               this.updateExistingGraphics();
               this.prevOptions = Object.assign({}, this.options);
             }
-            this.bc.postMessage({
-              state: 'refresh_layout_end',
-              uid: this.id,
-              sid: this.sessionId,
-            });
+            try {
+              this.bc.postMessage({
+                state: 'refresh_layout_end',
+                uid: this.id,
+                sid: this.sessionId,
+              });
+            } catch (e) {}
             break;
           case "refresh-fire-layout":
             // if (this.options.fire) console.log(`this.options.fire | ${JSON.stringify(this.options.fire)}`);
@@ -810,12 +814,14 @@ varying vec4 vColor;
     }
 
     exportSignalMatrices() {
-      this.bc.postMessage({
-        state: 'export_signal_matrices_start',
-        msg: 'Begin signal matrix export worker processing',
-        uid: this.id,
-        sid: this.sessionId,
-      });
+      try {
+        this.bc.postMessage({
+          state: 'export_signal_matrices_start',
+          msg: 'Begin signal matrix export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
       this.worker.then((tileFunctions) => {
         tileFunctions
           .exportSignalMatrices(
@@ -861,24 +867,28 @@ varying vec4 vColor;
 
             // console.log(`toExport ${JSON.stringify(toExport)}`);
 
-            this.bc.postMessage({
-              state: 'export_signal_matrices_end',
-              msg: 'Completed (exportSignalMatrices Promise fulfillment)',
-              uid: this.id,
-              sid: this.sessionId,
-              data: toExport,
-            });
+            try {
+              this.bc.postMessage({
+                state: 'export_signal_matrices_end',
+                msg: 'Completed (exportSignalMatrices Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
           })
       });
     }
 
     exportTFBSOverlaps() {
-      this.bc.postMessage({
-        state: 'export_tfbs_overlaps_start',
-        msg: 'Begin TFBS overlap export worker processing',
-        uid: this.id,
-        sid: this.sessionId,
-      });
+      try {
+        this.bc.postMessage({
+          state: 'export_tfbs_overlaps_start',
+          msg: 'Begin TFBS overlap export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
       this.worker.then((tileFunctions) => {
         tileFunctions
           .exportTFBSOverlaps(
@@ -922,24 +932,28 @@ varying vec4 vColor;
               this.uidTrackElementMidpointExportData = null;
             }
 
-            this.bc.postMessage({
-              state: 'export_tfbs_overlaps_end',
-              msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
-              uid: this.id,
-              sid: this.sessionId,
-              data: toExport,
-            });
+            try {
+              this.bc.postMessage({
+                state: 'export_tfbs_overlaps_end',
+                msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
           })
       });
     }
 
     exportIndexDHSOverlaps() {
-      this.bc.postMessage({
-        state: 'export_indexDHS_overlaps_start',
-        msg: 'Begin Index DHS overlap export worker processing',
-        uid: this.id,
-        sid: this.sessionId,
-      });
+      try {
+        this.bc.postMessage({
+          state: 'export_indexDHS_overlaps_start',
+          msg: 'Begin Index DHS overlap export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
       this.worker.then((tileFunctions) => {
         tileFunctions
           .exportIndexDHSOverlaps(
@@ -983,24 +997,28 @@ varying vec4 vColor;
               this.uidTrackElementMidpointExportData = null;
             }
 
-            this.bc.postMessage({
-              state: 'export_indexDHS_overlaps_end',
-              msg: 'Completed (exportIndexDHSOverlaps Promise fulfillment)',
-              uid: this.id,
-              sid: this.sessionId,
-              data: toExport,
-            });
+            try {
+              this.bc.postMessage({
+                state: 'export_indexDHS_overlaps_end',
+                msg: 'Completed (exportIndexDHSOverlaps Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
           })
       });
     }
 
     exportUidTrackElements() {
-      this.bc.postMessage({
-        state: 'export_uid_track_element_midpoint_start',
-        msg: 'Begin UID track element midpoint export worker processing',
-        uid: this.id,
-        sid: this.sessionId,
-      });
+      try {
+        this.bc.postMessage({
+          state: 'export_uid_track_element_midpoint_start',
+          msg: 'Begin UID track element midpoint export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
       this.worker.then((tileFunctions) => {
         tileFunctions
           .exportUidTrackElements(
@@ -1041,13 +1059,15 @@ varying vec4 vColor;
                 this.signalMatrixExportData = null;
               }
 
-              this.bc.postMessage({
-                state: 'export_uid_track_element_midpoint_end',
-                msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
-                uid: this.id,
-                sid: this.sessionId,
-                data: toExport,
-              });
+              try {
+                this.bc.postMessage({
+                  state: 'export_uid_track_element_midpoint_end',
+                  msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                  uid: this.id,
+                  sid: this.sessionId,
+                  data: toExport,
+                });
+              } catch (e) {}
             }
             else {
               if (!this.uidTrackElementMidpointExportData.rangeExtension) {
@@ -1084,13 +1104,15 @@ varying vec4 vColor;
                   this.signalMatrixExportData = null;
                 }
   
-                this.bc.postMessage({
-                  state: 'export_uid_track_element_midpoint_end',
-                  msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
-                  uid: this.id,
-                  sid: this.sessionId,
-                  data: toExport,
-                });
+                try {
+                  this.bc.postMessage({
+                    state: 'export_uid_track_element_midpoint_end',
+                    msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                    uid: this.id,
+                    sid: this.sessionId,
+                    data: toExport,
+                  });
+                } catch (e) {}
               }
               else {
                 this.exportUidTrackElements();
@@ -1102,12 +1124,14 @@ varying vec4 vColor;
 
     exportBED12Layout() {
       // console.log(`exportBED12Layout called`);
-      this.bc.postMessage({
-        state: 'export_bed12_start',
-        msg: 'Begin BED12 export worker processing',
-        uid: this.id,
-        sid: this.sessionId,
-      });
+      try {
+        this.bc.postMessage({
+          state: 'export_bed12_start',
+          msg: 'Begin BED12 export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
       this.worker.then((tileFunctions) => {
         tileFunctions
           .exportSegmentsAsBED12(
@@ -1149,13 +1173,15 @@ varying vec4 vColor;
               this.uidTrackElementMidpointExportData = null;
             }
 
-            this.bc.postMessage({
-              state: 'export_bed12_end',
-              msg: 'Completed (exportBED12Layout Promise fulfillment)',
-              uid: this.id,
-              sid: this.sessionId,
-              data: toExport,
-            });
+            try {
+              this.bc.postMessage({
+                state: 'export_bed12_end',
+                msg: 'Completed (exportBED12Layout Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
           })
       });
     }
@@ -1170,12 +1196,14 @@ varying vec4 vColor;
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
         this.loadingText.text = 'Rendering...';
-        this.bc.postMessage({
-          state: 'update_start',
-          msg: this.loadingText.text,
-          uid: this.id,
-          sid: this.sessionId,
-        });
+        try {
+          this.bc.postMessage({
+            state: 'update_start',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
       }
       else {
         // console.log(`updateExistingGraphics (A) | ${this.id}`);
@@ -1215,7 +1243,9 @@ varying vec4 vColor;
                 elapsedTime: elapsedTimeA,
               };
               // console.log(`${JSON.stringify(msg)}`);
-              this.bc.postMessage(msg);
+              try {
+                this.bc.postMessage(msg);
+              } catch (e) {}
             });
         });
         return;
@@ -1287,13 +1317,16 @@ varying vec4 vColor;
             if (toRender.clusterResultsToExport) {
               this.clusterResultsReadyToExport[this.id] = true;
               // if (this.id === 'd2_stim_sequel.fire.061324')  console.log(`[higlass-pileup] toRender.clusterResultsToExport ${JSON.stringify(toRender.clusterResultsToExport)}`);
-              this.bc.postMessage({
-                state: 'export_subregion_clustering_results',
-                msg: 'Completed subregion clustering',
-                uid: this.id,
-                sid: this.sessionId,
-                data: toRender.clusterResultsToExport,
-              });
+              try {
+                this.bc.postMessage({
+                  state: 'export_subregion_clustering_results',
+                  msg: 'Completed subregion clustering',
+                  uid: this.id,
+                  sid: this.sessionId,
+                  data: toRender.clusterResultsToExport,
+                });
+              } catch (e) {}
+
               toRender.clusterResultsToExport = null;
             }
 
@@ -1353,7 +1386,9 @@ varying vec4 vColor;
                 elapsedTime: elapsedTimeB,
               };
               // console.log(`${JSON.stringify(msg)}`);
-              this.bc.postMessage(msg);
+              try {
+                this.bc.postMessage(msg);
+              } catch (e) {}
 
               return;
             }
@@ -1498,7 +1533,9 @@ varying vec4 vColor;
               elapsedTime: elapsedTimeC,
             };
             // console.log(`${JSON.stringify(msg)}`);
-            this.bc.postMessage(msg);
+            try {
+              this.bc.postMessage(msg);
+            } catch (e) {}
           });
         // .catch(err => {
         //   // console.log('err:', err);
@@ -1524,12 +1561,14 @@ varying vec4 vColor;
 
       if (!this.tilesetInfo && this.bc) {
         this.loadingText.text = 'Fetching tileset info...';
-        this.bc.postMessage({
-          state: 'fetching_tileset_info',
-          msg: this.loadingText.text,
-          uid: this.id,
-          sid: this.sessionId,
-        });
+        try {
+          this.bc.postMessage({
+            state: 'fetching_tileset_info',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
         return;
       }
 
@@ -1537,22 +1576,26 @@ varying vec4 vColor;
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map((x) => x.split('|')[0])
           .join(' ')}`;
-        this.bc.postMessage({
-          state: 'fetching',
-          msg: this.loadingText.text,
-          uid: this.id,
-          sid: this.sessionId,
-        });
+        try {
+          this.bc.postMessage({
+            state: 'fetching',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
       }
 
       if (this.rendering.size && this.bc) {
         this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
-        this.bc.postMessage({
-          state: 'rendering',
-          msg: this.loadingText.text,
-          uid: this.id,
-          sid: this.sessionId,
-        });
+        try {
+          this.bc.postMessage({
+            state: 'rendering',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
       }
 
       if (!this.fetching.size && !this.rendering.size && this.tilesetInfo) {
@@ -2249,7 +2292,9 @@ varying vec4 vColor;
 
           const msg = {state: 'update_end', msg: 'Completed (calculateVisibleTiles)',  uid: this.id};
           // console.log(`${JSON.stringify(msg)}`);
-          this.bc.postMessage(msg);
+          try {
+            this.bc.postMessage(msg);
+          } catch (e) {}
 
           return;
         } else {
