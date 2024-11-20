@@ -3,7 +3,11 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
 import { BamFile } from '@gmod/bam';
-import { getSubstitutions, calculateInsertSize, areMatesRequired } from './bam-utils';
+import {
+  getSubstitutions,
+  calculateInsertSize,
+  areMatesRequired,
+} from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
 import { parseChromsizesRows, ChromosomeInfo } from './chrominfo-utils';
@@ -111,9 +115,9 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
   segment.substitutions.forEach((sub) => {
     // left soft clipped region
-    if((sub.type === "S" || sub.type === "H") && sub.pos < 0){
+    if ((sub.type === 'S' || sub.type === 'H') && sub.pos < 0) {
       fromClippingAdjustment = -sub.length;
-    }else if((sub.type === "S" || sub.type === "H") && sub.pos > 0){
+    } else if ((sub.type === 'S' || sub.type === 'H') && sub.pos > 0) {
       toClippingAdjustment = sub.length;
     }
   });
@@ -125,108 +129,103 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
 // This will group the segments by readName and assign mates to reads
 const findMates = (segments) => {
+  const segmentsByReadName = groupBy(segments, 'readName');
 
-  const segmentsByReadName = groupBy(segments, "readName");
+  Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) => {
+    if (segmentGroup.length === 2) {
+      const read = segmentGroup[0];
+      const mate = segmentGroup[1];
+      read.mate_ids = [mate.id];
+      mate.mate_ids = [read.id];
 
-  Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
-    {
-      if(segmentGroup.length === 2){
-        const read = segmentGroup[0];
-        const mate = segmentGroup[1];
-        read.mate_ids = [mate.id];
-        mate.mate_ids = [read.id];
-      }
-      else if(segmentGroup.length > 2){
-        // It might be useful to distinguish reads from chimeric alignments in the future,
-        // e.g., if we want to highlight read orientations of split reads. Not doing this for now.
-        // See flags here: https://broadinstitute.github.io/picard/explain-flags.html
-        // var supplementaryAlignmentMask = 1 << 11;
-        // var firstInPairMask = 1 << 6;
-        // const isFirstInPair = segment.flags & firstInPairMask;
-        // const isSupplementaryAlignment = segment.flags & supplementaryAlignmentMask;
+      read.mates = [mate];
+      mate.mates = [read];
+    } else if (segmentGroup.length > 2) {
+      // It might be useful to distinguish reads from chimeric alignments in the future,
+      // e.g., if we want to highlight read orientations of split reads. Not doing this for now.
+      // See flags here: https://broadinstitute.github.io/picard/explain-flags.html
+      // var supplementaryAlignmentMask = 1 << 11;
+      // var firstInPairMask = 1 << 6;
+      // const isFirstInPair = segment.flags & firstInPairMask;
+      // const isSupplementaryAlignment = segment.flags & supplementaryAlignmentMask;
 
-        // For simplicity a read will be a mate of every other read in the group.
-        // it will only be used for the mouseover and it is probably useful, if the whole group is highlighted on hover
-        const ids = segmentGroup.map((segment) => segment.id);
-        segmentGroup.forEach((segment) => {
-          segment.mate_ids = ids;
-        });
-      }
+      // For simplicity a read will be a mate of every other read in the group.
+      // it will only be used for the mouseover and it is probably useful, if the whole group is highlighted on hover
+      segmentGroup.forEach((segment) => {
+        segment.mates = segmentGroup.filter((s) => s != segment);
+        segment.mate_ids = segment.mates.map((s) => s.id);
+      });
     }
-  );
+  });
 
-  return segmentsByReadName
-}
+  return segmentsByReadName;
+};
 
 const prepareHighlightedReads = (segments, trackOptions) => {
-  
-  const outlineMateOnHover =  trackOptions.outlineMateOnHover;
+  const outlineMateOnHover = trackOptions.outlineMateOnHover;
   const highlightIS = trackOptions.highlightReadsBy.includes('insertSize');
   const highlightPO = trackOptions.highlightReadsBy.includes('pairOrientation');
-  const highlightISandPO = trackOptions.highlightReadsBy.includes('insertSizeAndPairOrientation');
+  const highlightISandPO = trackOptions.highlightReadsBy.includes(
+    'insertSizeAndPairOrientation',
+  );
 
   let segmentsByReadName;
 
   if (highlightIS || highlightPO || highlightISandPO) {
     segmentsByReadName = findMates(segments);
   } else if (outlineMateOnHover) {
-    findMates(segments);
     return;
   } else {
     return;
   }
 
-  Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) =>
-    {
-      // We are only highlighting insert size and pair orientation for normal (non chimeric reads)
-      if(segmentGroup.length === 2){
+  Object.entries(segmentsByReadName).forEach(([readName, segmentGroup]) => {
+    // We are only highlighting insert size and pair orientation for normal (non chimeric reads)
+    if (segmentGroup.length === 2) {
+      // Changes to read or mate will change the values in the original segments array (reference)
+      const read = segmentGroup[0];
+      const mate = segmentGroup[1];
+      read.colorOverride = null;
+      mate.colorOverride = null;
+      const segmentDistance = calculateInsertSize(read, mate);
+      const hasLargeInsertSize =
+        trackOptions.largeInsertSizeThreshold &&
+        segmentDistance > trackOptions.largeInsertSizeThreshold;
+      const hasSmallInsertSize =
+        trackOptions.smallInsertSizeThreshold &&
+        segmentDistance < trackOptions.smallInsertSizeThreshold;
+      const hasLLOrientation = read.strand === '+' && mate.strand === '+';
+      const hasRROrientation = read.strand === '-' && mate.strand === '-';
+      const hasRLOrientation = read.from < mate.from && read.strand === '-';
 
-        // Changes to read or mate will change the values in the original segments array (reference)
-        const read = segmentGroup[0];
-        const mate = segmentGroup[1];
-        read.colorOverride = null;
-        mate.colorOverride = null;
-        const segmentDistance = calculateInsertSize(read, mate);
-        const hasLargeInsertSize =
-          trackOptions.largeInsertSizeThreshold &&
-          segmentDistance > trackOptions.largeInsertSizeThreshold;
-        const hasSmallInsertSize =
-          trackOptions.smallInsertSizeThreshold &&
-          segmentDistance < trackOptions.smallInsertSizeThreshold;
-        const hasLLOrientation = read.strand === '+' && mate.strand === '+';
-        const hasRROrientation = read.strand === '-' && mate.strand === '-';
-        const hasRLOrientation = read.from < mate.from && read.strand === '-';
-
-        if (highlightIS) {
-          if (hasLargeInsertSize) {
-            read.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
-          } else if (hasSmallInsertSize) {
-            read.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
-          }
+      if (highlightIS) {
+        if (hasLargeInsertSize) {
+          read.colorOverride = PILEUP_COLOR_IXS.LARGE_INSERT_SIZE;
+        } else if (hasSmallInsertSize) {
+          read.colorOverride = PILEUP_COLOR_IXS.SMALL_INSERT_SIZE;
         }
-
-        if (
-          highlightPO ||
-          (highlightISandPO && (hasLargeInsertSize || hasSmallInsertSize))
-        ) {
-          if (hasLLOrientation) {
-            read.colorOverride = PILEUP_COLOR_IXS.LL;
-            read.mappingOrientation = '++';
-          } else if (hasRROrientation) {
-            read.colorOverride = PILEUP_COLOR_IXS.RR;
-            read.mappingOrientation = '--';
-          } else if (hasRLOrientation) {
-            read.colorOverride = PILEUP_COLOR_IXS.RL;
-            read.mappingOrientation = '-+';
-          }
-        }
-
-        mate.colorOverride = read.colorOverride;
-        mate.mappingOrientation = read.mappingOrientation;
       }
-    }
-  );
 
+      if (
+        highlightPO ||
+        (highlightISandPO && (hasLargeInsertSize || hasSmallInsertSize))
+      ) {
+        if (hasLLOrientation) {
+          read.colorOverride = PILEUP_COLOR_IXS.LL;
+          read.mappingOrientation = '++';
+        } else if (hasRROrientation) {
+          read.colorOverride = PILEUP_COLOR_IXS.RR;
+          read.mappingOrientation = '--';
+        } else if (hasRLOrientation) {
+          read.colorOverride = PILEUP_COLOR_IXS.RL;
+          read.mappingOrientation = '-+';
+        }
+      }
+
+      mate.colorOverride = read.colorOverride;
+      mate.mappingOrientation = read.mappingOrientation;
+    }
+  });
 };
 
 /** Convert mapped read information returned from a higlass
@@ -287,7 +286,6 @@ const bamFiles = {};
 const bamHeaders = {};
 const dataOptions = {};
 
-
 const serverInfos = {};
 
 const MAX_TILES = 20;
@@ -325,13 +323,13 @@ const serverInit = (uid, server, tilesetUid, authHeader) => {
 
 const DEFAULT_DATA_OPTIONS = {
   maxTileWidth: 2e5,
-}
+};
 
 const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
   if (!options) {
     dataOptions[uid] = DEFAULT_DATA_OPTIONS;
   } else {
-    dataOptions[uid] = {...DEFAULT_DATA_OPTIONS, ...options}
+    dataOptions[uid] = { ...DEFAULT_DATA_OPTIONS, ...options };
   }
 
   if (!bamFiles[bamUrl]) {
@@ -385,7 +383,7 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
 
   // getCoverage potentiall get calles before the chromInfos finished loading
   // Exit the function in this case
-  if(!chromInfos[chromSizesUrl]){
+  if (!chromInfos[chromSizesUrl]) {
     return {
       coverage: coverage,
       maxCoverage: maxCoverage,
@@ -398,7 +396,6 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     // Find the first position that is in the sampling set
     const firstFrom = from - (from % samplingDistance) + samplingDistance;
     for (let i = firstFrom; i < to; i = i + samplingDistance) {
-
       if (!coverage[i]) {
         coverage[i] = {
           reads: 0,
@@ -410,7 +407,7 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
             T: 0,
             N: 0,
           },
-          range: "" // Will be used to show the bounds of this coverage bin when mousing over
+          range: '', // Will be used to show the bounds of this coverage bin when mousing over
         };
       }
       coverage[i].reads++;
@@ -434,17 +431,15 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
   }
 
   const absToChr = chromInfos[chromSizesUrl].absToChr;
-  Object.entries(coverage).forEach(
-      ([pos, entry]) => {
-        const from = absToChr(pos);
-        let range = from[0] + ":" + format(',')(from[1]);
-        if(samplingDistance > 1){
-          const to = absToChr(parseInt(pos,10)+samplingDistance-1);
-          range += "-" + format(',')(to[1]);
-        }
-        entry.range = range;
-      }
-  );
+  Object.entries(coverage).forEach(([pos, entry]) => {
+    const from = absToChr(pos);
+    let range = from[0] + ':' + format(',')(from[1]);
+    if (samplingDistance > 1) {
+      const to = absToChr(parseInt(pos, 10) + samplingDistance - 1);
+      range += '-' + format(',')(to[1]);
+    }
+    entry.range = range;
+  });
 
   return {
     coverage: coverage,
@@ -499,7 +494,7 @@ const tilesetInfo = (uid) => {
 };
 
 const tile = async (uid, z, x) => {
-  const {maxTileWidth} = dataOptions[uid];
+  const { maxTileWidth } = dataOptions[uid];
 
   const { bamUrl, chromSizesUrl } = dataConfs[uid];
   const bamFile = bamFiles[bamUrl];
@@ -536,7 +531,6 @@ const tile = async (uid, z, x) => {
         };
 
         if (maxX > chromEnd) {
-          
           // the visible region extends beyond the end of this chromosome
           // fetch from the start until the end of the chromosome
           recordPromises.push(
@@ -545,11 +539,16 @@ const tile = async (uid, z, x) => {
                 chromName,
                 minX - chromStart,
                 chromEnd - chromStart,
-                fetchOptions
+                fetchOptions,
               )
               .then((records) => {
                 const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  bamRecordToJson(
+                    rec,
+                    chromName,
+                    cumPositions[i].pos,
+                    trackOptions[uid],
+                  ),
                 );
 
                 tileValues.set(
@@ -570,9 +569,14 @@ const tile = async (uid, z, x) => {
               .getRecordsForRange(chromName, startPos, endPos, fetchOptions)
               .then((records) => {
                 const mappedRecords = records.map((rec) =>
-                  bamRecordToJson(rec, chromName, cumPositions[i].pos, trackOptions[uid]),
+                  bamRecordToJson(
+                    rec,
+                    chromName,
+                    cumPositions[i].pos,
+                    trackOptions[uid],
+                  ),
                 );
-                
+
                 tileValues.set(
                   `${uid}.${z}.${x}`,
                   tileValues.get(`${uid}.${z}.${x}`).concat(mappedRecords),
@@ -701,10 +705,31 @@ const fetchTilesDebounced = async (uid, tileIds) => {
 ///////////////////////////////////////////////////
 
 // See segmentsToRows concerning the role of occupiedSpaceInRows
-function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
+function assignSegmentToRow(
+  segment,
+  occupiedSpaceInRows,
+  padding,
+  viewAsPairs,
+) {
+  // if (segment.mate_ids.length == 1)
 
-  const segmentFromWithPadding = segment.fromWithClipping - padding;
-  const segmentToWithPadding = segment.toWithClipping + padding;
+  let segmentFromWithPadding = segment.fromWithClipping - padding;
+  let segmentToWithPadding = segment.toWithClipping + padding;
+
+  if (viewAsPairs) {
+    for (let i = 0; i < segment.mates.length; i++) {
+      const mate = segment.mates[i];
+
+      const mateFromWithPadding = mate.fromWithClipping - padding;
+      const mateToWithPadding = mate.toWithClipping + padding;
+
+      segmentFromWithPadding = Math.min(
+        segmentFromWithPadding,
+        mateFromWithPadding,
+      );
+      segmentToWithPadding = Math.max(segmentToWithPadding, mateToWithPadding);
+    }
+  }
 
   // no row has been assigned - find a suitable row and update the occupied space
   if (segment.row === null || segment.row === undefined) {
@@ -717,6 +742,12 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
       const rowSpaceTo = occupiedSpaceInRows[i].to;
       if (segmentToWithPadding < rowSpaceFrom) {
         segment.row = i;
+        if (viewAsPairs) {
+          for (let mate of segment.mates) {
+            mate.row = i;
+          }
+        }
+
         occupiedSpaceInRows[i] = {
           from: segmentFromWithPadding,
           to: rowSpaceTo,
@@ -724,6 +755,12 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
         return;
       } else if (segmentFromWithPadding > rowSpaceTo) {
         segment.row = i;
+        if (viewAsPairs) {
+          for (let mate of segment.mates) {
+            mate.row = i;
+          }
+        }
+
         occupiedSpaceInRows[i] = {
           from: rowSpaceFrom,
           to: segmentToWithPadding,
@@ -733,6 +770,11 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
     }
     // There is no space in the existing rows, so add a new one.
     segment.row = occupiedSpaceInRows.length;
+    if (viewAsPairs) {
+      for (let mate of segment.mates) {
+        mate.row = occupiedSpaceInRows.length;
+      }
+    }
     occupiedSpaceInRows.push({
       from: segmentFromWithPadding,
       to: segmentToWithPadding,
@@ -757,7 +799,7 @@ function assignSegmentToRow(segment, occupiedSpaceInRows, padding) {
   }
 }
 
-function segmentsToRows(segments, optionsIn) {
+function segmentsToRows(segments, optionsIn, viewAsPairs) {
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
     optionsIn || {},
@@ -778,7 +820,12 @@ function segmentsToRows(segments, optionsIn) {
   for (let i = 0; i < prevSegments.length; i++) {
     // prevSegments contains already assigned segments. The function below therefore just
     // builds the occupiedSpaceInRows array. For this, prevSegments does not need to be sorted
-    assignSegmentToRow(prevSegments[i], occupiedSpaceInRows, padding);
+    assignSegmentToRow(
+      prevSegments[i],
+      occupiedSpaceInRows,
+      padding,
+      viewAsPairs,
+    );
   }
 
   const prevSegmentIds = new Set(prevSegments.map((x) => x.id));
@@ -790,28 +837,38 @@ function segmentsToRows(segments, optionsIn) {
   if (prevSegments.length === 0) {
     filteredSegments.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
     filteredSegments.forEach((segment) => {
-      assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+      assignSegmentToRow(segment, occupiedSpaceInRows, padding, viewAsPairs);
     });
     newSegments = filteredSegments;
   } else {
     // We subdivide the segments into those that are left/right of the existing previous segments
     // Note that prevSegments is sorted
     const cutoff =
-      (prevSegments[0].fromWithClipping + prevSegments[prevSegments.length - 1].to) / 2;
-    const newSegmentsLeft = filteredSegments.filter((x) => x.fromWithClipping <= cutoff);
+      (prevSegments[0].fromWithClipping +
+        prevSegments[prevSegments.length - 1].to) /
+      2;
+    const newSegmentsLeft = filteredSegments.filter(
+      (x) => x.fromWithClipping <= cutoff,
+    );
     // The sort order for new segments that are appended left is reversed
     newSegmentsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
     newSegmentsLeft.forEach((segment) => {
-      assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+      assignSegmentToRow(segment, occupiedSpaceInRows, padding, viewAsPairs);
     });
 
-    const newSegmentsRight = filteredSegments.filter((x) => x.fromWithClipping > cutoff);
+    const newSegmentsRight = filteredSegments.filter(
+      (x) => x.fromWithClipping > cutoff,
+    );
     newSegmentsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
     newSegmentsRight.forEach((segment) => {
       assignSegmentToRow(segment, occupiedSpaceInRows, padding);
     });
 
-    newSegments = newSegmentsLeft.concat(prevSegments, newSegmentsRight);
+    newSegments = newSegmentsLeft.concat(
+      prevSegments,
+      newSegmentsRight,
+      viewAsPairs,
+    );
   }
 
   const outputRows = [];
@@ -844,7 +901,6 @@ const renderSegments = (
   prevRows,
   trackOptions,
 ) => {
-
   const allSegments = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
@@ -863,9 +919,13 @@ const renderSegments = (
 
   let segmentList = Object.values(allSegments);
 
-  if(trackOptions.minMappingQuality > 0){
-    segmentList = segmentList.filter((s) => s.mapq >= trackOptions.minMappingQuality)
+  if (trackOptions.minMappingQuality > 0) {
+    segmentList = segmentList.filter(
+      (s) => s.mapq >= trackOptions.minMappingQuality,
+    );
   }
+
+  if (areMatesRequired(trackOptions)) findMates(segmentList);
 
   prepareHighlightedReads(segmentList, trackOptions);
 
@@ -887,7 +947,7 @@ const renderSegments = (
       (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
     );
   }
-  
+
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
   for (let i = 0; i < segmentList.length; i++) {
@@ -912,9 +972,13 @@ const renderSegments = (
 
   // calculate the the rows of reads for each group
   for (let key of Object.keys(grouped)) {
-    const rows = segmentsToRows(grouped[key], {
-      prevRows: (prevRows[key] && prevRows[key].rows) || [],
-    });
+    const rows = segmentsToRows(
+      grouped[key],
+      {
+        prevRows: (prevRows[key] && prevRows[key].rows) || [],
+      },
+      trackOptions.viewAsPairs,
+    );
     // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
     // Therefore we get rid of everything else to save memory and increase performance
     grouped[key] = {};
@@ -1095,8 +1159,14 @@ const renderSegments = (
         xLeft = from;
         xRight = to;
 
-        addRect(xLeft, yTop, xRight - xLeft, height, segment.colorOverride || segment.color);
-        
+        addRect(
+          xLeft,
+          yTop,
+          xRight - xLeft,
+          height,
+          segment.colorOverride || segment.color,
+        );
+
         for (const substitution of segment.substitutions) {
           xLeft = xScale(segment.from + substitution.pos);
           const width = Math.max(1, xScale(substitution.length) - xScale(0));

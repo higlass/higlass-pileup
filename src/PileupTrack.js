@@ -1,6 +1,11 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
+import {
+  PILEUP_COLORS,
+  cigarTypeToText,
+  areMatesRequired,
+  calculateInsertSize,
+} from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -206,13 +211,11 @@ const PileupTrack = (HGC, ...args) => {
       this.pLabel.addChild(this.loadingText);
 
       this.externalInit(options);
-      
     }
 
-    // Some of the initialization code is factored out, so that we can 
+    // Some of the initialization code is factored out, so that we can
     // reset/reinitialize if an option change requires it
-    externalInit(options){
-
+    externalInit(options) {
       // we scale the entire view up until a certain point
       // at which point we redraw everything to get rid of
       // artifacts
@@ -236,7 +239,6 @@ const PileupTrack = (HGC, ...args) => {
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
-      
 
       this.fetching = new Set();
       this.rendering = new Set();
@@ -250,7 +252,6 @@ const PileupTrack = (HGC, ...args) => {
       }
 
       this.setUpShaderAndTextures();
-
     }
 
     initTile() {}
@@ -274,7 +275,11 @@ const PileupTrack = (HGC, ...args) => {
     setUpShaderAndTextures() {
       const colorDict = PILEUP_COLORS;
 
-      if (this.options && this.options.colorScale && this.options.colorScale.length == 6) {
+      if (
+        this.options &&
+        this.options.colorScale &&
+        this.options.colorScale.length == 6
+      ) {
         [
           colorDict.A,
           colorDict.T,
@@ -283,8 +288,11 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.N,
           colorDict.X,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      }
-      else if (this.options && this.options.colorScale && this.options.colorScale.length == 11) {
+      } else if (
+        this.options &&
+        this.options.colorScale &&
+        this.options.colorScale.length == 11
+      ) {
         [
           colorDict.A,
           colorDict.T,
@@ -298,8 +306,10 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.RR,
           colorDict.RL,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      } else if(this.options && this.options.colorScale){
-        console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
+      } else if (this.options && this.options.colorScale) {
+        console.error(
+          'colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.',
+        );
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -682,14 +692,21 @@ varying vec4 vColor;
                   }
 
                   const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
-                  const chimericReadHtml = read.mate_ids.length > 1 ? `<span style="color:red;">Chimeric alignment</span><br>`: ``;
+                  const chimericReadHtml =
+                    read.mate_ids.length > 1
+                      ? `<span style="color:red;">Chimeric alignment</span><br>`
+                      : ``;
 
                   let mappingOrientationHtml = ``;
                   if (read.mappingOrientation) {
                     let style = ``;
                     if (read.colorOverride) {
-                      const color = Object.keys(PILEUP_COLORS)[read.colorOverride];
-                      const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
+                      const color = Object.keys(PILEUP_COLORS)[
+                        read.colorOverride
+                      ];
+                      const htmlColor = this.colorArrayToString(
+                        PILEUP_COLORS[color],
+                      );
                       style = `style="color:${htmlColor};"`;
                     }
                     mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
@@ -763,13 +780,11 @@ varying vec4 vColor;
       return '';
     }
 
-    getInsertSizeMouseoverHtml(read){
+    getInsertSizeMouseoverHtml(read) {
       let insertSizeHtml = ``;
       if (
         this.options.highlightReadsBy.includes('insertSize') ||
-        this.options.highlightReadsBy.includes(
-          'insertSizeAndPairOrientation',
-        )
+        this.options.highlightReadsBy.includes('insertSizeAndPairOrientation')
       ) {
         if (
           read.mate_ids.length === 1 &&
@@ -780,30 +795,32 @@ varying vec4 vColor;
           const insertSize = calculateInsertSize(read, mate);
           let style = ``;
           if (
-            ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
-            ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
+            ('largeInsertSizeThreshold' in this.options &&
+              insertSize > this.options.largeInsertSizeThreshold) ||
+            ('smallInsertSizeThreshold' in this.options &&
+              insertSize < this.options.smallInsertSizeThreshold)
           ) {
-            const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
+            const color = Object.keys(PILEUP_COLORS)[
+              read.colorOverride || read.color
+            ];
             const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
             style = `style="color:${htmlColor};"`;
-          } 
+          }
           insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
         }
       }
       return insertSizeHtml;
     }
 
-    outlineMate(read, yScaleBand){
+    outlineMate(read, yScaleBand) {
       read.mate_ids.forEach((mate_id) => {
-        if(!this.readsById[mate_id]){
+        if (!this.readsById[mate_id]) {
           return;
         }
         const mate = this.readsById[mate_id];
         // We assume the mate height is the same, but width might be different
-        const mate_width =
-          this._xScale(mate.to) - this._xScale(mate.from);
-        const mate_height =
-          yScaleBand.bandwidth() * this.valueScaleTransform.k;
+        const mate_width = this._xScale(mate.to) - this._xScale(mate.from);
+        const mate_height = yScaleBand.bandwidth() * this.valueScaleTransform.k;
         const mate_xPos = this._xScale(mate.from);
         const mate_yPos = transformY(
           this.yScaleBands[mate.groupKey](mate.row),
@@ -821,7 +838,6 @@ varying vec4 vColor;
         );
       });
       this.animate();
-
     }
 
     calculateZoomLevel() {
@@ -1080,6 +1096,7 @@ PileupTrack.config = {
     'highlightReadsBy',
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
+    'viewAsPairs',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -1104,7 +1121,8 @@ PileupTrack.config = {
     collapseWhenMaxTileWidthReached: false,
     minMappingQuality: 0,
     highlightReadsBy: [],
-    largeInsertSizeThreshold: 1000
+    largeInsertSizeThreshold: 1000,
+    viewAsPairs: false,
   },
   optionsInfo: {
     outlineReadOnHover: {
@@ -1141,28 +1159,19 @@ PileupTrack.config = {
           name: 'None',
         },
         insertSize: {
-          value: [
-            "insertSize"
-          ],
+          value: ['insertSize'],
           name: 'Insert size',
         },
         pairOrientation: {
-          value: [
-            "pairOrientation"
-          ],
+          value: ['pairOrientation'],
           name: 'Pair orientation',
         },
         insertSizeAndPairOrientation: {
-          value: [
-            "insertSizeAndPairOrientation"
-          ],
+          value: ['insertSizeAndPairOrientation'],
           name: 'Insert size and pair orientation',
         },
         insertSizeOrPairOrientation: {
-          value: [
-            "insertSize",
-            "pairOrientation"
-          ],
+          value: ['insertSize', 'pairOrientation'],
           name: 'Insert size or pair orientation',
         },
       },
@@ -1198,6 +1207,19 @@ PileupTrack.config = {
     },
     showCoverage: {
       name: 'Show coverage',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    viewAsPairs: {
+      name: 'View as pairs',
       inlineOptions: {
         yes: {
           value: true,
