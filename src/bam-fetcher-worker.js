@@ -705,34 +705,19 @@ const fetchTilesDebounced = async (uid, tileIds) => {
 ///////////////////////////////////////////////////
 
 // See segmentsToRows concerning the role of occupiedSpaceInRows
-function assignSegmentToRow(
-  segment,
+function assignSectionToRow(
+  section,
   occupiedSpaceInRows,
   padding,
   viewAsPairs,
 ) {
   // if (segment.mate_ids.length == 1)
 
-  let segmentFromWithPadding = segment.fromWithClipping - padding;
-  let segmentToWithPadding = segment.toWithClipping + padding;
-
-  if (viewAsPairs) {
-    for (let i = 0; i < segment.mates.length; i++) {
-      const mate = segment.mates[i];
-
-      const mateFromWithPadding = mate.fromWithClipping - padding;
-      const mateToWithPadding = mate.toWithClipping + padding;
-
-      segmentFromWithPadding = Math.min(
-        segmentFromWithPadding,
-        mateFromWithPadding,
-      );
-      segmentToWithPadding = Math.max(segmentToWithPadding, mateToWithPadding);
-    }
-  }
+  let segmentFromWithPadding = section.fromWithClipping - padding;
+  let segmentToWithPadding = section.toWithClipping + padding;
 
   // no row has been assigned - find a suitable row and update the occupied space
-  if (segment.row === null || segment.row === undefined) {
+  if (section.row === null || section.row === undefined) {
     // Go through each row and look if there is space for the segment
     for (let i = 0; i < occupiedSpaceInRows.length; i++) {
       if (!occupiedSpaceInRows[i]) {
@@ -741,12 +726,7 @@ function assignSegmentToRow(
       const rowSpaceFrom = occupiedSpaceInRows[i].from;
       const rowSpaceTo = occupiedSpaceInRows[i].to;
       if (segmentToWithPadding < rowSpaceFrom) {
-        segment.row = i;
-        if (viewAsPairs) {
-          for (let mate of segment.mates) {
-            mate.row = i;
-          }
-        }
+        section.row = i;
 
         occupiedSpaceInRows[i] = {
           from: segmentFromWithPadding,
@@ -754,12 +734,7 @@ function assignSegmentToRow(
         };
         return;
       } else if (segmentFromWithPadding > rowSpaceTo) {
-        segment.row = i;
-        if (viewAsPairs) {
-          for (let mate of segment.mates) {
-            mate.row = i;
-          }
-        }
+        section.row = i;
 
         occupiedSpaceInRows[i] = {
           from: rowSpaceFrom,
@@ -769,12 +744,8 @@ function assignSegmentToRow(
       }
     }
     // There is no space in the existing rows, so add a new one.
-    segment.row = occupiedSpaceInRows.length;
-    if (viewAsPairs) {
-      for (let mate of segment.mates) {
-        mate.row = occupiedSpaceInRows.length;
-      }
-    }
+    section.row = occupiedSpaceInRows.length;
+
     occupiedSpaceInRows.push({
       from: segmentFromWithPadding,
       to: segmentToWithPadding,
@@ -782,7 +753,7 @@ function assignSegmentToRow(
   }
   // segment already has a row - just update the occupied space
   else {
-    const assignedRow = segment.row;
+    const assignedRow = section.row;
     if (occupiedSpaceInRows[assignedRow]) {
       const rowSpaceFrom = occupiedSpaceInRows[assignedRow].from;
       const rowSpaceTo = occupiedSpaceInRows[assignedRow].to;
@@ -799,7 +770,7 @@ function assignSegmentToRow(
   }
 }
 
-function segmentsToRows(segments, optionsIn, viewAsPairs) {
+function sectionsToRows(sections, optionsIn, viewAsPairs) {
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
     optionsIn || {},
@@ -808,72 +779,72 @@ function segmentsToRows(segments, optionsIn, viewAsPairs) {
   // The following array contains elements fo the form
   // occupiedSpaceInRows[i] = {from: 100, to: 110}
   // This means that in row i, the space from 100 to 110 is occupied and reads cannot be placed there
-  // This array is updated with every segment that is added to the scene
+  // This array is updated with every section that is added to the scene
   let occupiedSpaceInRows = [];
-  const segmentIds = new Set(segments.map((x) => x.id));
+  const sectionIds = new Set(sections.map((x) => x.id));
 
-  // We only need those previous segments, that are in the current segments list
-  const prevSegments = prevRows
+  // We only need those previous sections, that are in the current sections list
+  const prevSections = prevRows
     .flat()
-    .filter((segment) => segmentIds.has(segment.id));
+    .filter((section) => sectionIds.has(section.id));
 
-  for (let i = 0; i < prevSegments.length; i++) {
-    // prevSegments contains already assigned segments. The function below therefore just
-    // builds the occupiedSpaceInRows array. For this, prevSegments does not need to be sorted
-    assignSegmentToRow(
-      prevSegments[i],
+  for (let i = 0; i < prevSections.length; i++) {
+    // prevSections contains already assigned sections. The function below therefore just
+    // builds the occupiedSpaceInRows array. For this, prevSections does not need to be sorted
+    assignSectionToRow(
+      prevSections[i],
       occupiedSpaceInRows,
       padding,
       viewAsPairs,
     );
   }
 
-  const prevSegmentIds = new Set(prevSegments.map((x) => x.id));
+  const prevSectionIds = new Set(prevSections.map((x) => x.id));
 
-  let newSegments = [];
-  // We need to assign rows only to those segments, that are not in the prevSegments list
-  const filteredSegments = segments.filter((x) => !prevSegmentIds.has(x.id));
+  let newSections = [];
+  // We need to assign rows only to those sections, that are not in the prevSections list
+  const filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
 
-  if (prevSegments.length === 0) {
-    filteredSegments.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
-    filteredSegments.forEach((segment) => {
-      assignSegmentToRow(segment, occupiedSpaceInRows, padding, viewAsPairs);
+  if (prevSections.length === 0) {
+    filteredSections.sort(segmentsSort);
+    filteredSections.forEach((section) => {
+      assignSectionToRow(section, occupiedSpaceInRows, padding, viewAsPairs);
     });
-    newSegments = filteredSegments;
+    newSections = filteredSections;
   } else {
-    // We subdivide the segments into those that are left/right of the existing previous segments
-    // Note that prevSegments is sorted
+    // We subdivide the sections into those that are left/right of the existing previous segments
+    // Note that prevSections is sorted
     const cutoff =
-      (prevSegments[0].fromWithClipping +
-        prevSegments[prevSegments.length - 1].to) /
+      (prevSections[0].fromWithClipping +
+        prevSections[prevSections.length - 1].toWithClipping) /
       2;
-    const newSegmentsLeft = filteredSegments.filter(
+    const newSectionsLeft = filteredSections.filter(
       (x) => x.fromWithClipping <= cutoff,
     );
-    // The sort order for new segments that are appended left is reversed
-    newSegmentsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
-    newSegmentsLeft.forEach((segment) => {
-      assignSegmentToRow(segment, occupiedSpaceInRows, padding, viewAsPairs);
+    // The sort order for new sections that are appended left is reversed
+    newSectionsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
+    newSectionsLeft.forEach((section) => {
+      assignSectionToRow(section, occupiedSpaceInRows, padding, viewAsPairs);
     });
 
-    const newSegmentsRight = filteredSegments.filter(
+    const newSectionsRight = filteredSections.filter(
       (x) => x.fromWithClipping > cutoff,
     );
-    newSegmentsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
-    newSegmentsRight.forEach((segment) => {
-      assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    newSectionsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
+    newSectionsRight.forEach((section) => {
+      assignSectionToRow(section, occupiedSpaceInRows, padding);
     });
 
-    newSegments = newSegmentsLeft.concat(
-      prevSegments,
-      newSegmentsRight,
+    newSections = newSectionsLeft.concat(
+      prevSections,
+      newSectionsRight,
       viewAsPairs,
     );
   }
 
   const outputRows = [];
   for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-    outputRows[i] = newSegments.filter((x) => x.row === i);
+    outputRows[i] = newSections.filter((x) => x.row === i);
   }
 
   return outputRows;
@@ -890,6 +861,29 @@ let allIndexesLength = STARTING_INDEXES_LENGTH;
 let allPositions = new Float32Array(allPositionsLength);
 let allColors = new Float32Array(allColorsLength);
 let allIndexes = new Int32Array(allIndexesLength);
+
+// how we sort segments
+const segmentsSort = (a, b) => a.fromWithClipping - b.fromWithClipping;
+
+// A section is a group of segments that should be rendered
+// together on one row. Segments are typically reads whereas
+// Sections are read pairs.
+const createSection = (segments) => {
+  // strands always seem to be mismatched among mates
+  // let strand = segments[0].strand;
+  // for (let i = 0; i < segments.length; i++) {
+  //   if (segments[i].strand != strand) {
+  //     console.log('Mismatched strand in section', segments);
+  //   }
+  // }
+  return {
+    fromWithClipping: Math.min(...segments.map((x) => x.fromWithClipping)),
+    toWithClipping: Math.min(...segments.map((x) => x.toWithClipping)),
+    id: segments.map((x) => x.id.toString()).join('.'),
+    segments: segments.sort(segmentsSort),
+    // strand: segments[0].strand,
+  };
+};
 
 const renderSegments = (
   uid,
@@ -925,8 +919,15 @@ const renderSegments = (
     );
   }
 
-  if (areMatesRequired(trackOptions)) findMates(segmentList);
+  let sections = [];
 
+  if (areMatesRequired(trackOptions)) {
+    sections = Object.values(findMates(segmentList)).map(createSection);
+  } else {
+    sections = segments.map((x) => createSection([x]));
+  }
+
+  console.log('sections', sections);
   prepareHighlightedReads(segmentList, trackOptions);
 
   if (areMatesRequired(trackOptions)) {
@@ -943,36 +944,46 @@ const renderSegments = (
       tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
     });
 
-    segmentList = segmentList.filter(
-      (segment) => segment.to >= tileMinPos && segment.from <= tileMaxPos,
-    );
+    for (let i = 0; i < segmentList.length; i++) {
+      const segment = segmentList[i];
+
+      if (segment.to >= tileMinPos && segment.from <= tileMaxPos) {
+        segment.in_bounds = true;
+      } else {
+        segment.in_bounds = false;
+      }
+    }
   }
 
   let [minPos, maxPos] = [Number.MAX_VALUE, -Number.MAX_VALUE];
 
   for (let i = 0; i < segmentList.length; i++) {
-    if (segmentList[i].from < minPos) {
-      minPos = segmentList[i].from;
-    }
+    if (segmentList[i].in_bounds) {
+      if (segmentList[i].from < minPos) {
+        minPos = segmentList[i].from;
+      }
 
-    if (segmentList[i].to > maxPos) {
-      maxPos = segmentList[i].to;
+      if (segmentList[i].to > maxPos) {
+        maxPos = segmentList[i].to;
+      }
     }
   }
   let grouped = null;
 
   // group by some attribute or don't
   if (groupBy) {
+    // we should only be able to group by things that are common across
+    // across all segments in a section.
     let groupByOption = trackOptions && trackOptions.groupBy;
     groupByOption = groupByOption ? groupByOption : null;
-    grouped = groupBy(segmentList, groupByOption);
+    grouped = groupBy(sections, groupByOption);
   } else {
-    grouped = { null: segmentList };
+    grouped = { null: sections };
   }
 
   // calculate the the rows of reads for each group
   for (let key of Object.keys(grouped)) {
-    const rows = segmentsToRows(
+    const rows = sectionsToRows(
       grouped[key],
       {
         prevRows: (prevRows[key] && prevRows[key].rows) || [],
@@ -1091,7 +1102,11 @@ const renderSegments = (
       Math.floor((maxPos - minPos) / maxCoverageSamples),
       1,
     );
-    const result = getCoverage(uid, segmentList, coverageSamplingDistance);
+    const result = getCoverage(
+      uid,
+      segmentList.filter((x) => x.in_bounds),
+      coverageSamplingDistance,
+    );
 
     allReadCounts = result.coverage;
     const maxReadCount = result.maxCoverage;
@@ -1152,106 +1167,108 @@ const renderSegments = (
       const height = yScale.bandwidth();
       yBottom = yTop + height;
 
-      row.map((segment, j) => {
-        const from = xScale(segment.from);
-        const to = xScale(segment.to);
+      row.map((section, j) => {
+        section.segments.map((segment) => {
+          const from = xScale(segment.from);
+          const to = xScale(segment.to);
 
-        xLeft = from;
-        xRight = to;
+          xLeft = from;
+          xRight = to;
 
-        addRect(
-          xLeft,
-          yTop,
-          xRight - xLeft,
-          height,
-          segment.colorOverride || segment.color,
-        );
+          addRect(
+            xLeft,
+            yTop,
+            xRight - xLeft,
+            height,
+            segment.colorOverride || segment.color,
+          );
 
-        for (const substitution of segment.substitutions) {
-          xLeft = xScale(segment.from + substitution.pos);
-          const width = Math.max(1, xScale(substitution.length) - xScale(0));
-          const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
-          xRight = xLeft + width;
+          for (const substitution of segment.substitutions) {
+            xLeft = xScale(segment.from + substitution.pos);
+            const width = Math.max(1, xScale(substitution.length) - xScale(0));
+            const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
+            xRight = xLeft + width;
 
-          if (substitution.variant === 'A') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
-          } else if (substitution.variant === 'C') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
-          } else if (substitution.variant === 'G') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
-          } else if (substitution.variant === 'T') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
-          } else if (substitution.type === 'S') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
-          } else if (substitution.type === 'H') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
-          } else if (substitution.type === 'X') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
-          } else if (substitution.type === 'I') {
-            addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
-          } else if (substitution.type === 'D') {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
+            if (substitution.variant === 'A') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
+            } else if (substitution.variant === 'C') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
+            } else if (substitution.variant === 'G') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
+            } else if (substitution.variant === 'T') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
+            } else if (substitution.type === 'S') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
+            } else if (substitution.type === 'H') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.H);
+            } else if (substitution.type === 'X') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
+            } else if (substitution.type === 'I') {
+              addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
+            } else if (substitution.type === 'D') {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
 
-            // add some stripes
-            const numStripes = 6;
-            const stripeWidth = 0.1;
-            for (let i = 0; i <= numStripes; i++) {
-              const xStripe = xLeft + (i * width) / numStripes;
+              // add some stripes
+              const numStripes = 6;
+              const stripeWidth = 0.1;
+              for (let i = 0; i <= numStripes; i++) {
+                const xStripe = xLeft + (i * width) / numStripes;
+                addRect(
+                  xStripe,
+                  yTop,
+                  stripeWidth,
+                  height,
+                  PILEUP_COLOR_IXS.BLACK,
+                );
+              }
+            } else if (substitution.type === 'N') {
+              // deletions so we're going to draw a thinner line
+              // across
+              const xMiddle = (yTop + yBottom) / 2;
+              const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
+
+              const yMidTop = xMiddle - delWidth / 2;
+              const yMidBottom = xMiddle + delWidth / 2;
+
               addRect(
-                xStripe,
+                xLeft,
                 yTop,
-                stripeWidth,
-                height,
-                PILEUP_COLOR_IXS.BLACK,
-              );
-            }
-          } else if (substitution.type === 'N') {
-            // deletions so we're going to draw a thinner line
-            // across
-            const xMiddle = (yTop + yBottom) / 2;
-            const delWidth = Math.min((yBottom - yTop) / 4.5, 1);
-
-            const yMidTop = xMiddle - delWidth / 2;
-            const yMidBottom = xMiddle + delWidth / 2;
-
-            addRect(
-              xLeft,
-              yTop,
-              xRight - xLeft,
-              yMidTop - yTop,
-              PILEUP_COLOR_IXS.N,
-            );
-            addRect(
-              xLeft,
-              yMidBottom,
-              width,
-              yBottom - yMidBottom,
-              PILEUP_COLOR_IXS.N,
-            );
-
-            let currPos = xLeft;
-            const DASH_LENGTH = 6;
-            const DASH_SPACE = 4;
-
-            // draw dashes
-            while (currPos <= xRight) {
-              // make sure the last dash doesn't overrun
-              const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
-
-              addRect(
-                currPos,
-                yMidTop,
-                dashLength,
-                delWidth,
+                xRight - xLeft,
+                yMidTop - yTop,
                 PILEUP_COLOR_IXS.N,
               );
-              currPos += DASH_LENGTH + DASH_SPACE;
+              addRect(
+                xLeft,
+                yMidBottom,
+                width,
+                yBottom - yMidBottom,
+                PILEUP_COLOR_IXS.N,
+              );
+
+              let currPos = xLeft;
+              const DASH_LENGTH = 6;
+              const DASH_SPACE = 4;
+
+              // draw dashes
+              while (currPos <= xRight) {
+                // make sure the last dash doesn't overrun
+                const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
+
+                addRect(
+                  currPos,
+                  yMidTop,
+                  dashLength,
+                  delWidth,
+                  PILEUP_COLOR_IXS.N,
+                );
+                currPos += DASH_LENGTH + DASH_SPACE;
+              }
+              // allready handled above
+            } else {
+              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
             }
-            // allready handled above
-          } else {
-            addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
           }
-        }
+        });
       });
     });
   }

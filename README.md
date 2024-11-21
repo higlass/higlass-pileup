@@ -25,6 +25,11 @@ The live scripts can be found at:
 
 - https://unpkg.com/higlass-pileup/dist/higlass-pileup.min.js
 
+## Things that haven't been thoroughly tested
+
+1. Group by strand when using single vs. paired end reads
+2. Group by HP tag when using single vs. paired end reads
+
 ### Client
 
 1. Make sure you load this track prior to `hglib.js`. For example:
@@ -118,6 +123,7 @@ viewing low coverage BAM files.
 ### Track options
 
 **colorScale** - Array that controls the color of substitutions and highlighted reads. It can take 6 or 11 values. 11 values are required if you want to control highlighted read colors (see the `highlightReadsBy` option). Example:
+
 ```
 "colorScale": [
   "#2c7bb6", //color of A substitutions
@@ -129,17 +135,18 @@ viewing low coverage BAM files.
   "#FF0000", //color of reads with large insert size
   "#0000D1", //color of reads with small insert size
   "#00D1D1", //color of reads with LL orientation (see https://software.broadinstitute.org/software/igv/interpreting_pair_orientations)
-  "#555CFA", //color of reads with RR orientation 
-  "#02A221", //color of reads with RL orientation 
+  "#555CFA", //color of reads with RR orientation
+  "#02A221", //color of reads with RL orientation
 ]
 ```
 
 **outlineReadOnHover** - Highlights the current read on hover.
 
-**outlineMateOnHover** - Highlights the mate of the current read on hover. If the mate is a split read, 
+**outlineMateOnHover** - Highlights the mate of the current read on hover. If the mate is a split read,
 both alignments will be highlighted.
 
 **highlightReadsBy** - Array that can take the values `insertSize`, `pairOrientation` or `insertSizeAndPairOrientation`:
+
 - if `insertSize` is set, reads that have a large or small insert size will be highlighted. The thresholds are controlled by the `largeInsertSizeThreshold` and `smallInsertSizeThreshold` track options. `largeInsertSizeThreshold` defaults to `1000`, i.e., 1000 bp. `smallInsertSizeThreshold` is not set by default, i.e, reads with small insert size won't be highlighted.
 - if `pairOrientation` is set, reads with an abnormal mapping orientation are highlighted (e.g. ++,--,-+).
 - if `insertSizeAndPairOrientation` is set, reads with an abnormal mapping orientation that also have abnormal insert sizes are highlighted.
