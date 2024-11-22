@@ -498,12 +498,14 @@ varying vec4 vColor;
               this.readsById = {};
               for (let key in this.prevRows) {
                 this.prevRows[key].rows.forEach((row) => {
-                  row.forEach((segment) => {
-                    if (segment.id in this.readsById) return;
+                  row.forEach((section) => {
+                    section.segments.forEach((segment) => {
+                      if (segment.id in this.readsById) return;
 
-                    this.readsById[segment.id] = segment;
-                    // Will be needed later in the mouseover to determine the correct yPos for the mate
-                    this.readsById[segment.id]['groupKey'] = key;
+                      this.readsById[segment.id] = segment;
+                      // Will be needed later in the mouseover to determine the correct yPos for the mate
+                      this.readsById[segment.id]['groupKey'] = key;
+                    });
                   });
                 });
               }
@@ -650,90 +652,99 @@ varying vec4 vColor;
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
 
-              for (const read of row) {
-                const readTrackFrom = this._xScale(read.from);
-                const readTrackTo = this._xScale(read.to);
+              for (const section of row) {
+                for (const read of section.segments) {
+                  const readTrackFrom = this._xScale(read.from);
+                  const readTrackTo = this._xScale(read.to);
 
-                if (readTrackFrom <= trackX && trackX <= readTrackTo) {
-                  const xPos = this._xScale(read.from);
-                  const yPos = transformY(
-                    yScaleBand(index),
-                    this.valueScaleTransform,
-                  );
+                  if (readTrackFrom <= trackX && trackX <= readTrackTo) {
+                    const xPos = this._xScale(read.from);
+                    const yPos = transformY(
+                      yScaleBand(index),
+                      this.valueScaleTransform,
+                    );
 
-                  const MAX_DIST = 10;
-                  const nearestDistance =
-                    this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
+                    const MAX_DIST = 10;
+                    const nearestDistance =
+                      this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
 
-                  const mousePos = this._xScale.invert(trackX);
-                  // find the nearest substitution (or indel)
-                  const nearestSub = findNearestSub(
-                    mousePos,
-                    read,
-                    nearestDistance,
-                  );
+                    const mousePos = this._xScale.invert(trackX);
+                    // find the nearest substitution (or indel)
+                    const nearestSub = findNearestSub(
+                      mousePos,
+                      read,
+                      nearestDistance,
+                    );
 
-                  if (this.options.outlineReadOnHover) {
-                    const width =
-                      this._xScale(read.to) - this._xScale(read.from);
-                    const height =
-                      yScaleBand.bandwidth() * this.valueScaleTransform.k;
+                    if (this.options.outlineReadOnHover) {
+                      const width =
+                        this._xScale(read.to) - this._xScale(read.from);
+                      const height =
+                        yScaleBand.bandwidth() * this.valueScaleTransform.k;
 
-                    this.mouseOverGraphics.lineStyle({
-                      width: 1,
-                      color: 0,
-                    });
-                    this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
-                    this.animate();
-                  }
-
-                  if (this.options.outlineMateOnHover) {
-                    this.outlineMate(read, yScaleBand);
-                  }
-
-                  const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
-                  const chimericReadHtml =
-                    read.mate_ids.length > 1
-                      ? `<span style="color:red;">Chimeric alignment</span><br>`
-                      : ``;
-
-                  let mappingOrientationHtml = ``;
-                  if (read.mappingOrientation) {
-                    let style = ``;
-                    if (read.colorOverride) {
-                      const color = Object.keys(PILEUP_COLORS)[
-                        read.colorOverride
-                      ];
-                      const htmlColor = this.colorArrayToString(
-                        PILEUP_COLORS[color],
+                      this.mouseOverGraphics.lineStyle({
+                        width: 1,
+                        color: 0,
+                      });
+                      this.mouseOverGraphics.drawRect(
+                        xPos,
+                        yPos,
+                        width,
+                        height,
                       );
-                      style = `style="color:${htmlColor};"`;
+                      this.animate();
                     }
-                    mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+
+                    if (this.options.outlineMateOnHover) {
+                      this.outlineMate(read, yScaleBand);
+                    }
+
+                    const insertSizeHtml = this.getInsertSizeMouseoverHtml(
+                      read,
+                    );
+                    const chimericReadHtml =
+                      read.mate_ids.length > 1
+                        ? `<span style="color:red;">Chimeric alignment</span><br>`
+                        : ``;
+
+                    let mappingOrientationHtml = ``;
+                    if (read.mappingOrientation) {
+                      let style = ``;
+                      if (read.colorOverride) {
+                        const color = Object.keys(PILEUP_COLORS)[
+                          read.colorOverride
+                        ];
+                        const htmlColor = this.colorArrayToString(
+                          PILEUP_COLORS[color],
+                        );
+                        style = `style="color:${htmlColor};"`;
+                      }
+                      mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+                    }
+
+                    let mouseOverHtml =
+                      `ID: ${read.id}<br>` +
+                      `Position: ${read.chrName}:${
+                        read.from - read.chrOffset
+                      }<br>` +
+                      `Read length: ${read.to - read.from}<br>` +
+                      `MAPQ: ${read.mapq}<br>` +
+                      `Strand: ${read.strand}<br>` +
+                      insertSizeHtml +
+                      chimericReadHtml +
+                      mappingOrientationHtml;
+
+                    if (nearestSub && nearestSub.type) {
+                      mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
+                        nearestSub.type,
+                      )} (${nearestSub.length})`;
+                    } else if (nearestSub && nearestSub.variant) {
+                      mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+                    }
+
+                    return mouseOverHtml;
+                    // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                   }
-
-                  let mouseOverHtml =
-                    `ID: ${read.id}<br>` +
-                    `Position: ${read.chrName}:${
-                      read.from - read.chrOffset
-                    }<br>` +
-                    `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mapq}<br>` +
-                    `Strand: ${read.strand}<br>` +
-                    insertSizeHtml +
-                    chimericReadHtml +
-                    mappingOrientationHtml;
-
-                  if (nearestSub && nearestSub.type) {
-                    mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
-                      nearestSub.type,
-                    )} (${nearestSub.length})`;
-                  } else if (nearestSub && nearestSub.variant) {
-                    mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
-                  }
-
-                  return mouseOverHtml;
-                  // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                 }
               }
             }

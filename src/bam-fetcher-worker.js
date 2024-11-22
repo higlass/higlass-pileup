@@ -161,7 +161,7 @@ const findMates = (segments) => {
   return segmentsByReadName;
 };
 
-const prepareHighlightedReads = (segments, trackOptions) => {
+const prepareHighlightedReads = (segmentsByReadName, trackOptions) => {
   const outlineMateOnHover = trackOptions.outlineMateOnHover;
   const highlightIS = trackOptions.highlightReadsBy.includes('insertSize');
   const highlightPO = trackOptions.highlightReadsBy.includes('pairOrientation');
@@ -169,10 +169,8 @@ const prepareHighlightedReads = (segments, trackOptions) => {
     'insertSizeAndPairOrientation',
   );
 
-  let segmentsByReadName;
-
   if (highlightIS || highlightPO || highlightISandPO) {
-    segmentsByReadName = findMates(segments);
+    // segmentsByReadName = findMates(segments);
   } else if (outlineMateOnHover) {
     return;
   } else {
@@ -878,7 +876,7 @@ const createSection = (segments) => {
   // }
   return {
     fromWithClipping: Math.min(...segments.map((x) => x.fromWithClipping)),
-    toWithClipping: Math.min(...segments.map((x) => x.toWithClipping)),
+    toWithClipping: Math.max(...segments.map((x) => x.toWithClipping)),
     id: segments.map((x) => x.id.toString()).join('.'),
     segments: segments.sort(segmentsSort),
     // strand: segments[0].strand,
@@ -922,13 +920,12 @@ const renderSegments = (
   let sections = [];
 
   if (areMatesRequired(trackOptions)) {
-    sections = Object.values(findMates(segmentList)).map(createSection);
+    const segmentsByReadName = findMates(segmentList);
+    prepareHighlightedReads(segmentList, trackOptions);
+    sections = Object.values(segmentsByReadName).map(createSection);
   } else {
     sections = segments.map((x) => createSection([x]));
   }
-
-  console.log('sections', sections);
-  prepareHighlightedReads(segmentList, trackOptions);
 
   if (areMatesRequired(trackOptions)) {
     // At this point reads are colored correctly, but we only want to align those reads that
@@ -990,6 +987,14 @@ const renderSegments = (
       },
       trackOptions.viewAsPairs,
     );
+
+    for (let row of rows) {
+      for (let section of row) {
+        for (let segment of section.segments) {
+          segment.row = section.row;
+        }
+      }
+    }
     // At this point grouped[key] also contains all the segments (as array), but we only need grouped[key].rows
     // Therefore we get rid of everything else to save memory and increase performance
     grouped[key] = {};
@@ -1269,6 +1274,23 @@ const renderSegments = (
             }
           }
         });
+
+        for (let i = 1; i < section.segments.length; i++) {
+          // draw the rects connecting read pairs
+          const mate1End = xScale(section.segments[i - 1].toWithClipping);
+          const mate2Start = xScale(section.segments[i].fromWithClipping);
+
+          let mateConnectorStart = Math.min(mate2Start, mate1End);
+          let mateConnectorEnd = Math.max(mate2Start, mate1End);
+
+          addRect(
+            mateConnectorStart,
+            yTop + (7 * height) / 16,
+            mateConnectorEnd - mateConnectorStart,
+            height / 8,
+            PILEUP_COLOR_IXS.BLACK_05,
+          );
+        }
       });
     });
   }
