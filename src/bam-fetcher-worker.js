@@ -1275,21 +1275,23 @@ const renderSegments = (
           }
         });
 
-        for (let i = 1; i < section.segments.length; i++) {
-          // draw the rects connecting read pairs
-          const mate1End = xScale(section.segments[i - 1].toWithClipping);
-          const mate2Start = xScale(section.segments[i].fromWithClipping);
+        if (trackOptions.viewAsPairs) {
+          for (let i = 1; i < section.segments.length; i++) {
+            // draw the rects connecting read pairs
+            const mate1End = xScale(section.segments[i - 1].toWithClipping);
+            const mate2Start = xScale(section.segments[i].fromWithClipping);
 
-          let mateConnectorStart = Math.min(mate2Start, mate1End);
-          let mateConnectorEnd = Math.max(mate2Start, mate1End);
+            let mateConnectorStart = Math.min(mate2Start, mate1End);
+            let mateConnectorEnd = Math.max(mate2Start, mate1End);
 
-          addRect(
-            mateConnectorStart,
-            yTop + (7 * height) / 16,
-            mateConnectorEnd - mateConnectorStart,
-            height / 8,
-            PILEUP_COLOR_IXS.BLACK_05,
-          );
+            addRect(
+              mateConnectorStart,
+              yTop + (7 * height) / 16,
+              mateConnectorEnd - mateConnectorStart,
+              height / 8,
+              PILEUP_COLOR_IXS.BLACK_05,
+            );
+          }
         }
       });
     });
