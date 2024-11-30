@@ -115,12 +115,14 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
   segment.substitutions.forEach((sub) => {
     // left soft clipped region
+    // make sure to change this in tabularJsonToRowJson
     if ((sub.type === 'S' || sub.type === 'H') && sub.pos < 0) {
       fromClippingAdjustment = -sub.length;
     } else if ((sub.type === 'S' || sub.type === 'H') && sub.pos > 0) {
       toClippingAdjustment = sub.length;
     }
   });
+
   segment.fromWithClipping += fromClippingAdjustment;
   segment.toWithClipping += toClippingAdjustment;
 
@@ -234,6 +236,8 @@ const tabularJsonToRowJson = (tabularJson) => {
 
   const headers = Object.keys(tabularJson);
 
+  console.log('tabularJson', tabularJson);
+
   for (let i = 0; i < tabularJson[headers[0]].length; i++) {
     const newRow = {
       row: null,
@@ -248,6 +252,14 @@ const tabularJsonToRowJson = (tabularJson) => {
     newRow.from += 1;
     newRow.to += 1;
 
+    newRow.from += newRow.chrOffset;
+    newRow.to += newRow.chrOffset;
+    newRow.color = PILEUP_COLOR_IXS.BG;
+    newRow.mate_ids = [];
+
+    newRow.fromWithClipping = newRow.from;
+    newRow.toWithClipping = newRow.to;
+
     if (newRow.variants) {
       // server has returned information about variants in the form
       // (queryPos, referencePos, substitution)
@@ -260,17 +272,34 @@ const tabularJsonToRowJson = (tabularJson) => {
     }
 
     if (newRow.cigars) {
+      let fromClippingAdjustment = 0;
+      let toClippingAdjustment = 0;
+
       // server has returned cigar information
       // format: x[0] : start of region
       // x[1]: type of region (e.g. 'S', 'H', 'I', etc...)
       // x[2]: the length of the region
       for (const x of newRow.cigars) {
-        newRow.substitutions.push({
+        const sub = {
           pos: x[0] - (newRow.from - newRow.chrOffset) + 1,
           type: x[1].toUpperCase(),
           length: x[2],
-        });
+        };
+
+        newRow.substitutions.push(sub);
+
+        // left soft clipped region
+        // Make sure to change this in bamRecordToJson as well
+
+        if ((sub.type === 'S' || sub.type === 'H') && sub.pos < 0) {
+          fromClippingAdjustment = -sub.length;
+        } else if ((sub.type === 'S' || sub.type === 'H') && sub.pos > 0) {
+          toClippingAdjustment = sub.length;
+        }
       }
+
+      newRow.fromWithClipping += fromClippingAdjustment;
+      newRow.toWithClipping += toClippingAdjustment;
     }
 
     rowJson.push(newRow);
@@ -924,7 +953,7 @@ const renderSegments = (
     prepareHighlightedReads(segmentList, trackOptions);
     sections = Object.values(segmentsByReadName).map(createSection);
   } else {
-    sections = segments.map((x) => createSection([x]));
+    sections = segmentList.map((x) => createSection([x]));
   }
 
   if (areMatesRequired(trackOptions)) {
