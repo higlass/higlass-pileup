@@ -221,14 +221,15 @@ export const getSubstitutions = (segment, seq) => {
 export const areMatesRequired = (trackOptions) => {
   return (
     trackOptions.highlightReadsBy.length > 0 ||
-    trackOptions.outlineMateOnHover
+    trackOptions.outlineMateOnHover ||
+    trackOptions.viewAsPairs
   );
 };
 
 /**
  * Calculates insert size between read segements
  */
- export const calculateInsertSize = (segment1, segment2) => {
+export const calculateInsertSize = (segment1, segment2) => {
   return segment1.from < segment2.from
     ? Math.max(0, segment2.from - segment1.to)
     : Math.max(0, segment1.from - segment2.to);

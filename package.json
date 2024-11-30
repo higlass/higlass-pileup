@@ -55,7 +55,7 @@
   "scripts": {
     "build-es": "rm -rf ./es/* && npx babel ./src/ --out-dir ./es/ --env-name esm",
     "build": "npm run build-es && webpack --mode production",
-    "start": "webpack serve --mode development -c webpack.config.js",
+    "start": "webpack serve --mode development --port 8087 -c webpack.config.js",
     "prerelease": "rm -rf dist/*; npm run build; zip -r dist.zip dist"
   },
   "dependencies": {

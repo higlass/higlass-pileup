@@ -1,6 +1,11 @@
 import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
-import { PILEUP_COLORS, cigarTypeToText, areMatesRequired, calculateInsertSize } from './bam-utils';
+import {
+  PILEUP_COLORS,
+  cigarTypeToText,
+  areMatesRequired,
+  calculateInsertSize,
+} from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -206,13 +211,11 @@ const PileupTrack = (HGC, ...args) => {
       this.pLabel.addChild(this.loadingText);
 
       this.externalInit(options);
-      
     }
 
-    // Some of the initialization code is factored out, so that we can 
+    // Some of the initialization code is factored out, so that we can
     // reset/reinitialize if an option change requires it
-    externalInit(options){
-
+    externalInit(options) {
       // we scale the entire view up until a certain point
       // at which point we redraw everything to get rid of
       // artifacts
@@ -236,7 +239,6 @@ const PileupTrack = (HGC, ...args) => {
 
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
-      
 
       this.fetching = new Set();
       this.rendering = new Set();
@@ -250,7 +252,6 @@ const PileupTrack = (HGC, ...args) => {
       }
 
       this.setUpShaderAndTextures();
-
     }
 
     initTile() {}
@@ -274,7 +275,11 @@ const PileupTrack = (HGC, ...args) => {
     setUpShaderAndTextures() {
       const colorDict = PILEUP_COLORS;
 
-      if (this.options && this.options.colorScale && this.options.colorScale.length == 6) {
+      if (
+        this.options &&
+        this.options.colorScale &&
+        this.options.colorScale.length == 6
+      ) {
         [
           colorDict.A,
           colorDict.T,
@@ -283,8 +288,11 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.N,
           colorDict.X,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      }
-      else if (this.options && this.options.colorScale && this.options.colorScale.length == 11) {
+      } else if (
+        this.options &&
+        this.options.colorScale &&
+        this.options.colorScale.length == 11
+      ) {
         [
           colorDict.A,
           colorDict.T,
@@ -298,8 +306,10 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.RR,
           colorDict.RL,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      } else if(this.options && this.options.colorScale){
-        console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
+      } else if (this.options && this.options.colorScale) {
+        console.error(
+          'colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.',
+        );
       }
 
       if (this.options && this.options.plusStrandColor) {
@@ -488,12 +498,14 @@ varying vec4 vColor;
               this.readsById = {};
               for (let key in this.prevRows) {
                 this.prevRows[key].rows.forEach((row) => {
-                  row.forEach((segment) => {
-                    if (segment.id in this.readsById) return;
+                  row.forEach((section) => {
+                    section.segments.forEach((segment) => {
+                      if (segment.id in this.readsById) return;
 
-                    this.readsById[segment.id] = segment;
-                    // Will be needed later in the mouseover to determine the correct yPos for the mate
-                    this.readsById[segment.id]['groupKey'] = key;
+                      this.readsById[segment.id] = segment;
+                      // Will be needed later in the mouseover to determine the correct yPos for the mate
+                      this.readsById[segment.id]['groupKey'] = key;
+                    });
                   });
                 });
               }
@@ -640,83 +652,99 @@ varying vec4 vColor;
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
 
-              for (const read of row) {
-                const readTrackFrom = this._xScale(read.from);
-                const readTrackTo = this._xScale(read.to);
+              for (const section of row) {
+                for (const read of section.segments) {
+                  const readTrackFrom = this._xScale(read.from);
+                  const readTrackTo = this._xScale(read.to);
 
-                if (readTrackFrom <= trackX && trackX <= readTrackTo) {
-                  const xPos = this._xScale(read.from);
-                  const yPos = transformY(
-                    yScaleBand(index),
-                    this.valueScaleTransform,
-                  );
+                  if (readTrackFrom <= trackX && trackX <= readTrackTo) {
+                    const xPos = this._xScale(read.from);
+                    const yPos = transformY(
+                      yScaleBand(index),
+                      this.valueScaleTransform,
+                    );
 
-                  const MAX_DIST = 10;
-                  const nearestDistance =
-                    this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
+                    const MAX_DIST = 10;
+                    const nearestDistance =
+                      this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
 
-                  const mousePos = this._xScale.invert(trackX);
-                  // find the nearest substitution (or indel)
-                  const nearestSub = findNearestSub(
-                    mousePos,
-                    read,
-                    nearestDistance,
-                  );
+                    const mousePos = this._xScale.invert(trackX);
+                    // find the nearest substitution (or indel)
+                    const nearestSub = findNearestSub(
+                      mousePos,
+                      read,
+                      nearestDistance,
+                    );
 
-                  if (this.options.outlineReadOnHover) {
-                    const width =
-                      this._xScale(read.to) - this._xScale(read.from);
-                    const height =
-                      yScaleBand.bandwidth() * this.valueScaleTransform.k;
+                    if (this.options.outlineReadOnHover) {
+                      const width =
+                        this._xScale(read.to) - this._xScale(read.from);
+                      const height =
+                        yScaleBand.bandwidth() * this.valueScaleTransform.k;
 
-                    this.mouseOverGraphics.lineStyle({
-                      width: 1,
-                      color: 0,
-                    });
-                    this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
-                    this.animate();
-                  }
-
-                  if (this.options.outlineMateOnHover) {
-                    this.outlineMate(read, yScaleBand);
-                  }
-
-                  const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
-                  const chimericReadHtml = read.mate_ids.length > 1 ? `<span style="color:red;">Chimeric alignment</span><br>`: ``;
-
-                  let mappingOrientationHtml = ``;
-                  if (read.mappingOrientation) {
-                    let style = ``;
-                    if (read.colorOverride) {
-                      const color = Object.keys(PILEUP_COLORS)[read.colorOverride];
-                      const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
-                      style = `style="color:${htmlColor};"`;
+                      this.mouseOverGraphics.lineStyle({
+                        width: 1,
+                        color: 0,
+                      });
+                      this.mouseOverGraphics.drawRect(
+                        xPos,
+                        yPos,
+                        width,
+                        height,
+                      );
+                      this.animate();
                     }
-                    mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+
+                    if (this.options.outlineMateOnHover) {
+                      this.outlineMate(read, yScaleBand);
+                    }
+
+                    const insertSizeHtml = this.getInsertSizeMouseoverHtml(
+                      read,
+                    );
+                    const chimericReadHtml =
+                      read.mate_ids.length > 1
+                        ? `<span style="color:red;">Chimeric alignment</span><br>`
+                        : ``;
+
+                    let mappingOrientationHtml = ``;
+                    if (read.mappingOrientation) {
+                      let style = ``;
+                      if (read.colorOverride) {
+                        const color = Object.keys(PILEUP_COLORS)[
+                          read.colorOverride
+                        ];
+                        const htmlColor = this.colorArrayToString(
+                          PILEUP_COLORS[color],
+                        );
+                        style = `style="color:${htmlColor};"`;
+                      }
+                      mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+                    }
+
+                    let mouseOverHtml =
+                      `ID: ${read.id}<br>` +
+                      `Position: ${read.chrName}:${
+                        read.from - read.chrOffset
+                      }<br>` +
+                      `Read length: ${read.to - read.from}<br>` +
+                      `MAPQ: ${read.mapq}<br>` +
+                      `Strand: ${read.strand}<br>` +
+                      insertSizeHtml +
+                      chimericReadHtml +
+                      mappingOrientationHtml;
+
+                    if (nearestSub && nearestSub.type) {
+                      mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
+                        nearestSub.type,
+                      )} (${nearestSub.length})`;
+                    } else if (nearestSub && nearestSub.variant) {
+                      mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+                    }
+
+                    return mouseOverHtml;
+                    // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                   }
-
-                  let mouseOverHtml =
-                    `ID: ${read.id}<br>` +
-                    `Position: ${read.chrName}:${
-                      read.from - read.chrOffset
-                    }<br>` +
-                    `Read length: ${read.to - read.from}<br>` +
-                    `MAPQ: ${read.mapq}<br>` +
-                    `Strand: ${read.strand}<br>` +
-                    insertSizeHtml +
-                    chimericReadHtml +
-                    mappingOrientationHtml;
-
-                  if (nearestSub && nearestSub.type) {
-                    mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
-                      nearestSub.type,
-                    )} (${nearestSub.length})`;
-                  } else if (nearestSub && nearestSub.variant) {
-                    mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
-                  }
-
-                  return mouseOverHtml;
-                  // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                 }
               }
             }
@@ -763,13 +791,11 @@ varying vec4 vColor;
       return '';
     }
 
-    getInsertSizeMouseoverHtml(read){
+    getInsertSizeMouseoverHtml(read) {
       let insertSizeHtml = ``;
       if (
         this.options.highlightReadsBy.includes('insertSize') ||
-        this.options.highlightReadsBy.includes(
-          'insertSizeAndPairOrientation',
-        )
+        this.options.highlightReadsBy.includes('insertSizeAndPairOrientation')
       ) {
         if (
           read.mate_ids.length === 1 &&
@@ -780,30 +806,32 @@ varying vec4 vColor;
           const insertSize = calculateInsertSize(read, mate);
           let style = ``;
           if (
-            ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
-            ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
+            ('largeInsertSizeThreshold' in this.options &&
+              insertSize > this.options.largeInsertSizeThreshold) ||
+            ('smallInsertSizeThreshold' in this.options &&
+              insertSize < this.options.smallInsertSizeThreshold)
           ) {
-            const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
+            const color = Object.keys(PILEUP_COLORS)[
+              read.colorOverride || read.color
+            ];
             const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
             style = `style="color:${htmlColor};"`;
-          } 
+          }
           insertSizeHtml = `Insert size: <span ${style}>${insertSize}</span><br>`;
         }
       }
       return insertSizeHtml;
     }
 
-    outlineMate(read, yScaleBand){
+    outlineMate(read, yScaleBand) {
       read.mate_ids.forEach((mate_id) => {
-        if(!this.readsById[mate_id]){
+        if (!this.readsById[mate_id]) {
           return;
         }
         const mate = this.readsById[mate_id];
         // We assume the mate height is the same, but width might be different
-        const mate_width =
-          this._xScale(mate.to) - this._xScale(mate.from);
-        const mate_height =
-          yScaleBand.bandwidth() * this.valueScaleTransform.k;
+        const mate_width = this._xScale(mate.to) - this._xScale(mate.from);
+        const mate_height = yScaleBand.bandwidth() * this.valueScaleTransform.k;
         const mate_xPos = this._xScale(mate.from);
         const mate_yPos = transformY(
           this.yScaleBands[mate.groupKey](mate.row),
@@ -821,7 +849,6 @@ varying vec4 vColor;
         );
       });
       this.animate();
-
     }
 
     calculateZoomLevel() {
@@ -1080,6 +1107,7 @@ PileupTrack.config = {
     'highlightReadsBy',
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
+    'viewAsPairs',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -1104,7 +1132,8 @@ PileupTrack.config = {
     collapseWhenMaxTileWidthReached: false,
     minMappingQuality: 0,
     highlightReadsBy: [],
-    largeInsertSizeThreshold: 1000
+    largeInsertSizeThreshold: 1000,
+    viewAsPairs: false,
   },
   optionsInfo: {
     outlineReadOnHover: {
@@ -1141,28 +1170,19 @@ PileupTrack.config = {
           name: 'None',
         },
         insertSize: {
-          value: [
-            "insertSize"
-          ],
+          value: ['insertSize'],
           name: 'Insert size',
         },
         pairOrientation: {
-          value: [
-            "pairOrientation"
-          ],
+          value: ['pairOrientation'],
           name: 'Pair orientation',
         },
         insertSizeAndPairOrientation: {
-          value: [
-            "insertSizeAndPairOrientation"
-          ],
+          value: ['insertSizeAndPairOrientation'],
           name: 'Insert size and pair orientation',
         },
         insertSizeOrPairOrientation: {
-          value: [
-            "insertSize",
-            "pairOrientation"
-          ],
+          value: ['insertSize', 'pairOrientation'],
           name: 'Insert size or pair orientation',
         },
       },
@@ -1198,6 +1218,19 @@ PileupTrack.config = {
     },
     showCoverage: {
       name: 'Show coverage',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    viewAsPairs: {
+      name: 'View as pairs',
       inlineOptions: {
         yes: {
           value: true,
