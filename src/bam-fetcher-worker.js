@@ -236,8 +236,6 @@ const tabularJsonToRowJson = (tabularJson) => {
 
   const headers = Object.keys(tabularJson);
 
-  console.log('tabularJson', tabularJson);
-
   for (let i = 0; i < tabularJson[headers[0]].length; i++) {
     const newRow = {
       row: null,
@@ -637,8 +635,14 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   // first let's check if we have a larger tile that contains this one
   for (const tileId of tileIds) {
     let [zoomLevel, tileX] = tileId.split('.');
-    const tilesetInfo = tilesetInfos[uid];
+    let tilesetInfo = tilesetInfos[uid];
     let found = false;
+
+    if (!tilesetInfo) {
+      // This can happen when track options change and a new BAMDataFetcher is created.
+      // We don't have a tileset info but we're fetching a track.
+      tilesetInfo = await serverTilesetInfo(uid);
+    }
 
     const [xStart, xEnd] = tilesetInfoToStartEnd(tilesetInfo, zoomLevel, tileX);
 
