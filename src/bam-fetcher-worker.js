@@ -671,33 +671,47 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   const serverTileIds = toFetchIds.map(
     (x) => `d=${serverInfo.tilesetUid}.${x}`,
   );
-  const url = `${serverInfos[uid].server}/tiles/?${serverTileIds.join('&')}`;
 
-  return authFetch(url, uid)
-    .then((d) => d.json())
-    .then((rt) => {
-      const newTiles = {};
+  const urls = serverTileIds.map(
+    (tileId) => `${serverInfos[uid].server}/tiles/?${tileId}`,
+  );
+  const promises = urls.map((url) => {
+    return authFetch(url, uid)
+      .then((d) => d.json())
+      .then((rt) => {
+        const newTiles = {};
 
-      for (const tileId of tileIds) {
-        const hereTileId = `${uid}.${tileId}`;
-        const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
-        if (rt[fullTileId]) {
-          let rowJsonTile = rt[fullTileId];
+        for (const tileId of tileIds) {
+          const hereTileId = `${uid}.${tileId}`;
+          const fullTileId = `${serverInfo.tilesetUid}.${tileId}`;
+          if (rt[fullTileId]) {
+            let rowJsonTile = rt[fullTileId];
 
-          if (!rt[fullTileId].error) {
-            rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+            if (!rt[fullTileId].error) {
+              rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+            }
+
+            rowJsonTile.tilePositionId = tileId;
+            newTiles[tileId] = rowJsonTile;
+
+            tileValues.set(hereTileId, rowJsonTile);
           }
-
-          rowJsonTile.tilePositionId = tileId;
-          newTiles[tileId] = rowJsonTile;
-
-          tileValues.set(hereTileId, rowJsonTile);
         }
-      }
 
-      const toRet = { ...existingTiles, ...newTiles };
-      return toRet;
-    });
+        const toRet = { ...existingTiles, ...newTiles };
+        return toRet;
+      });
+  });
+
+  return Promise.all(promises).then((values) => {
+    let toRet = {};
+
+    for (let value of values) {
+      toRet = { ...toRet, ...value };
+    }
+
+    return toRet;
+  });
 };
 
 const fetchTilesDebounced = async (uid, tileIds) => {
