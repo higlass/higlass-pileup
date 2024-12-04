@@ -675,6 +675,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   const urls = serverTileIds.map(
     (tileId) => `${serverInfos[uid].server}/tiles/?${tileId}`,
   );
+
   const promises = urls.map((url) => {
     return authFetch(url, uid)
       .then((d) => d.json())
@@ -698,13 +699,13 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
           }
         }
 
-        const toRet = { ...existingTiles, ...newTiles };
+        const toRet = { ...newTiles };
         return toRet;
       });
   });
 
   return Promise.all(promises).then((values) => {
-    let toRet = {};
+    let toRet = { ...existingTiles };
 
     for (let value of values) {
       toRet = { ...toRet, ...value };
@@ -766,6 +767,12 @@ function assignSectionToRow(
     // Go through each row and look if there is space for the segment
     for (let i = 0; i < occupiedSpaceInRows.length; i++) {
       if (!occupiedSpaceInRows[i]) {
+        // This row has free space
+        occupiedSpaceInRows[i] = {
+          from: segmentFromWithPadding,
+          to: segmentToWithPadding,
+        };
+        section.row = i;
         return;
       }
       const rowSpaceFrom = occupiedSpaceInRows[i].from;
@@ -859,10 +866,31 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
   } else {
     // We subdivide the sections into those that are left/right of the existing previous segments
     // Note that prevSections is sorted
-    const cutoff =
-      (prevSections[0].fromWithClipping +
-        prevSections[prevSections.length - 1].toWithClipping) /
-      2;
+
+    // Use the median middle of the currently occupied space as the cutoff
+    // for left / right reads
+    const mids = [];
+    for (let i = 0; i < occupiedSpaceInRows.length; i++) {
+      const region = occupiedSpaceInRows[i];
+      if (region) {
+        mids.push((region.from + region.to) / 2);
+      }
+    }
+
+    mids.sort();
+    const cutoff = mids[Math.floor(mids.length / 2)];
+    // // Use the leftmost previously present read as the cutoff for left
+    // // and right reads
+    // const cutoff =
+    //   (prevSections[0].fromWithClipping +
+    //     prevSections[prevSections.length - 1].toWithClipping) /
+    //   2;
+
+    // // Use the middle of the highest row as the cutoff for left
+    // and right reads
+    // const topRegion = occupiedSpaceInRows[occupiedSpaceInRows.length - 1];
+    // const cutoff = (topRegion.from + topRegion.to) / 2;
+
     const newSectionsLeft = filteredSections.filter(
       (x) => x.fromWithClipping <= cutoff,
     );
