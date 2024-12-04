@@ -647,9 +647,16 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
     const [xStart, xEnd] = tilesetInfoToStartEnd(tilesetInfo, zoomLevel, tileX);
 
     while (zoomLevel > 0) {
+      // Here we're checking if we've already fetched a larger tile.
+      // Because larger tiles are superset of the smaller tiles (in the case of pileups)
+      // if we have the larger tile, we don't need to refetch the smaller tile
       const hereTileId = `${uid}.${zoomLevel}.${tileX}`;
 
       if (tileValues.has(hereTileId)) {
+        // We do have the larger tile.
+        // Let's downsample the reads that would be present in the smaller tile
+        // and squirrel those away until the end of the function when we'll return
+        // them to the requester
         existingTiles[tileId] = tileValues
           .get(hereTileId)
           .filter((x) => xStart < x.to && xEnd > x.from);
@@ -879,17 +886,6 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
 
     mids.sort();
     const cutoff = mids[Math.floor(mids.length / 2)];
-    // // Use the leftmost previously present read as the cutoff for left
-    // // and right reads
-    // const cutoff =
-    //   (prevSections[0].fromWithClipping +
-    //     prevSections[prevSections.length - 1].toWithClipping) /
-    //   2;
-
-    // // Use the middle of the highest row as the cutoff for left
-    // and right reads
-    // const topRegion = occupiedSpaceInRows[occupiedSpaceInRows.length - 1];
-    // const cutoff = (topRegion.from + topRegion.to) / 2;
 
     const newSectionsLeft = filteredSections.filter(
       (x) => x.fromWithClipping <= cutoff,
