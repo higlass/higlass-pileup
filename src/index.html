@@ -29,7 +29,7 @@
 
   <title>HiGlass Pileup Track</title>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/latest/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://unpkg.com/higlass@1.12.2/dist/hglib.css">
+  <link rel="stylesheet" href="http://localhost:8911/hglib.css">
 
   <style type="text/css">
     html,
@@ -55,7 +55,7 @@
   <div id="demo"></div>
 </body>
 <script crossorigin src="https://unpkg.com/higlass-sequence/dist/higlass-sequence.js"></script>
-<script crossorigin src="https://unpkg.com/higlass@1.12.2/dist/hglib.min.js"></script>
+<script crossorigin src="http://localhost:8911/hglib.js"></script>
 <script>
 const testViewConfig = {
   "editable": true,
@@ -67,12 +67,12 @@ const testViewConfig = {
   "views": [
     {
       "initialXDomain": [
-        346803.5973561012,
-        351723.16280633735
+        2120530.3312820597,
+        2120619.738237851
       ],
       "initialYDomain": [
-        -886705826.3027409,
-        -886704090.4836061
+        -886696840.0201752,
+        -886696813.418686
       ],
       "tracks": {
         "top": [
@@ -109,7 +109,11 @@ const testViewConfig = {
               "minMappingQuality": 0,
               "highlightReadsBy": [],
               "largeInsertSizeThreshold": 1000,
-              "viewAsPairs": true
+              "viewAsPairs": true,
+              "sortByBase": {
+                "chr": "chr1_pat_hsa1",
+                "pos": 2120575
+              }
             },
             "width": 927,
             "height": 443

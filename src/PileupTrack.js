@@ -5,6 +5,7 @@ import {
   cigarTypeToText,
   areMatesRequired,
   calculateInsertSize,
+  posToChrPos,
 } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
@@ -184,6 +185,7 @@ const PileupTrack = (HGC, ...args) => {
         worker,
         HGC,
       );
+
       super(context, options);
       context.dataFetcher.track = this;
 
@@ -624,6 +626,36 @@ varying vec4 vColor;
       // HGC.utils.trackUtils.drawAxis(this, valueScale);
       this.trackNotFoundText.text = 'Track not found.';
       this.trackNotFoundText.visible = true;
+    }
+
+    contextMenuItems(trackX, trackY) {
+      // console.log('contextmenuitems');
+      /* Get a list of context menu items to display and the actions
+         to take */
+
+      // This should return items like this:
+
+      return [
+        {
+          label: 'Sort by base',
+          onClick: (evt, onTrackOptionsChanged) => {
+            // The onTrackOptionsChanged handler will handle any changes
+            // to the track's options that are triggered in this event.
+            // The only thing that needs to be passed is the new option being
+            // passed
+
+            const currPos = Math.floor(this._xScale.invert(trackX));
+            const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
+
+            onTrackOptionsChanged({
+              sortByBase: {
+                chr: chrPos[0],
+                pos: chrPos[1],
+              },
+            });
+          },
+        },
+      ];
     }
 
     getMouseOverHtml(trackX, trackYIn) {

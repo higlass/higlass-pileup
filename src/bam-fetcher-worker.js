@@ -74,6 +74,60 @@ function natcmp(xRow, yRow) {
   return 0;
 }
 
+const groupSectionsBySortedBase = (sections, sortByBase) => {
+  // This function will take a set of sections and partition them
+  // into groups of sections and return them in some order
+
+  // We'll assume that all sections are on the same chromosome as the
+  // sortByBase position
+
+  // sectionGroups will store the groups of sections for each base
+  // type at the sort by position
+  const sectionGroups = {};
+
+  for (let section of sections) {
+    let overlapBase = null;
+
+    for (let segment of section.segments) {
+      if (segment.from <= sortByBase.pos && sortByBase.pos <= segment.to) {
+        // The read overlaps the sortByBase position
+
+        // The following loop could be replaced by a binary search
+        // if the substitutions were sorted
+        for (let substitution of segment.substitutions) {
+          if (
+            substitution.variant &&
+            segment.from + substitution.pos == sortByBase.pos
+          ) {
+            overlapBase = substitution.variant;
+            break;
+          }
+        }
+
+        if (sectionGroups[overlapBase]) {
+          sectionGroups[overlapBase].push(section);
+        } else {
+          sectionGroups[overlapBase] = [section];
+        }
+      }
+    }
+  }
+
+  // Sort the chunks of sections to return.
+  // The existing sorting probably isn't the one we want because
+  // sections that don't have a substitution at this location will
+  // have a "null" there
+  const sortedBases = Object.keys(sectionGroups).sort();
+
+  let toReturn = [];
+  for (let base of sortedBases) {
+    toReturn = toReturn.concat(sectionGroups[base]);
+  }
+  // console.log('sortedBases', sortedBases);
+
+  return toReturn;
+};
+
 const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   const seq = bamRecord.get('seq');
   const from = +bamRecord.get('start') + 1 + chrOffset;
@@ -762,10 +816,9 @@ function assignSectionToRow(
   section,
   occupiedSpaceInRows,
   padding,
-  viewAsPairs,
+  trackOptions,
 ) {
-  // if (segment.mate_ids.length == 1)
-
+  const viewAsPairs = trackOptions.viewAsPairs;
   let segmentFromWithPadding = section.fromWithClipping - padding;
   let segmentToWithPadding = section.toWithClipping + padding;
 
@@ -829,11 +882,12 @@ function assignSectionToRow(
   }
 }
 
-function sectionsToRows(sections, optionsIn, viewAsPairs) {
+function sectionsToRows(sections, optionsIn, trackOptions) {
   const { prevRows, padding } = Object.assign(
     { prevRows: [], padding: 5 },
     optionsIn || {},
   );
+  const viewAsPairs = trackOptions.viewAsPairs;
 
   // The following array contains elements fo the form
   // occupiedSpaceInRows[i] = {from: 100, to: 110}
@@ -843,9 +897,13 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
   const sectionIds = new Set(sections.map((x) => x.id));
 
   // We only need those previous sections, that are in the current sections list
+  // We will assume that prevRows is already sorted by base so we won't modify it
   const prevSections = prevRows
     .flat()
     .filter((section) => sectionIds.has(section.id));
+
+  // If there's prevSections, we'll assume that they're already sorted the way
+  // they should be because any change in the options would have caused a rerender
 
   for (let i = 0; i < prevSections.length; i++) {
     // prevSections contains already assigned sections. The function below therefore just
@@ -854,20 +912,38 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
       prevSections[i],
       occupiedSpaceInRows,
       padding,
-      viewAsPairs,
+      trackOptions,
     );
   }
 
   const prevSectionIds = new Set(prevSections.map((x) => x.id));
+  let filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
+
+  let sortedSections = [];
+  if (trackOptions.sortByBase) {
+    // We need to assign the sections to the rows that intersect the
+    // sorted base first.
+    sortedSections = groupSectionsBySortedBase(
+      filteredSections,
+      trackOptions.sortByBase,
+    );
+
+    for (let section of sortedSections) {
+      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
+      prevSectionIds.add(section.id);
+    }
+  }
+
+  // Filter again to remove sections which were rendered due to sorting
+  filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
 
   let newSections = [];
   // We need to assign rows only to those sections, that are not in the prevSections list
-  const filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
 
   if (prevSections.length === 0) {
     filteredSections.sort(segmentsSort);
     filteredSections.forEach((section) => {
-      assignSectionToRow(section, occupiedSpaceInRows, padding, viewAsPairs);
+      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
     });
     newSections = filteredSections;
   } else {
@@ -893,7 +969,7 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
     // The sort order for new sections that are appended left is reversed
     newSectionsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
     newSectionsLeft.forEach((section) => {
-      assignSectionToRow(section, occupiedSpaceInRows, padding, viewAsPairs);
+      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
     });
 
     const newSectionsRight = filteredSections.filter(
@@ -901,7 +977,7 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
     );
     newSectionsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
     newSectionsRight.forEach((section) => {
-      assignSectionToRow(section, occupiedSpaceInRows, padding);
+      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
     });
 
     newSections = newSectionsLeft.concat(
@@ -913,7 +989,9 @@ function sectionsToRows(sections, optionsIn, viewAsPairs) {
 
   const outputRows = [];
   for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-    outputRows[i] = newSections.filter((x) => x.row === i);
+    outputRows[i] = newSections
+      .filter((x) => x.row === i)
+      .concat(sortedSections.filter((x) => x.row === i));
   }
 
   return outputRows;
@@ -1056,7 +1134,7 @@ const renderSegments = (
       {
         prevRows: (prevRows[key] && prevRows[key].rows) || [],
       },
-      trackOptions.viewAsPairs,
+      trackOptions,
     );
 
     for (let row of rows) {

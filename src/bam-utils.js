@@ -46,6 +46,24 @@ export const cigarTypeToText = (type) => {
   return type;
 };
 
+export const posToChrPos = (pos, chromsizes) => {
+  // Convert an absolute genomic position to a chromosome
+  // position. The chromsizes array should be an array of [chrom, size]
+  // tuples
+
+  // assume the position is 1-based
+
+  for (let i = 0; i < chromsizes.length; i++) {
+    if (pos <= chromsizes[i][1]) {
+      return [chromsizes[i][0], pos];
+    }
+
+    pos -= chromsizes[i][1];
+  }
+
+  throw new Error('Position extends beyond chromsizes');
+};
+
 export const parseMD = (mdString, useCounts) => {
   let currPos = 0;
   let currNum = 0;
