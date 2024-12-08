@@ -89,7 +89,11 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
     let overlapBase = null;
 
     for (let segment of section.segments) {
-      if (segment.from <= sortByBase.pos && sortByBase.pos <= segment.to) {
+      if (
+        segment.chrName == sortByBase.chr &&
+        segment.from - segment.chrOffset <= sortByBase.pos &&
+        sortByBase.pos <= segment.to - segment.chrOffset
+      ) {
         // The read overlaps the sortByBase position
 
         // The following loop could be replaced by a binary search
@@ -97,7 +101,8 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
         for (let substitution of segment.substitutions) {
           if (
             substitution.variant &&
-            segment.from + substitution.pos == sortByBase.pos
+            segment.from - segment.chrOffset + substitution.pos ==
+              sortByBase.pos
           ) {
             overlapBase = substitution.variant;
             break;
@@ -123,7 +128,6 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
   for (let base of sortedBases) {
     toReturn = toReturn.concat(sectionGroups[base]);
   }
-  // console.log('sortedBases', sortedBases);
 
   return toReturn;
 };
@@ -304,6 +308,7 @@ const tabularJsonToRowJson = (tabularJson) => {
     newRow.from += 1;
     newRow.to += 1;
 
+    // Convert the from and to positions to genome positions
     newRow.from += newRow.chrOffset;
     newRow.to += newRow.chrOffset;
     newRow.color = PILEUP_COLOR_IXS.BG;

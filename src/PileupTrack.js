@@ -422,6 +422,15 @@ varying vec4 vColor;
         this.externalInit(options);
       }
 
+      // Check if rows need to be recalculated
+      if (
+        JSON.stringify(this.prevOptions.sortByBase) !==
+        JSON.stringify(this.options.sortByBase)
+      ) {
+        // Base sorting has changed so we need to recalculate the rows
+        this.prevRows = {};
+      }
+
       this.updateExistingGraphics();
       this.prevOptions = Object.assign({}, options);
     }
@@ -629,12 +638,10 @@ varying vec4 vColor;
     }
 
     contextMenuItems(trackX, trackY) {
-      // console.log('contextmenuitems');
       /* Get a list of context menu items to display and the actions
          to take */
 
       // This should return items like this:
-
       return [
         {
           label: 'Sort by base',
@@ -646,7 +653,6 @@ varying vec4 vColor;
 
             const currPos = Math.floor(this._xScale.invert(trackX));
             const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
-
             onTrackOptionsChanged({
               sortByBase: {
                 chr: chrPos[0],
