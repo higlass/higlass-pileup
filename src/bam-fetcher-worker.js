@@ -2,15 +2,18 @@ import { group, range } from 'd3-array';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { format } from 'd3-format';
 import { expose, Transfer } from 'threads/worker';
-import { BamFile } from 'apr144-bam';
+// import { BamFile } from 'apr144-bam';
+import { BamFile } from '@gmod/bam';
 import {
   getSubstitutions,
   calculateInsertSize,
   areMatesRequired,
   getMethylationOffsets,
+  getFibertoolsFIREMSPOffsets,
+  getFibertoolsFIRENucleosomeOffsets,
   hexToRGBRawTriplet,
   indexDHSColors,
-  fireColors,
+  // fireColors,
   genericBedColors,
 } from './bam-utils';
 import LRU from 'lru-cache';
@@ -142,35 +145,61 @@ function natcmp(xRow, yRow) {
 }
 
 const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegmentAttributesOnly) => {
-  const seq = bamRecord.get('seq');
-  const from = +bamRecord.get('start') + 1 + chrOffset;
-  const to = +bamRecord.get('end') + 1 + chrOffset;
+  // const seq = bamRecord.get('seq'); // pre-v3 bam-js API
+  const seq = bamRecord.seq;
+  // const from = +bamRecord.get('start') + 1 + chrOffset; // pre-v3 bam-js API
+  const from = bamRecord.start + 1 + chrOffset;
+  // const to = +bamRecord.get('end') + 1 + chrOffset; // pre-v3 bam-js API
+  const to = bamRecord.end + 1 + chrOffset;
 
   const segment = {
-    id: bamRecord.get('id'),
+    // id: bamRecord.get('id'), // pre-v3 bam-js API
+    id: bamRecord.id,
     mate_ids: [], // split reads can have multiple mates
-    start: +bamRecord.get('start') + 1,
+    // start: +bamRecord.get('start') + 1, // pre-v3 bam-js API
+    start: bamRecord.start + 1,
     from: from,
     to: to,
+    length: to - from - 1,
     fromWithClipping: from,
     toWithClipping: to,
-    md: bamRecord.get('MD'),
-    sa: bamRecord.get('SA'), // Needed to determine if this is a split read
+    // md: bamRecord.get('MD'), // pre-v3 bam-js API
+    md: bamRecord.tags.MD,
+    // sa: bamRecord.get('SA'), // Needed to determine if this is a split read // pre-v3 bam-js API
+    sa: bamRecord.tags.SA, // Needed to determine if this is a split read
     chrName,
     chrOffset,
-    cigar: bamRecord.get('cigar'),
-    mapq: bamRecord.get('mq'),
-    strand: bamRecord.get('strand') === 1 ? '+' : '-',
+    // cigar: bamRecord.get('cigar'), // pre-v3 bam-js API
+    cigar: bamRecord.CIGAR,
+    // mapq: bamRecord.get('mq'), // pre-v3 bam-js API
+    mapq: bamRecord.qual,
+    // strand: bamRecord.get('strand') === 1 ? '+' : '-', // pre-v3 bam-js API
+    strand: (bamRecord.flags & 16) ? '-' : '+',
     row: null,
-    readName: bamRecord.get('name'),
+    // readName: bamRecord.get('name'),
+    readName: bamRecord.name,
     seq: seq,
     color: PILEUP_COLOR_IXS.BG,
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
     methylationOffsets: [],
-    mm: bamRecord.get('MM'),
-    ml: bamRecord.get('ML'),
+    mspOffsets: [],
+    nucOffsets: [],
+    // mm: bamRecord.get('MM'), // pre-v3 bam-js API
+    // ml: bamRecord.get('ML'), // pre-v3 bam-js API
+    // as: bamRecord.get('as'), // pre-v3 bam-js API
+    // al: bamRecord.get('al'), // pre-v3 bam-js API
+    // aq: bamRecord.get('aq'), // pre-v3 bam-js API
+    // ns: bamRecord.get('ns'), // pre-v3 bam-js API
+    // nl: bamRecord.get('nl'), // pre-v3 bam-js API
+    MM: bamRecord.tags.MM,
+    ML: bamRecord.tags.ML,
+    as: bamRecord.tags.as,
+    al: bamRecord.tags.al,
+    aq: bamRecord.tags.aq,
+    ns: bamRecord.tags.ns,
+    nl: bamRecord.tags.nl,
   };
 
   if (basicSegmentAttributesOnly) {
@@ -185,15 +214,18 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
   }
 
   const includeClippingOps = true;
+  const reverseCIGAROps = (trackOptions && trackOptions.ftFire && segment.strand === '-');
 
-  segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
+  segment.substitutions = getSubstitutions(segment, seq, includeClippingOps, reverseCIGAROps);
+
   if (trackOptions.methylation) {
     segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
     // console.log(`segment.methylationOffsets | ${JSON.stringify(segment.methylationOffsets)}`);
   }
 
   if (trackOptions.fire) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
     // segment.fireColors = fireColors(trackOptions);
     // const newPileupColorIdxs = {};
     // const highlightOffset = (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions && trackOptions.methylation.highlights && 'M0A' in trackOptions.methylation.highlights) ? 1 : 0;
@@ -207,12 +239,23 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
   }
 
+  if (trackOptions.ftFire) {
+    // const alignCpGEvents = true;
+    // segment.methylationOffsets = getMethylationOffsets(segment, seq, alignCpGEvents);
+    segment.mspOffsets = getFibertoolsFIREMSPOffsets(segment);
+    segment.nucOffsets = getFibertoolsFIRENucleosomeOffsets(segment);
+    segment.metadata = {};
+    segment.color = PILEUP_COLOR_IXS.FIRE_BG;
+  }
+
   if (trackOptions.tfbs) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
   }
 
   if (trackOptions.genericBed) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
     segment.genericBedColors = genericBedColors(trackOptions);
     const newPileupColorIdxs = {};
     Object.keys(segment.genericBedColors).map((x, i) => {
@@ -223,7 +266,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
   }
 
   if (trackOptions.indexDHS) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
     segment.indexDHSColors = indexDHSColors(trackOptions);
 
@@ -5705,7 +5749,7 @@ const renderSegments = (
 
     // data.length = 0;
   }
-  else if (fireIdentifierDataObj && trackOptions.fire) {
+  else if (fireIdentifierDataObj && (trackOptions.fire || trackOptions.ftFire)) {
     // console.log(`fireIdentifierDataObj ${JSON.stringify(fireIdentifierDataObj)}`);
     for (let key of Object.keys(grouped)) {
       const rows = segmentsToRows(grouped[key], {
@@ -6286,6 +6330,92 @@ const renderSegments = (
           // }
         }
 
+        else if (trackOptions && trackOptions.ftFire) {
+          const ftFireMetadata = (trackOptions.ftFire && trackOptions.ftFire.metadata) ? trackOptions.ftFire.metadata : null;
+          if (ftFireMetadata) {
+            const ftFireElementHeight = height * 0.25;
+            const topCorrection = ftFireElementHeight * 1.75;
+            const ftFireColors = ftFireMetadata.itemRGBMap;
+            
+            const nucleosomeData = segment.nucOffsets[0];
+            let nucleosomeOffsets = nucleosomeData.offsets;
+            let nucleosomeLengths = nucleosomeData.lengths;
+            let nucleosomeColors = nucleosomeData.colors;
+            let nucleosomeOffsetModifiers = nucleosomeData.offsetModifiers;
+            let nucleosomeClipLength = nucleosomeData.clipLength;
+            const mspData = segment.mspOffsets[0];
+            const mspOffsets = mspData.offsets;
+            const mspLengths = mspData.lengths;
+            const mspColors = mspData.colors;
+
+            /** draw molecule bounds before nucleosomes and MSPs */
+            const firstNucleosomeOffset = nucleosomeOffsets[0];
+            const lastNucleosomeOffsetEndpoint = nucleosomeOffsets[nucleosomeOffsets.length - 1] + nucleosomeLengths[nucleosomeLengths.length - 1];
+            const firstMSPOffset = mspOffsets[0];
+            const lastMSPOffsetEndpoint = mspOffsets[mspOffsets.length - 1] + mspLengths[mspLengths.length - 1];
+            const moleculeOffset = 0; // Math.min(firstNucleosomeOffset, firstMSPOffset);
+            const moleculeLength = segment.length; // Math.max(lastNucleosomeOffsetEndpoint, lastMSPOffsetEndpoint) - moleculeOffset;
+            const moleculeColorIdx = PILEUP_COLOR_IXS[`BLACK_05`];
+            const moleculeHeightFactor = 0.3;
+            const moleculeWidth = Math.max(1, xScale(moleculeLength) - xScale(0));
+            const moleculeXLeft = xScale(segment.from + moleculeOffset);
+            const moleculeYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * moleculeHeightFactor))) - topCorrection;
+            const moleculeHeight = Math.max(1, ftFireElementHeight * moleculeHeightFactor);
+            addRect(moleculeXLeft, moleculeYTop, moleculeWidth, moleculeHeight, moleculeColorIdx);
+
+            if (segment.strand === '-') {
+              nucleosomeOffsets = nucleosomeOffsets.map((d,i) => {
+                return d - nucleosomeOffsetModifiers[nucleosomeOffsetModifiers.length - i - 1] - nucleosomeClipLength + 1;
+              });
+              // nucleosomeLengths = nucleosomeLengths.map((d,i) => {
+              //   return d;
+              // });
+            }
+
+            // if (segment.readName === '06318b68-46f6-4aa3-a5b3-8b7bad735eb8') {
+            if (segment.readName === '06318b68-46f6-4aa3-a5b3-8b7bad735eb8') {
+              console.log(`segment.start ${segment.start} | segment.length ${segment.length} | segment.strand ${segment.strand}`);
+              // console.log(`segment.as ${segment.as} | segment.al ${segment.al} | segment.aq ${segment.aq}`);
+              // console.log(`segment.mspOffsets | ${JSON.stringify(segment.mspOffsets)}`);
+              console.log(`segment.ns ${segment.ns}`); 
+              console.log(`segment.nl ${segment.nl}`);
+              // console.log(`segment.nucOffsets | ${JSON.stringify(segment.nucOffsets)}`);
+              console.log(`nucleosomeOffsets | ${JSON.stringify(nucleosomeOffsets)}`);
+              console.log(`nucleosomeLengths | ${JSON.stringify(nucleosomeLengths)}`);
+              console.log(`nucleosomeOffsetModifiers | ${JSON.stringify(nucleosomeOffsetModifiers)}`);
+              console.log(`ftFireMetadata ${JSON.stringify(ftFireMetadata)}`);
+              console.log(`moleculeXLeft ${moleculeXLeft}, moleculeYTop ${moleculeYTop}, moleculeWidth ${moleculeWidth}, moleculeColorIdx ${moleculeColorIdx}`);
+            }
+
+            /** draw nucleosomes */
+            for (let i = 0; i < nucleosomeOffsets.length; ++i) {
+              const nucleosomeOffset = nucleosomeOffsets[i];
+              const nucleosomeLength = nucleosomeLengths[i];
+              const nucleosomeColor = nucleosomeColors[i];
+              const nucleosomeColorIdx = PILEUP_COLOR_IXS[`FIRE_${nucleosomeColor}`];
+              const nucleosomeHeightFactor = ftFireColors[nucleosomeColor].heightFactor;
+              const nucleosomeWidth = Math.max(1, xScale(nucleosomeLength) - xScale(0));
+              // const nucleosomeWidth = (segment.strand === '+') ? Math.max(1, xScale(nucleosomeLength) - xScale(0)) : Math.max(1, xScale(3/2*nucleosomeLength) - xScale(0));
+              const nucleosomeXLeft = xScale(segment.from + nucleosomeOffset);
+              // const nucleosomeXLeft = (segment.strand === '+') ? xScale(segment.from + nucleosomeOffset) : xScale(segment.from + (segment.length - nucleosomeOffset - (nucleosomeLength / 2)));
+              const nucleosomeYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * nucleosomeHeightFactor))) - topCorrection;
+              addRect(nucleosomeXLeft, nucleosomeYTop, nucleosomeWidth, ftFireElementHeight * nucleosomeHeightFactor, nucleosomeColorIdx);
+            }
+            /** draw MSPs */
+            // for (let i = 0; i < mspOffsets.length; ++i) {
+            //   const mspOffset = mspOffsets[i];
+            //   const mspLength = mspLengths[i];
+            //   const mspColor = mspColors[i];
+            //   const mspColorIdx = PILEUP_COLOR_IXS[`FIRE_${mspColor}`];
+            //   const mspHeightFactor = ftFireColors[mspColor].heightFactor;
+            //   const mspWidth = Math.max(1, xScale(mspLength) - xScale(0));
+            //   const mspXLeft = xScale(segment.from + mspOffset);
+            //   const mspYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * mspHeightFactor))) - topCorrection;
+            //   addRect(mspXLeft, mspYTop, mspWidth, ftFireElementHeight * mspHeightFactor, mspColorIdx);
+            // }
+          }
+        }
+
         else if (trackOptions && trackOptions.fire) {
           // let showDims = true;
           const fireMetadata = (trackOptions.fire && trackOptions.fire.metadata) ? segment.metadata : {};
@@ -6299,14 +6429,16 @@ const renderSegments = (
           const fireElementHeight = yScale.bandwidth() * 0.25;
           const topCorrection = fireElementHeight * 1.75;
 
+          // console.log(`segment.metadata.colors ${JSON.stringify(segment.metadata.colors)}`);
+
           for (const substitution of segment.substitutions) {
-            // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos}`);
+            // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos} | substitution.length ${substitution.length}`);
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));
-            const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
+            // const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
             xRight = xLeft + width;
-
             const fireYTop = yTop + ((yBottom - yTop) * 0.5) - topCorrection;
+            // console.log(`xLeft ${xLeft} | width ${width} | fireYTop ${fireYTop}`);
             addRect(xLeft, fireYTop, width, fireElementHeight, defaultSegmentColor);
 
             // console.log(`xLeft ${xLeft} | fireYTop ${fireYTop} | width ${width} | fireElementHeight ${fireElementHeight} | defaultSegmentColor ${defaultSegmentColor}`);

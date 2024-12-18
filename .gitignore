@@ -9,3 +9,5 @@ es
 *.DS_cache
 *.DS_Store
 *.bak
+yarn.lock
+package-lock.json

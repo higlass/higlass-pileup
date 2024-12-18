@@ -1,1226 +1,6 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 290:
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-
-// EXPORTS
-__webpack_require__.d(__webpack_exports__, {
-  q5: () => (/* reexport */ BgzFilehandle),
-  Ri: () => (/* reexport */ unzip),
-  y$: () => (/* reexport */ unzipChunkSlice)
-});
-
-// UNUSED EXPORTS: unzipChunk
-
-// EXTERNAL MODULE: ./node_modules/buffer/index.js
-var node_modules_buffer = __webpack_require__(764);
-// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
-var esm = __webpack_require__(949);
-// EXTERNAL MODULE: ./node_modules/pako/index.js
-var pako = __webpack_require__(591);
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/unzip-pako.js
-
-//@ts-ignore
-
-// browserify-zlib, which is the zlib shim used by default in webpacked code,
-// does not properly uncompress bgzf chunks that contain more than
-// one bgzf block, so export an unzip function that uses pako directly
-// if we are running in a browser.
-async function unzip(inputData) {
-    try {
-        let strm;
-        let pos = 0;
-        let i = 0;
-        const chunks = [];
-        let totalSize = 0;
-        let inflator;
-        do {
-            const remainingInput = inputData.subarray(pos);
-            inflator = new pako.Inflate();
-            ({ strm } = inflator);
-            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
-            if (inflator.err) {
-                throw new Error(inflator.msg);
-            }
-            pos += strm.next_in;
-            chunks[i] = inflator.result;
-            totalSize += chunks[i].length;
-            i += 1;
-        } while (strm.avail_in);
-        const result = new Uint8Array(totalSize);
-        for (let i = 0, offset = 0; i < chunks.length; i++) {
-            result.set(chunks[i], offset);
-            offset += chunks[i].length;
-        }
-        return node_modules_buffer/* Buffer */.lW.from(result);
-    }
-    catch (e) {
-        //cleanup error message
-        if (`${e}`.match(/incorrect header check/)) {
-            throw new Error('problem decompressing block: incorrect gzip header check');
-        }
-        throw e;
-    }
-}
-// similar to pakounzip, except it does extra counting
-// to return the positions of compressed and decompressed
-// data offsets
-async function unzipChunk(inputData) {
-    try {
-        let strm;
-        let cpos = 0;
-        let dpos = 0;
-        const blocks = [];
-        const cpositions = [];
-        const dpositions = [];
-        do {
-            const remainingInput = inputData.slice(cpos);
-            const inflator = new Inflate();
-            ({ strm } = inflator);
-            inflator.push(remainingInput, Z_SYNC_FLUSH);
-            if (inflator.err) {
-                throw new Error(inflator.msg);
-            }
-            const buffer = Buffer.from(inflator.result);
-            blocks.push(buffer);
-            cpositions.push(cpos);
-            dpositions.push(dpos);
-            cpos += strm.next_in;
-            dpos += buffer.length;
-        } while (strm.avail_in);
-        const buffer = Buffer.concat(blocks);
-        return { buffer, cpositions, dpositions };
-    }
-    catch (e) {
-        //cleanup error message
-        if (`${e}`.match(/incorrect header check/)) {
-            throw new Error('problem decompressing block: incorrect gzip header check');
-        }
-        throw e;
-    }
-}
-// similar to unzipChunk above but slices (0,minv.dataPosition) and
-// (maxv.dataPosition,end) off
-async function unzipChunkSlice(inputData, chunk) {
-    try {
-        let strm;
-        const { minv, maxv } = chunk;
-        let cpos = minv.blockPosition;
-        let dpos = minv.dataPosition;
-        const chunks = [];
-        const cpositions = [];
-        const dpositions = [];
-        let totalSize = 0;
-        let i = 0;
-        do {
-            const remainingInput = inputData.subarray(cpos - minv.blockPosition);
-            const inflator = new pako.Inflate();
-            ({ strm } = inflator);
-            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
-            if (inflator.err) {
-                throw new Error(inflator.msg);
-            }
-            const buffer = inflator.result;
-            chunks.push(buffer);
-            let len = buffer.length;
-            cpositions.push(cpos);
-            dpositions.push(dpos);
-            if (chunks.length === 1 && minv.dataPosition) {
-                // this is the first chunk, trim it
-                chunks[0] = chunks[0].subarray(minv.dataPosition);
-                len = chunks[0].length;
-            }
-            const origCpos = cpos;
-            cpos += strm.next_in;
-            dpos += len;
-            if (origCpos >= maxv.blockPosition) {
-                // this is the last chunk, trim it and stop decompressing
-                // note if it is the same block is minv it subtracts that already
-                // trimmed part of the slice length
-                chunks[i] = chunks[i].subarray(0, maxv.blockPosition === minv.blockPosition
-                    ? maxv.dataPosition - minv.dataPosition + 1
-                    : maxv.dataPosition + 1);
-                cpositions.push(cpos);
-                dpositions.push(dpos);
-                totalSize += chunks[i].length;
-                break;
-            }
-            totalSize += chunks[i].length;
-            i++;
-        } while (strm.avail_in);
-        const result = new Uint8Array(totalSize);
-        for (let i = 0, offset = 0; i < chunks.length; i++) {
-            result.set(chunks[i], offset);
-            offset += chunks[i].length;
-        }
-        const buffer = node_modules_buffer/* Buffer */.lW.from(result);
-        return { buffer, cpositions, dpositions };
-    }
-    catch (e) {
-        //cleanup error message
-        if (`${e}`.match(/incorrect header check/)) {
-            throw new Error('problem decompressing block: incorrect gzip header check');
-        }
-        throw e;
-    }
-}
-function nodeUnzip() {
-    throw new Error('nodeUnzip not implemented.');
-}
-
-//# sourceMappingURL=unzip-pako.js.map
-// EXTERNAL MODULE: ./node_modules/long/src/long.js
-var src_long = __webpack_require__(720);
-var long_default = /*#__PURE__*/__webpack_require__.n(src_long);
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/gziIndex.js
-
-
-
-// const COMPRESSED_POSITION = 0
-const UNCOMPRESSED_POSITION = 1;
-class GziIndex {
-    constructor({ filehandle, path, }) {
-        if (filehandle) {
-            this.filehandle = filehandle;
-        }
-        else if (path) {
-            this.filehandle = new esm/* LocalFile */.S9(path);
-        }
-        else {
-            throw new TypeError('either filehandle or path must be defined');
-        }
-    }
-    _readLongWithOverflow(buf, offset = 0, unsigned = true) {
-        //@ts-ignore
-        const long = long_default().fromBytesLE(buf.slice(offset, offset + 8), unsigned);
-        if (long.greaterThan(Number.MAX_SAFE_INTEGER) ||
-            long.lessThan(Number.MIN_SAFE_INTEGER)) {
-            throw new TypeError('integer overflow');
-        }
-        return long.toNumber();
-    }
-    _getIndex() {
-        if (!this.index) {
-            this.index = this._readIndex();
-        }
-        return this.index;
-    }
-    async _readIndex() {
-        let buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(8);
-        await this.filehandle.read(buf, 0, 8, 0);
-        const numEntries = this._readLongWithOverflow(buf, 0, true);
-        if (!numEntries) {
-            return [[0, 0]];
-        }
-        const entries = new Array(numEntries + 1);
-        entries[0] = [0, 0];
-        // TODO rewrite this to make an index-index that stays in memory
-        const bufSize = 8 * 2 * numEntries;
-        if (bufSize > Number.MAX_SAFE_INTEGER) {
-            throw new TypeError('integer overflow');
-        }
-        buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(bufSize);
-        await this.filehandle.read(buf, 0, bufSize, 8);
-        for (let entryNumber = 0; entryNumber < numEntries; entryNumber += 1) {
-            const compressedPosition = this._readLongWithOverflow(buf, entryNumber * 16);
-            const uncompressedPosition = this._readLongWithOverflow(buf, entryNumber * 16 + 8);
-            entries[entryNumber + 1] = [compressedPosition, uncompressedPosition];
-        }
-        return entries;
-    }
-    async getLastBlock() {
-        const entries = await this._getIndex();
-        if (!entries.length) {
-            return undefined;
-        }
-        return entries[entries.length - 1];
-    }
-    async getRelevantBlocksForRead(length, position) {
-        const endPosition = position + length;
-        if (length === 0) {
-            return [];
-        }
-        const entries = await this._getIndex();
-        const relevant = [];
-        // binary search to find the block that the
-        // read starts in and extend forward from that
-        const compare = (entry, nextEntry) => {
-            const uncompressedPosition = entry[UNCOMPRESSED_POSITION];
-            const nextUncompressedPosition = nextEntry
-                ? nextEntry[UNCOMPRESSED_POSITION]
-                : Infinity;
-            // block overlaps read start
-            if (uncompressedPosition <= position &&
-                nextUncompressedPosition > position) {
-                return 0;
-                // block is before read start
-            }
-            if (uncompressedPosition < position) {
-                return -1;
-            }
-            // block is after read start
-            return 1;
-        };
-        let lowerBound = 0;
-        let upperBound = entries.length - 1;
-        let searchPosition = Math.floor(entries.length / 2);
-        let comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
-        while (comparison !== 0) {
-            if (comparison > 0) {
-                upperBound = searchPosition - 1;
-            }
-            else if (comparison < 0) {
-                lowerBound = searchPosition + 1;
-            }
-            searchPosition = Math.ceil((upperBound - lowerBound) / 2) + lowerBound;
-            comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
-        }
-        // here's where we read forward
-        relevant.push(entries[searchPosition]);
-        let i = searchPosition + 1;
-        for (; i < entries.length; i += 1) {
-            relevant.push(entries[i]);
-            if (entries[i][UNCOMPRESSED_POSITION] >= endPosition) {
-                break;
-            }
-        }
-        if (relevant[relevant.length - 1][UNCOMPRESSED_POSITION] < endPosition) {
-            relevant.push([]);
-        }
-        return relevant;
-    }
-}
-//# sourceMappingURL=gziIndex.js.map
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/bgzFilehandle.js
-
-
-// locals
-
-
-class BgzFilehandle {
-    constructor({ filehandle, path, gziFilehandle, gziPath, }) {
-        if (filehandle) {
-            this.filehandle = filehandle;
-        }
-        else if (path) {
-            this.filehandle = new esm/* LocalFile */.S9(path);
-        }
-        else {
-            throw new TypeError('either filehandle or path must be defined');
-        }
-        if (!gziFilehandle && !gziPath && !path) {
-            throw new TypeError('either gziFilehandle or gziPath must be defined');
-        }
-        this.gzi = new GziIndex({
-            filehandle: gziFilehandle,
-            path: !gziFilehandle && !gziPath && path ? gziPath : `${path}.gzi`,
-        });
-    }
-    async stat() {
-        const compressedStat = await this.filehandle.stat();
-        return Object.assign(compressedStat, {
-            size: await this.getUncompressedFileSize(),
-            blocks: undefined,
-            blksize: undefined,
-        });
-    }
-    async getUncompressedFileSize() {
-        // read the last block's ISIZE (see gzip RFC),
-        // and add it to its uncompressedPosition
-        const [, uncompressedPosition] = await this.gzi.getLastBlock();
-        const { size } = await this.filehandle.stat();
-        const buf = node_modules_buffer/* Buffer */.lW.allocUnsafe(4);
-        // note: there should be a 28-byte EOF marker (an empty block) at
-        // the end of the file, so we skip backward past that
-        const { bytesRead } = await this.filehandle.read(buf, 0, 4, size - 28 - 4);
-        if (bytesRead !== 4) {
-            throw new Error('read error');
-        }
-        const lastBlockUncompressedSize = buf.readUInt32LE(0);
-        return uncompressedPosition + lastBlockUncompressedSize;
-    }
-    async _readAndUncompressBlock(blockBuffer, [compressedPosition], [nextCompressedPosition]) {
-        let next = nextCompressedPosition;
-        if (!next) {
-            next = (await this.filehandle.stat()).size;
-        }
-        // read the compressed data into the block buffer
-        const blockCompressedLength = next - compressedPosition;
-        await this.filehandle.read(blockBuffer, 0, blockCompressedLength, compressedPosition);
-        // uncompress it
-        const unzippedBuffer = await unzip(blockBuffer.slice(0, blockCompressedLength));
-        return unzippedBuffer;
-    }
-    async read(buf, offset, length, position) {
-        // get the block positions for this read
-        const blockPositions = await this.gzi.getRelevantBlocksForRead(length, position);
-        const blockBuffer = node_modules_buffer/* Buffer */.lW.allocUnsafe(32768 * 2);
-        // uncompress the blocks and read from them one at a time to keep memory usage down
-        let destinationOffset = offset;
-        let bytesRead = 0;
-        for (let blockNum = 0; blockNum < blockPositions.length - 1; blockNum += 1) {
-            // eslint-disable-next-line no-await-in-loop
-            const uncompressedBuffer = await this._readAndUncompressBlock(blockBuffer, blockPositions[blockNum], blockPositions[blockNum + 1]);
-            const [, uncompressedPosition] = blockPositions[blockNum];
-            const sourceOffset = uncompressedPosition >= position ? 0 : position - uncompressedPosition;
-            const sourceEnd = Math.min(position + length, uncompressedPosition + uncompressedBuffer.length) - uncompressedPosition;
-            if (sourceOffset >= 0 && sourceOffset < uncompressedBuffer.length) {
-                uncompressedBuffer.copy(buf, destinationOffset, sourceOffset, sourceEnd);
-                destinationOffset += sourceEnd - sourceOffset;
-                bytesRead += sourceEnd - sourceOffset;
-            }
-        }
-        return { bytesRead, buffer: buf };
-    }
-}
-//# sourceMappingURL=bgzFilehandle.js.map
-;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js
-
-
-
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 422:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const abortcontroller_ponyfill_1 = __webpack_require__(904);
-const AggregateAbortController_1 = __importDefault(__webpack_require__(49));
-const AggregateStatusReporter_1 = __importDefault(__webpack_require__(450));
-class AbortablePromiseCache {
-    constructor({ fill, cache, }) {
-        if (typeof fill !== 'function') {
-            throw new TypeError('must pass a fill function');
-        }
-        if (typeof cache !== 'object') {
-            throw new TypeError('must pass a cache object');
-        }
-        if (typeof cache.get !== 'function' ||
-            typeof cache.set !== 'function' ||
-            typeof cache.delete !== 'function') {
-            throw new TypeError('cache must implement get(key), set(key, val), and and delete(key)');
-        }
-        this.cache = cache;
-        this.fillCallback = fill;
-    }
-    static isAbortException(exception) {
-        return (
-        // DOMException
-        exception.name === 'AbortError' ||
-            // standard-ish non-DOM abort exception
-            //@ts-ignore
-            exception.code === 'ERR_ABORTED' ||
-            // stringified DOMException
-            exception.message === 'AbortError: aborted' ||
-            // stringified standard-ish exception
-            exception.message === 'Error: aborted');
-    }
-    evict(key, entry) {
-        if (this.cache.get(key) === entry) {
-            this.cache.delete(key);
-        }
-    }
-    fill(key, data, signal, statusCallback) {
-        const aborter = new AggregateAbortController_1.default();
-        const statusReporter = new AggregateStatusReporter_1.default();
-        statusReporter.addCallback(statusCallback);
-        const newEntry = {
-            aborter: aborter,
-            promise: this.fillCallback(data, aborter.signal, (message) => {
-                statusReporter.callback(message);
-            }),
-            settled: false,
-            statusReporter,
-            get aborted() {
-                return this.aborter.signal.aborted;
-            },
-        };
-        newEntry.aborter.addSignal(signal);
-        // remove the fill from the cache when its abortcontroller fires, if still in there
-        newEntry.aborter.signal.addEventListener('abort', () => {
-            if (!newEntry.settled) {
-                this.evict(key, newEntry);
-            }
-        });
-        // chain off the cached promise to record when it settles
-        newEntry.promise
-            .then(() => {
-            newEntry.settled = true;
-        }, () => {
-            newEntry.settled = true;
-            // if the fill throws an error (including abort) and is still in the cache, remove it
-            this.evict(key, newEntry);
-        })
-            .catch(e => {
-            // this will only be reached if there is some kind of
-            // bad bug in this library
-            console.error(e);
-            throw e;
-        });
-        this.cache.set(key, newEntry);
-    }
-    static checkSinglePromise(promise, signal) {
-        // check just this signal for having been aborted, and abort the
-        // promise if it was, regardless of what happened with the cached
-        // response
-        function checkForSingleAbort() {
-            if (signal && signal.aborted) {
-                throw Object.assign(new Error('aborted'), { code: 'ERR_ABORTED' });
-            }
-        }
-        return promise.then(result => {
-            checkForSingleAbort();
-            return result;
-        }, error => {
-            checkForSingleAbort();
-            throw error;
-        });
-    }
-    has(key) {
-        return this.cache.has(key);
-    }
-    /**
-     * Callback for getting status of the pending async
-     *
-     * @callback statusCallback
-     * @param {any} status, current status string or message object
-     */
-    /**
-     * @param {any} key cache key to use for this request
-     * @param {any} data data passed as the first argument to the fill callback
-     * @param {AbortSignal} [signal] optional AbortSignal object that aborts the request
-     * @param {statusCallback} a callback to get the current status of a pending async operation
-     */
-    get(key, data, signal, statusCallback) {
-        if (!signal && data instanceof abortcontroller_ponyfill_1.AbortSignal) {
-            throw new TypeError('second get argument appears to be an AbortSignal, perhaps you meant to pass `null` for the fill data?');
-        }
-        const cacheEntry = this.cache.get(key);
-        if (cacheEntry) {
-            if (cacheEntry.aborted && !cacheEntry.settled) {
-                // if it's aborted but has not realized it yet, evict it and redispatch
-                this.evict(key, cacheEntry);
-                return this.get(key, data, signal, statusCallback);
-            }
-            if (cacheEntry.settled) {
-                // too late to abort, just return it
-                return cacheEntry.promise;
-            }
-            // request is in-flight, add this signal to its list of signals,
-            // or if there is no signal, the aborter will become non-abortable
-            cacheEntry.aborter.addSignal(signal);
-            cacheEntry.statusReporter.addCallback(statusCallback);
-            return AbortablePromiseCache.checkSinglePromise(cacheEntry.promise, signal);
-        }
-        // if we got here, it is not in the cache. fill.
-        this.fill(key, data, signal, statusCallback);
-        return AbortablePromiseCache.checkSinglePromise(
-        //see https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#non-null-assertion-operator-postfix-
-        //eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        this.cache.get(key).promise, signal);
-    }
-    /**
-     * delete the given entry from the cache. if it exists and its fill request has
-     * not yet settled, the fill will be signaled to abort.
-     *
-     * @param {any} key
-     */
-    delete(key) {
-        const cachedEntry = this.cache.get(key);
-        if (cachedEntry) {
-            if (!cachedEntry.settled) {
-                cachedEntry.aborter.abort();
-            }
-            this.cache.delete(key);
-        }
-    }
-    /**
-     * Clear all requests from the cache. Aborts any that have not settled.
-     * @returns {number} count of entries deleted
-     */
-    clear() {
-        // iterate without needing regenerator-runtime
-        const keyIter = this.cache.keys();
-        let deleteCount = 0;
-        for (let result = keyIter.next(); !result.done; result = keyIter.next()) {
-            this.delete(result.value);
-            deleteCount += 1;
-        }
-        return deleteCount;
-    }
-}
-exports["default"] = AbortablePromiseCache;
-
-
-/***/ }),
-
-/***/ 49:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const abortcontroller_ponyfill_1 = __webpack_require__(904);
-class NullSignal {
-}
-/**
- * aggregates a number of abort signals, will only fire the aggregated
- * abort if all of the input signals have been aborted
- */
-class AggregateAbortController {
-    constructor() {
-        this.signals = new Set();
-        this.abortController = new abortcontroller_ponyfill_1.AbortController();
-    }
-    /**
-     * @param {AbortSignal} [signal] optional AbortSignal to add. if falsy,
-     *  will be treated as a null-signal, and this abortcontroller will no
-     *  longer be abortable.
-     */
-    //@ts-ignore
-    addSignal(signal = new NullSignal()) {
-        if (this.signal.aborted) {
-            throw new Error('cannot add a signal, already aborted!');
-        }
-        // note that a NullSignal will never fire, so if we
-        // have one this thing will never actually abort
-        this.signals.add(signal);
-        if (signal.aborted) {
-            // handle the abort immediately if it is already aborted
-            // for some reason
-            this.handleAborted(signal);
-        }
-        else if (typeof signal.addEventListener === 'function') {
-            signal.addEventListener('abort', () => {
-                this.handleAborted(signal);
-            });
-        }
-    }
-    handleAborted(signal) {
-        this.signals.delete(signal);
-        if (this.signals.size === 0) {
-            this.abortController.abort();
-        }
-    }
-    get signal() {
-        return this.abortController.signal;
-    }
-    abort() {
-        this.abortController.abort();
-    }
-}
-exports["default"] = AggregateAbortController;
-
-
-/***/ }),
-
-/***/ 450:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-class AggregateStatusReporter {
-    constructor() {
-        this.callbacks = new Set();
-    }
-    addCallback(callback = () => { }) {
-        this.callbacks.add(callback);
-        callback(this.currentMessage);
-    }
-    callback(message) {
-        this.currentMessage = message;
-        this.callbacks.forEach(elt => {
-            elt(message);
-        });
-    }
-}
-exports["default"] = AggregateStatusReporter;
-
-
-/***/ }),
-
-/***/ 904:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-/* eslint-disable */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.AbortSignal = exports.AbortController = void 0;
-const cjs_ponyfill_1 = __webpack_require__(988);
-var getGlobal = function () {
-    // the only reliable means to get the global object is
-    // `Function('return this')()`
-    // However, this causes CSP violations in Chrome apps.
-    if (typeof self !== 'undefined') {
-        return self;
-    }
-    if (typeof window !== 'undefined') {
-        return window;
-    }
-    if (typeof __webpack_require__.g !== 'undefined') {
-        return __webpack_require__.g;
-    }
-    throw new Error('unable to locate global object');
-};
-//@ts-ignore
-let AbortController = typeof getGlobal().AbortController === 'undefined' ? cjs_ponyfill_1.AbortController : getGlobal().AbortController;
-exports.AbortController = AbortController;
-//@ts-ignore
-let AbortSignal = typeof getGlobal().AbortController === 'undefined' ? cjs_ponyfill_1.AbortSignal : getGlobal().AbortSignal;
-exports.AbortSignal = AbortSignal;
-
-
-/***/ }),
-
-/***/ 105:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const AbortablePromiseCache_1 = __importDefault(__webpack_require__(422));
-exports["default"] = AbortablePromiseCache_1.default;
-
-
-/***/ }),
-
-/***/ 988:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-
-function _classCallCheck(instance, Constructor) {
-  if (!(instance instanceof Constructor)) {
-    throw new TypeError("Cannot call a class as a function");
-  }
-}
-
-function _defineProperties(target, props) {
-  for (var i = 0; i < props.length; i++) {
-    var descriptor = props[i];
-    descriptor.enumerable = descriptor.enumerable || false;
-    descriptor.configurable = true;
-    if ("value" in descriptor) descriptor.writable = true;
-    Object.defineProperty(target, descriptor.key, descriptor);
-  }
-}
-
-function _createClass(Constructor, protoProps, staticProps) {
-  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-  if (staticProps) _defineProperties(Constructor, staticProps);
-  Object.defineProperty(Constructor, "prototype", {
-    writable: false
-  });
-  return Constructor;
-}
-
-function _inherits(subClass, superClass) {
-  if (typeof superClass !== "function" && superClass !== null) {
-    throw new TypeError("Super expression must either be null or a function");
-  }
-
-  subClass.prototype = Object.create(superClass && superClass.prototype, {
-    constructor: {
-      value: subClass,
-      writable: true,
-      configurable: true
-    }
-  });
-  Object.defineProperty(subClass, "prototype", {
-    writable: false
-  });
-  if (superClass) _setPrototypeOf(subClass, superClass);
-}
-
-function _getPrototypeOf(o) {
-  _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) {
-    return o.__proto__ || Object.getPrototypeOf(o);
-  };
-  return _getPrototypeOf(o);
-}
-
-function _setPrototypeOf(o, p) {
-  _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) {
-    o.__proto__ = p;
-    return o;
-  };
-  return _setPrototypeOf(o, p);
-}
-
-function _isNativeReflectConstruct() {
-  if (typeof Reflect === "undefined" || !Reflect.construct) return false;
-  if (Reflect.construct.sham) return false;
-  if (typeof Proxy === "function") return true;
-
-  try {
-    Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function _assertThisInitialized(self) {
-  if (self === void 0) {
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  }
-
-  return self;
-}
-
-function _possibleConstructorReturn(self, call) {
-  if (call && (typeof call === "object" || typeof call === "function")) {
-    return call;
-  } else if (call !== void 0) {
-    throw new TypeError("Derived constructors may only return object or undefined");
-  }
-
-  return _assertThisInitialized(self);
-}
-
-function _createSuper(Derived) {
-  var hasNativeReflectConstruct = _isNativeReflectConstruct();
-
-  return function _createSuperInternal() {
-    var Super = _getPrototypeOf(Derived),
-        result;
-
-    if (hasNativeReflectConstruct) {
-      var NewTarget = _getPrototypeOf(this).constructor;
-
-      result = Reflect.construct(Super, arguments, NewTarget);
-    } else {
-      result = Super.apply(this, arguments);
-    }
-
-    return _possibleConstructorReturn(this, result);
-  };
-}
-
-function _superPropBase(object, property) {
-  while (!Object.prototype.hasOwnProperty.call(object, property)) {
-    object = _getPrototypeOf(object);
-    if (object === null) break;
-  }
-
-  return object;
-}
-
-function _get() {
-  if (typeof Reflect !== "undefined" && Reflect.get) {
-    _get = Reflect.get.bind();
-  } else {
-    _get = function _get(target, property, receiver) {
-      var base = _superPropBase(target, property);
-
-      if (!base) return;
-      var desc = Object.getOwnPropertyDescriptor(base, property);
-
-      if (desc.get) {
-        return desc.get.call(arguments.length < 3 ? target : receiver);
-      }
-
-      return desc.value;
-    };
-  }
-
-  return _get.apply(this, arguments);
-}
-
-var Emitter = /*#__PURE__*/function () {
-  function Emitter() {
-    _classCallCheck(this, Emitter);
-
-    Object.defineProperty(this, 'listeners', {
-      value: {},
-      writable: true,
-      configurable: true
-    });
-  }
-
-  _createClass(Emitter, [{
-    key: "addEventListener",
-    value: function addEventListener(type, callback, options) {
-      if (!(type in this.listeners)) {
-        this.listeners[type] = [];
-      }
-
-      this.listeners[type].push({
-        callback: callback,
-        options: options
-      });
-    }
-  }, {
-    key: "removeEventListener",
-    value: function removeEventListener(type, callback) {
-      if (!(type in this.listeners)) {
-        return;
-      }
-
-      var stack = this.listeners[type];
-
-      for (var i = 0, l = stack.length; i < l; i++) {
-        if (stack[i].callback === callback) {
-          stack.splice(i, 1);
-          return;
-        }
-      }
-    }
-  }, {
-    key: "dispatchEvent",
-    value: function dispatchEvent(event) {
-      if (!(event.type in this.listeners)) {
-        return;
-      }
-
-      var stack = this.listeners[event.type];
-      var stackToCall = stack.slice();
-
-      for (var i = 0, l = stackToCall.length; i < l; i++) {
-        var listener = stackToCall[i];
-
-        try {
-          listener.callback.call(this, event);
-        } catch (e) {
-          Promise.resolve().then(function () {
-            throw e;
-          });
-        }
-
-        if (listener.options && listener.options.once) {
-          this.removeEventListener(event.type, listener.callback);
-        }
-      }
-
-      return !event.defaultPrevented;
-    }
-  }]);
-
-  return Emitter;
-}();
-
-var AbortSignal = /*#__PURE__*/function (_Emitter) {
-  _inherits(AbortSignal, _Emitter);
-
-  var _super = _createSuper(AbortSignal);
-
-  function AbortSignal() {
-    var _this;
-
-    _classCallCheck(this, AbortSignal);
-
-    _this = _super.call(this); // Some versions of babel does not transpile super() correctly for IE <= 10, if the parent
-    // constructor has failed to run, then "this.listeners" will still be undefined and then we call
-    // the parent constructor directly instead as a workaround. For general details, see babel bug:
-    // https://github.com/babel/babel/issues/3041
-    // This hack was added as a fix for the issue described here:
-    // https://github.com/Financial-Times/polyfill-library/pull/59#issuecomment-477558042
-
-    if (!_this.listeners) {
-      Emitter.call(_assertThisInitialized(_this));
-    } // Compared to assignment, Object.defineProperty makes properties non-enumerable by default and
-    // we want Object.keys(new AbortController().signal) to be [] for compat with the native impl
-
-
-    Object.defineProperty(_assertThisInitialized(_this), 'aborted', {
-      value: false,
-      writable: true,
-      configurable: true
-    });
-    Object.defineProperty(_assertThisInitialized(_this), 'onabort', {
-      value: null,
-      writable: true,
-      configurable: true
-    });
-    Object.defineProperty(_assertThisInitialized(_this), 'reason', {
-      value: undefined,
-      writable: true,
-      configurable: true
-    });
-    return _this;
-  }
-
-  _createClass(AbortSignal, [{
-    key: "toString",
-    value: function toString() {
-      return '[object AbortSignal]';
-    }
-  }, {
-    key: "dispatchEvent",
-    value: function dispatchEvent(event) {
-      if (event.type === 'abort') {
-        this.aborted = true;
-
-        if (typeof this.onabort === 'function') {
-          this.onabort.call(this, event);
-        }
-      }
-
-      _get(_getPrototypeOf(AbortSignal.prototype), "dispatchEvent", this).call(this, event);
-    }
-  }]);
-
-  return AbortSignal;
-}(Emitter);
-var AbortController = /*#__PURE__*/function () {
-  function AbortController() {
-    _classCallCheck(this, AbortController);
-
-    // Compared to assignment, Object.defineProperty makes properties non-enumerable by default and
-    // we want Object.keys(new AbortController()) to be [] for compat with the native impl
-    Object.defineProperty(this, 'signal', {
-      value: new AbortSignal(),
-      writable: true,
-      configurable: true
-    });
-  }
-
-  _createClass(AbortController, [{
-    key: "abort",
-    value: function abort(reason) {
-      var event;
-
-      try {
-        event = new Event('abort');
-      } catch (e) {
-        if (typeof document !== 'undefined') {
-          if (!document.createEvent) {
-            // For Internet Explorer 8:
-            event = document.createEventObject();
-            event.type = 'abort';
-          } else {
-            // For Internet Explorer 11:
-            event = document.createEvent('Event');
-            event.initEvent('abort', false, false);
-          }
-        } else {
-          // Fallback where document isn't available:
-          event = {
-            type: 'abort',
-            bubbles: false,
-            cancelable: false
-          };
-        }
-      }
-
-      var signalReason = reason;
-
-      if (signalReason === undefined) {
-        if (typeof document === 'undefined') {
-          signalReason = new Error('This operation was aborted');
-          signalReason.name = 'AbortError';
-        } else {
-          try {
-            signalReason = new DOMException('signal is aborted without reason');
-          } catch (err) {
-            // IE 11 does not support calling the DOMException constructor, use a
-            // regular error object on it instead.
-            signalReason = new Error('This operation was aborted');
-            signalReason.name = 'AbortError';
-          }
-        }
-      }
-
-      this.signal.reason = signalReason;
-      this.signal.dispatchEvent(event);
-    }
-  }, {
-    key: "toString",
-    value: function toString() {
-      return '[object AbortController]';
-    }
-  }]);
-
-  return AbortController;
-}();
-
-if (typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-  // These are necessary to make sure that we get correct output for:
-  // Object.prototype.toString.call(new AbortController())
-  AbortController.prototype[Symbol.toStringTag] = 'AbortController';
-  AbortSignal.prototype[Symbol.toStringTag] = 'AbortSignal';
-}
-
-function polyfillNeeded(self) {
-  if (self.__FORCE_INSTALL_ABORTCONTROLLER_POLYFILL) {
-    console.log('__FORCE_INSTALL_ABORTCONTROLLER_POLYFILL=true is set, will force install polyfill');
-    return true;
-  } // Note that the "unfetch" minimal fetch polyfill defines fetch() without
-  // defining window.Request, and this polyfill need to work on top of unfetch
-  // so the below feature detection needs the !self.AbortController part.
-  // The Request.prototype check is also needed because Safari versions 11.1.2
-  // up to and including 12.1.x has a window.AbortController present but still
-  // does NOT correctly implement abortable fetch:
-  // https://bugs.webkit.org/show_bug.cgi?id=174980#c2
-
-
-  return typeof self.Request === 'function' && !self.Request.prototype.hasOwnProperty('signal') || !self.AbortController;
-}
-
-/**
- * Note: the "fetch.Request" default value is available for fetch imported from
- * the "node-fetch" package and not in browsers. This is OK since browsers
- * will be importing umd-polyfill.js from that path "self" is passed the
- * decorator so the default value will not be used (because browsers that define
- * fetch also has Request). One quirky setup where self.fetch exists but
- * self.Request does not is when the "unfetch" minimal fetch polyfill is used
- * on top of IE11; for this case the browser will try to use the fetch.Request
- * default value which in turn will be undefined but then then "if (Request)"
- * will ensure that you get a patched fetch but still no Request (as expected).
- * @param {fetch, Request = fetch.Request}
- * @returns {fetch: abortableFetch, Request: AbortableRequest}
- */
-
-function abortableFetchDecorator(patchTargets) {
-  if ('function' === typeof patchTargets) {
-    patchTargets = {
-      fetch: patchTargets
-    };
-  }
-
-  var _patchTargets = patchTargets,
-      fetch = _patchTargets.fetch,
-      _patchTargets$Request = _patchTargets.Request,
-      NativeRequest = _patchTargets$Request === void 0 ? fetch.Request : _patchTargets$Request,
-      NativeAbortController = _patchTargets.AbortController,
-      _patchTargets$__FORCE = _patchTargets.__FORCE_INSTALL_ABORTCONTROLLER_POLYFILL,
-      __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL = _patchTargets$__FORCE === void 0 ? false : _patchTargets$__FORCE;
-
-  if (!polyfillNeeded({
-    fetch: fetch,
-    Request: NativeRequest,
-    AbortController: NativeAbortController,
-    __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL: __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL
-  })) {
-    return {
-      fetch: fetch,
-      Request: Request
-    };
-  }
-
-  var Request = NativeRequest; // Note that the "unfetch" minimal fetch polyfill defines fetch() without
-  // defining window.Request, and this polyfill need to work on top of unfetch
-  // hence we only patch it if it's available. Also we don't patch it if signal
-  // is already available on the Request prototype because in this case support
-  // is present and the patching below can cause a crash since it assigns to
-  // request.signal which is technically a read-only property. This latter error
-  // happens when you run the main5.js node-fetch example in the repo
-  // "abortcontroller-polyfill-examples". The exact error is:
-  //   request.signal = init.signal;
-  //   ^
-  // TypeError: Cannot set property signal of #<Request> which has only a getter
-
-  if (Request && !Request.prototype.hasOwnProperty('signal') || __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL) {
-    Request = function Request(input, init) {
-      var signal;
-
-      if (init && init.signal) {
-        signal = init.signal; // Never pass init.signal to the native Request implementation when the polyfill has
-        // been installed because if we're running on top of a browser with a
-        // working native AbortController (i.e. the polyfill was installed due to
-        // __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL being set), then passing our
-        // fake AbortSignal to the native fetch will trigger:
-        // TypeError: Failed to construct 'Request': member signal is not of type AbortSignal.
-
-        delete init.signal;
-      }
-
-      var request = new NativeRequest(input, init);
-
-      if (signal) {
-        Object.defineProperty(request, 'signal', {
-          writable: false,
-          enumerable: false,
-          configurable: true,
-          value: signal
-        });
-      }
-
-      return request;
-    };
-
-    Request.prototype = NativeRequest.prototype;
-  }
-
-  var realFetch = fetch;
-
-  var abortableFetch = function abortableFetch(input, init) {
-    var signal = Request && Request.prototype.isPrototypeOf(input) ? input.signal : init ? init.signal : undefined;
-
-    if (signal) {
-      var abortError;
-
-      try {
-        abortError = new DOMException('Aborted', 'AbortError');
-      } catch (err) {
-        // IE 11 does not support calling the DOMException constructor, use a
-        // regular error object on it instead.
-        abortError = new Error('Aborted');
-        abortError.name = 'AbortError';
-      } // Return early if already aborted, thus avoiding making an HTTP request
-
-
-      if (signal.aborted) {
-        return Promise.reject(abortError);
-      } // Turn an event into a promise, reject it once `abort` is dispatched
-
-
-      var cancellation = new Promise(function (_, reject) {
-        signal.addEventListener('abort', function () {
-          return reject(abortError);
-        }, {
-          once: true
-        });
-      });
-
-      if (init && init.signal) {
-        // Never pass .signal to the native implementation when the polyfill has
-        // been installed because if we're running on top of a browser with a
-        // working native AbortController (i.e. the polyfill was installed due to
-        // __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL being set), then passing our
-        // fake AbortSignal to the native fetch will trigger:
-        // TypeError: Failed to execute 'fetch' on 'Window': member signal is not of type AbortSignal.
-        delete init.signal;
-      } // Return the fastest promise (don't need to wait for request to finish)
-
-
-      return Promise.race([cancellation, realFetch(input, init)]);
-    }
-
-    return realFetch(input, init);
-  };
-
-  return {
-    fetch: abortableFetch,
-    Request: Request
-  };
-}
-
-exports.AbortController = AbortController;
-exports.AbortSignal = AbortSignal;
-exports.abortableFetch = abortableFetchDecorator;
-
-
-/***/ }),
-
 /***/ 248:
 /***/ ((module) => {
 
@@ -1475,7 +255,7 @@ exports.eM = clusterData;
 
 /***/ }),
 
-/***/ 805:
+/***/ 496:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -1492,11 +272,374 @@ __webpack_require__.d(__webpack_exports__, {
 
 // EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
 var esm = __webpack_require__(949);
-// EXTERNAL MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js + 3 modules
-var bgzf_filehandle_esm = __webpack_require__(290);
+// EXTERNAL MODULE: ./node_modules/buffer/index.js
+var buffer = __webpack_require__(764);
+// EXTERNAL MODULE: ./node_modules/pako/index.js
+var pako = __webpack_require__(591);
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/unzip-pako.js
+
+//@ts-ignore
+
+// browserify-zlib, which is the zlib shim used by default in webpacked code,
+// does not properly uncompress bgzf chunks that contain more than
+// one bgzf block, so export an unzip function that uses pako directly
+// if we are running in a browser.
+async function unzip(inputData) {
+    try {
+        let strm;
+        let pos = 0;
+        let i = 0;
+        const chunks = [];
+        let totalSize = 0;
+        let inflator;
+        do {
+            const remainingInput = inputData.subarray(pos);
+            inflator = new pako.Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            pos += strm.next_in;
+            chunks[i] = inflator.result;
+            totalSize += chunks[i].length;
+            i += 1;
+        } while (strm.avail_in);
+        const result = new Uint8Array(totalSize);
+        for (let i = 0, offset = 0; i < chunks.length; i++) {
+            result.set(chunks[i], offset);
+            offset += chunks[i].length;
+        }
+        return buffer/* Buffer */.lW.from(result);
+    }
+    catch (e) {
+        //cleanup error message
+        if (`${e}`.match(/incorrect header check/)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+// similar to pakounzip, except it does extra counting
+// to return the positions of compressed and decompressed
+// data offsets
+async function unzipChunk(inputData) {
+    try {
+        let strm;
+        let cpos = 0;
+        let dpos = 0;
+        const blocks = [];
+        const cpositions = [];
+        const dpositions = [];
+        do {
+            const remainingInput = inputData.slice(cpos);
+            const inflator = new Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            const buffer = Buffer.from(inflator.result);
+            blocks.push(buffer);
+            cpositions.push(cpos);
+            dpositions.push(dpos);
+            cpos += strm.next_in;
+            dpos += buffer.length;
+        } while (strm.avail_in);
+        const buffer = Buffer.concat(blocks);
+        return { buffer, cpositions, dpositions };
+    }
+    catch (e) {
+        //cleanup error message
+        if (`${e}`.match(/incorrect header check/)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+// similar to unzipChunk above but slices (0,minv.dataPosition) and
+// (maxv.dataPosition,end) off
+async function unzipChunkSlice(inputData, chunk) {
+    try {
+        let strm;
+        const { minv, maxv } = chunk;
+        let cpos = minv.blockPosition;
+        let dpos = minv.dataPosition;
+        const chunks = [];
+        const cpositions = [];
+        const dpositions = [];
+        let totalSize = 0;
+        let i = 0;
+        do {
+            const remainingInput = inputData.subarray(cpos - minv.blockPosition);
+            const inflator = new Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            const buffer = inflator.result;
+            chunks.push(buffer);
+            let len = buffer.length;
+            cpositions.push(cpos);
+            dpositions.push(dpos);
+            if (chunks.length === 1 && minv.dataPosition) {
+                // this is the first chunk, trim it
+                chunks[0] = chunks[0].subarray(minv.dataPosition);
+                len = chunks[0].length;
+            }
+            const origCpos = cpos;
+            cpos += strm.next_in;
+            dpos += len;
+            if (origCpos >= maxv.blockPosition) {
+                // this is the last chunk, trim it and stop decompressing
+                // note if it is the same block is minv it subtracts that already
+                // trimmed part of the slice length
+                chunks[i] = chunks[i].subarray(0, maxv.blockPosition === minv.blockPosition
+                    ? maxv.dataPosition - minv.dataPosition + 1
+                    : maxv.dataPosition + 1);
+                cpositions.push(cpos);
+                dpositions.push(dpos);
+                totalSize += chunks[i].length;
+                break;
+            }
+            totalSize += chunks[i].length;
+            i++;
+        } while (strm.avail_in);
+        const result = new Uint8Array(totalSize);
+        for (let i = 0, offset = 0; i < chunks.length; i++) {
+            result.set(chunks[i], offset);
+            offset += chunks[i].length;
+        }
+        const buffer = Buffer.from(result);
+        return { buffer, cpositions, dpositions };
+    }
+    catch (e) {
+        //cleanup error message
+        if (`${e}`.match(/incorrect header check/)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+function nodeUnzip() {
+    throw new Error('nodeUnzip not implemented.');
+}
+
+//# sourceMappingURL=unzip-pako.js.map
+// EXTERNAL MODULE: ./node_modules/long/src/long.js
+var src_long = __webpack_require__(720);
+var long_default = /*#__PURE__*/__webpack_require__.n(src_long);
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/gziIndex.js
+
+
+
+// const COMPRESSED_POSITION = 0
+const UNCOMPRESSED_POSITION = 1;
+class GziIndex {
+    constructor({ filehandle, path, }) {
+        if (filehandle) {
+            this.filehandle = filehandle;
+        }
+        else if (path) {
+            this.filehandle = new esm/* LocalFile */.S9(path);
+        }
+        else {
+            throw new TypeError('either filehandle or path must be defined');
+        }
+    }
+    _readLongWithOverflow(buf, offset = 0, unsigned = true) {
+        //@ts-ignore
+        const long = long_default().fromBytesLE(buf.slice(offset, offset + 8), unsigned);
+        if (long.greaterThan(Number.MAX_SAFE_INTEGER) ||
+            long.lessThan(Number.MIN_SAFE_INTEGER)) {
+            throw new TypeError('integer overflow');
+        }
+        return long.toNumber();
+    }
+    _getIndex() {
+        if (!this.index) {
+            this.index = this._readIndex();
+        }
+        return this.index;
+    }
+    async _readIndex() {
+        let buf = buffer/* Buffer */.lW.allocUnsafe(8);
+        await this.filehandle.read(buf, 0, 8, 0);
+        const numEntries = this._readLongWithOverflow(buf, 0, true);
+        if (!numEntries) {
+            return [[0, 0]];
+        }
+        const entries = new Array(numEntries + 1);
+        entries[0] = [0, 0];
+        // TODO rewrite this to make an index-index that stays in memory
+        const bufSize = 8 * 2 * numEntries;
+        if (bufSize > Number.MAX_SAFE_INTEGER) {
+            throw new TypeError('integer overflow');
+        }
+        buf = buffer/* Buffer */.lW.allocUnsafe(bufSize);
+        await this.filehandle.read(buf, 0, bufSize, 8);
+        for (let entryNumber = 0; entryNumber < numEntries; entryNumber += 1) {
+            const compressedPosition = this._readLongWithOverflow(buf, entryNumber * 16);
+            const uncompressedPosition = this._readLongWithOverflow(buf, entryNumber * 16 + 8);
+            entries[entryNumber + 1] = [compressedPosition, uncompressedPosition];
+        }
+        return entries;
+    }
+    async getLastBlock() {
+        const entries = await this._getIndex();
+        if (!entries.length) {
+            return undefined;
+        }
+        return entries[entries.length - 1];
+    }
+    async getRelevantBlocksForRead(length, position) {
+        const endPosition = position + length;
+        if (length === 0) {
+            return [];
+        }
+        const entries = await this._getIndex();
+        const relevant = [];
+        // binary search to find the block that the
+        // read starts in and extend forward from that
+        const compare = (entry, nextEntry) => {
+            const uncompressedPosition = entry[UNCOMPRESSED_POSITION];
+            const nextUncompressedPosition = nextEntry
+                ? nextEntry[UNCOMPRESSED_POSITION]
+                : Infinity;
+            // block overlaps read start
+            if (uncompressedPosition <= position &&
+                nextUncompressedPosition > position) {
+                return 0;
+                // block is before read start
+            }
+            if (uncompressedPosition < position) {
+                return -1;
+            }
+            // block is after read start
+            return 1;
+        };
+        let lowerBound = 0;
+        let upperBound = entries.length - 1;
+        let searchPosition = Math.floor(entries.length / 2);
+        let comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
+        while (comparison !== 0) {
+            if (comparison > 0) {
+                upperBound = searchPosition - 1;
+            }
+            else if (comparison < 0) {
+                lowerBound = searchPosition + 1;
+            }
+            searchPosition = Math.ceil((upperBound - lowerBound) / 2) + lowerBound;
+            comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
+        }
+        // here's where we read forward
+        relevant.push(entries[searchPosition]);
+        let i = searchPosition + 1;
+        for (; i < entries.length; i += 1) {
+            relevant.push(entries[i]);
+            if (entries[i][UNCOMPRESSED_POSITION] >= endPosition) {
+                break;
+            }
+        }
+        if (relevant[relevant.length - 1][UNCOMPRESSED_POSITION] < endPosition) {
+            relevant.push([]);
+        }
+        return relevant;
+    }
+}
+//# sourceMappingURL=gziIndex.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/bgzFilehandle.js
+
+
+// locals
+
+
+class BgzFilehandle {
+    constructor({ filehandle, path, gziFilehandle, gziPath, }) {
+        if (filehandle) {
+            this.filehandle = filehandle;
+        }
+        else if (path) {
+            this.filehandle = new esm/* LocalFile */.S9(path);
+        }
+        else {
+            throw new TypeError('either filehandle or path must be defined');
+        }
+        if (!gziFilehandle && !gziPath && !path) {
+            throw new TypeError('either gziFilehandle or gziPath must be defined');
+        }
+        this.gzi = new GziIndex({
+            filehandle: gziFilehandle,
+            path: !gziFilehandle && !gziPath && path ? gziPath : `${path}.gzi`,
+        });
+    }
+    async stat() {
+        const compressedStat = await this.filehandle.stat();
+        return Object.assign(compressedStat, {
+            size: await this.getUncompressedFileSize(),
+            blocks: undefined,
+            blksize: undefined,
+        });
+    }
+    async getUncompressedFileSize() {
+        // read the last block's ISIZE (see gzip RFC),
+        // and add it to its uncompressedPosition
+        const [, uncompressedPosition] = await this.gzi.getLastBlock();
+        const { size } = await this.filehandle.stat();
+        const buf = buffer/* Buffer */.lW.allocUnsafe(4);
+        // note: there should be a 28-byte EOF marker (an empty block) at
+        // the end of the file, so we skip backward past that
+        const { bytesRead } = await this.filehandle.read(buf, 0, 4, size - 28 - 4);
+        if (bytesRead !== 4) {
+            throw new Error('read error');
+        }
+        const lastBlockUncompressedSize = buf.readUInt32LE(0);
+        return uncompressedPosition + lastBlockUncompressedSize;
+    }
+    async _readAndUncompressBlock(blockBuffer, [compressedPosition], [nextCompressedPosition]) {
+        let next = nextCompressedPosition;
+        if (!next) {
+            next = (await this.filehandle.stat()).size;
+        }
+        // read the compressed data into the block buffer
+        const blockCompressedLength = next - compressedPosition;
+        await this.filehandle.read(blockBuffer, 0, blockCompressedLength, compressedPosition);
+        // uncompress it
+        const unzippedBuffer = await unzip(blockBuffer.slice(0, blockCompressedLength));
+        return unzippedBuffer;
+    }
+    async read(buf, offset, length, position) {
+        // get the block positions for this read
+        const blockPositions = await this.gzi.getRelevantBlocksForRead(length, position);
+        const blockBuffer = buffer/* Buffer */.lW.allocUnsafe(32768 * 2);
+        // uncompress the blocks and read from them one at a time to keep memory usage down
+        let destinationOffset = offset;
+        let bytesRead = 0;
+        for (let blockNum = 0; blockNum < blockPositions.length - 1; blockNum += 1) {
+            // eslint-disable-next-line no-await-in-loop
+            const uncompressedBuffer = await this._readAndUncompressBlock(blockBuffer, blockPositions[blockNum], blockPositions[blockNum + 1]);
+            const [, uncompressedPosition] = blockPositions[blockNum];
+            const sourceOffset = uncompressedPosition >= position ? 0 : position - uncompressedPosition;
+            const sourceEnd = Math.min(position + length, uncompressedPosition + uncompressedBuffer.length) - uncompressedPosition;
+            if (sourceOffset >= 0 && sourceOffset < uncompressedBuffer.length) {
+                uncompressedBuffer.copy(buf, destinationOffset, sourceOffset, sourceEnd);
+                destinationOffset += sourceEnd - sourceOffset;
+                bytesRead += sourceEnd - sourceOffset;
+            }
+        }
+        return { bytesRead, buffer: buf };
+    }
+}
+//# sourceMappingURL=bgzFilehandle.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js
+
+
+
+//# sourceMappingURL=index.js.map
 ;// CONCATENATED MODULE: ./node_modules/apr144-indexedfasta/esm/indexedFasta.js
 
-const Buffer = (__webpack_require__(764)/* .Buffer */ .lW);
+const indexedFasta_Buffer = (__webpack_require__(764)/* .Buffer */ .lW);
 function _faiOffset(idx, pos) {
     return (idx.offset +
         idx.lineBytes * Math.floor(pos / idx.lineLength) +
@@ -1651,7 +794,7 @@ class IndexedFasta {
         }
         const position = _faiOffset(indexEntry, min);
         const readlen = _faiOffset(indexEntry, end) - position;
-        const residues = Buffer.allocUnsafe(readlen);
+        const residues = indexedFasta_Buffer.allocUnsafe(readlen);
         await this.fasta.read(residues, 0, readlen, position, opts);
         return residues.toString('utf8').replace(/\s+/g, '');
     }
@@ -1665,14 +808,14 @@ class BgzipIndexedFasta extends IndexedFasta {
         super({ fasta, path, fai, faiPath });
         if (fasta && gzi) {
             // @ts-expect-error
-            this.fasta = new bgzf_filehandle_esm/* BgzfFilehandle */.q5({
+            this.fasta = new BgzFilehandle({
                 filehandle: fasta,
                 gziFilehandle: gzi,
             });
         }
         else if (path && gziPath) {
             // @ts-expect-error
-            this.fasta = new bgzf_filehandle_esm/* BgzfFilehandle */.q5({ path, gziPath });
+            this.fasta = new BgzFilehandle({ path, gziPath });
         }
     }
 }
@@ -31181,6 +30324,13 @@ try {
 
 /* (ignored) */
 
+/***/ }),
+
+/***/ 721:
+/***/ (() => {
+
+/* (ignored) */
+
 /***/ })
 
 /******/ 	});
@@ -31418,13 +30568,13 @@ __webpack_require__.d(modules_namespaceObject, {
   times: () => (times),
   toArray: () => (toArray),
   toPath: () => (toPath),
-  transpose: () => (unzip_unzip),
+  transpose: () => (modules_unzip_unzip),
   unescape: () => (modules_unescape),
   union: () => (union),
   uniq: () => (uniq),
   unique: () => (uniq),
   uniqueId: () => (uniqueId),
-  unzip: () => (unzip_unzip),
+  unzip: () => (modules_unzip_unzip),
   values: () => (values),
   where: () => (where),
   without: () => (without),
@@ -33548,8 +32698,10 @@ const expose = worker.expose
 const registerSerializer = worker.registerSerializer
 const Transfer = worker.Transfer
 
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/virtualOffset.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/virtualOffset.js
 class VirtualOffset {
+    blockPosition;
+    dataPosition;
     constructor(blockPosition, dataPosition) {
         this.blockPosition = blockPosition; // < offset of the compressed data block
         this.dataPosition = dataPosition; // < offset into the uncompressed data
@@ -33586,9 +32738,14 @@ function fromBytes(bytes, offset = 0, bigendian = false) {
         bytes[offset + 2], (bytes[offset + 1] << 8) | bytes[offset]);
 }
 //# sourceMappingURL=virtualOffset.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/chunk.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/chunk.js
 // little class representing a chunk in the index
 class Chunk {
+    minv;
+    maxv;
+    bin;
+    _fetchedSize;
+    buffer;
     constructor(minv, maxv, bin, _fetchedSize) {
         this.minv = minv;
         this.maxv = maxv;
@@ -33617,17 +32774,10 @@ class Chunk {
 // EXTERNAL MODULE: ./node_modules/long/src/long.js
 var src_long = __webpack_require__(720);
 var long_default = /*#__PURE__*/__webpack_require__.n(src_long);
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/util.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/util.js
 
 function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-}
-function longToNumber(long) {
-    if (long.greaterThan(Number.MAX_SAFE_INTEGER) ||
-        long.lessThan(Number.MIN_SAFE_INTEGER)) {
-        throw new Error('integer overflow');
-    }
-    return long.toNumber();
 }
 /**
  * Properly check if the given AbortSignal is aborted.
@@ -33706,8 +32856,9 @@ function optimizeChunks(chunks, lowest) {
     return mergedChunks;
 }
 function parsePseudoBin(bytes, offset) {
-    const lineCount = longToNumber(long_default().fromBytesLE(Array.prototype.slice.call(bytes, offset, offset + 8), true));
-    return { lineCount };
+    return {
+        lineCount: long_default().fromBytesLE(Array.prototype.slice.call(bytes, offset, offset + 8), true).toNumber(),
+    };
 }
 function findFirstData(firstDataLine, virtualOffset) {
     return firstDataLine
@@ -33724,7 +32875,10 @@ function parseNameBytes(namesBytes, renameRefSeq = s => s) {
     for (let i = 0; i < namesBytes.length; i += 1) {
         if (!namesBytes[i]) {
             if (currNameStart < i) {
-                let refName = namesBytes.toString('utf8', currNameStart, i);
+                let refName = '';
+                for (let j = currNameStart; j < i; j++) {
+                    refName += String.fromCharCode(namesBytes[j]);
+                }
                 refName = renameRefSeq(refName);
                 refIdToName[currRefId] = refName;
                 refNameToId[refName] = currRefId;
@@ -33735,9 +32889,27 @@ function parseNameBytes(namesBytes, renameRefSeq = s => s) {
     }
     return { refNameToId, refIdToName };
 }
+function sum(array) {
+    let sum = 0;
+    for (const entry of array) {
+        sum += entry.length;
+    }
+    return sum;
+}
+function util_concatUint8Array(args) {
+    const mergedArray = new Uint8Array(sum(args));
+    let offset = 0;
+    for (const entry of args) {
+        mergedArray.set(entry, offset);
+        offset += entry.length;
+    }
+    return mergedArray;
+}
 //# sourceMappingURL=util.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/indexFile.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/indexFile.js
 class IndexFile {
+    filehandle;
+    renameRefSeq;
     /**
      * @param {filehandle} filehandle
      * @param {function} [renameRefSeqs]
@@ -33748,7 +32920,7 @@ class IndexFile {
     }
 }
 //# sourceMappingURL=indexFile.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/bai.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/bai.js
 
 
 
@@ -33772,19 +32944,20 @@ function reg2bins(beg, end) {
     ];
 }
 class BAI extends IndexFile {
+    setupP;
     async lineCount(refId, opts) {
-        var _a, _b;
         const indexData = await this.parse(opts);
-        return ((_b = (_a = indexData.indices[refId]) === null || _a === void 0 ? void 0 : _a.stats) === null || _b === void 0 ? void 0 : _b.lineCount) || 0;
+        return indexData.indices[refId]?.stats?.lineCount || 0;
     }
     // fetch and parse the index
-    async _parse(opts) {
-        const bytes = (await this.filehandle.readFile(opts));
+    async _parse(_opts) {
+        const bytes = await this.filehandle.readFile();
+        const dataView = new DataView(bytes.buffer);
         // check BAI magic numbers
-        if (bytes.readUInt32LE(0) !== BAI_MAGIC) {
+        if (dataView.getUint32(0, true) !== BAI_MAGIC) {
             throw new Error('Not a BAI file');
         }
-        const refCount = bytes.readInt32LE(4);
+        const refCount = dataView.getInt32(4, true);
         const depth = 5;
         const binLimit = ((1 << ((depth + 1) * 3)) - 1) / 7;
         // read the indexes for each reference sequence
@@ -33793,13 +32966,12 @@ class BAI extends IndexFile {
         const indices = new Array(refCount);
         for (let i = 0; i < refCount; i++) {
             // the binning index
-            const binCount = bytes.readInt32LE(curr);
+            const binCount = dataView.getInt32(curr, true);
             let stats;
             curr += 4;
             const binIndex = {};
-            // console.log(`[bam-js] binCount ${binCount}`)
             for (let j = 0; j < binCount; j += 1) {
-                const bin = bytes.readUInt32LE(curr);
+                const bin = dataView.getUint32(curr, true);
                 curr += 4;
                 if (bin === binLimit + 1) {
                     curr += 4;
@@ -33810,7 +32982,7 @@ class BAI extends IndexFile {
                     throw new Error('bai index contains too many bins, please use CSI');
                 }
                 else {
-                    const chunkCount = bytes.readInt32LE(curr);
+                    const chunkCount = dataView.getInt32(curr, true);
                     curr += 4;
                     const chunks = new Array(chunkCount);
                     for (let k = 0; k < chunkCount; k++) {
@@ -33824,9 +32996,7 @@ class BAI extends IndexFile {
                     binIndex[bin] = chunks;
                 }
             }
-            // console.log(`[bam-js] binCount ${binCount}`)
-            // console.log(`[bam-js] binIndex ${JSON.stringify(binIndex)}`)
-            const linearCount = bytes.readInt32LE(curr);
+            const linearCount = dataView.getInt32(curr, true);
             curr += 4;
             // as we're going through the linear index, figure out the smallest
             // virtual offset in the indexes, which tells us where the BAM header
@@ -33838,7 +33008,6 @@ class BAI extends IndexFile {
                 firstDataLine = findFirstData(firstDataLine, offset);
                 linearIndex[j] = offset;
             }
-            // console.log(`[bam-js] indices[i]: ${JSON.stringify(indices[i])}`)
             indices[i] = { binIndex, linearIndex, stats };
         }
         return {
@@ -33854,6 +33023,7 @@ class BAI extends IndexFile {
         const range = start !== undefined;
         const indexData = await this.parse(opts);
         const seqIdx = indexData.indices[seqId];
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!seqIdx) {
             return [];
         }
@@ -33881,7 +33051,7 @@ class BAI extends IndexFile {
         }
         return depths.map(d => ({
             ...d,
-            score: (d.score * ((stats === null || stats === void 0 ? void 0 : stats.lineCount) || 0)) / totalSize,
+            score: (d.score * (stats?.lineCount || 0)) / totalSize,
         }));
     }
     async blocksForRange(refId, min, max, opts = {}) {
@@ -33889,10 +33059,12 @@ class BAI extends IndexFile {
             min = 0;
         }
         const indexData = await this.parse(opts);
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!indexData) {
             return [];
         }
         const ba = indexData.indices[refId];
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!ba) {
             return [];
         }
@@ -33902,10 +33074,11 @@ class BAI extends IndexFile {
         // Find chunks in overlapping bins.  Leaf bins (< 4681) are not pruned
         for (const [start, end] of overlappingBins) {
             for (let bin = start; bin <= end; bin++) {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (ba.binIndex[bin]) {
                     const binChunks = ba.binIndex[bin];
                     for (const binChunk of binChunks) {
-                        chunks.push(binChunk);
+                        chunks.push(new Chunk(binChunk.minv, binChunk.maxv, bin));
                     }
                 }
             }
@@ -33918,6 +33091,7 @@ class BAI extends IndexFile {
         const maxLin = Math.min(max >> 14, nintv - 1);
         for (let i = minLin; i <= maxLin; ++i) {
             const vp = ba.linearIndex[i];
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (vp && (!lowest || vp.compareTo(lowest) < 0)) {
                 lowest = vp;
             }
@@ -33926,7 +33100,7 @@ class BAI extends IndexFile {
     }
     async parse(opts = {}) {
         if (!this.setupP) {
-            this.setupP = this._parse(opts).catch(e => {
+            this.setupP = this._parse(opts).catch((e) => {
                 this.setupP = undefined;
                 throw e;
             });
@@ -33934,331 +33108,796 @@ class BAI extends IndexFile {
         return this.setupP;
     }
     async hasRefSeq(seqId, opts = {}) {
-        var _a;
         const header = await this.parse(opts);
-        return !!((_a = header.indices[seqId]) === null || _a === void 0 ? void 0 : _a.binIndex);
+        return !!header.indices[seqId]?.binIndex;
     }
 }
 //# sourceMappingURL=bai.js.map
+;// CONCATENATED MODULE: ./node_modules/crc/mjs/calculators/crc32.js
+// Generated by `./pycrc.py --algorithm=table-driven --model=crc-32 --generate=c`
+let TABLE = [
+    0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
+    0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988, 0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91,
+    0x1db71064, 0x6ab020f2, 0xf3b97148, 0x84be41de, 0x1adad47d, 0x6ddde4eb, 0xf4d4b551, 0x83d385c7,
+    0x136c9856, 0x646ba8c0, 0xfd62f97a, 0x8a65c9ec, 0x14015c4f, 0x63066cd9, 0xfa0f3d63, 0x8d080df5,
+    0x3b6e20c8, 0x4c69105e, 0xd56041e4, 0xa2677172, 0x3c03e4d1, 0x4b04d447, 0xd20d85fd, 0xa50ab56b,
+    0x35b5a8fa, 0x42b2986c, 0xdbbbc9d6, 0xacbcf940, 0x32d86ce3, 0x45df5c75, 0xdcd60dcf, 0xabd13d59,
+    0x26d930ac, 0x51de003a, 0xc8d75180, 0xbfd06116, 0x21b4f4b5, 0x56b3c423, 0xcfba9599, 0xb8bda50f,
+    0x2802b89e, 0x5f058808, 0xc60cd9b2, 0xb10be924, 0x2f6f7c87, 0x58684c11, 0xc1611dab, 0xb6662d3d,
+    0x76dc4190, 0x01db7106, 0x98d220bc, 0xefd5102a, 0x71b18589, 0x06b6b51f, 0x9fbfe4a5, 0xe8b8d433,
+    0x7807c9a2, 0x0f00f934, 0x9609a88e, 0xe10e9818, 0x7f6a0dbb, 0x086d3d2d, 0x91646c97, 0xe6635c01,
+    0x6b6b51f4, 0x1c6c6162, 0x856530d8, 0xf262004e, 0x6c0695ed, 0x1b01a57b, 0x8208f4c1, 0xf50fc457,
+    0x65b0d9c6, 0x12b7e950, 0x8bbeb8ea, 0xfcb9887c, 0x62dd1ddf, 0x15da2d49, 0x8cd37cf3, 0xfbd44c65,
+    0x4db26158, 0x3ab551ce, 0xa3bc0074, 0xd4bb30e2, 0x4adfa541, 0x3dd895d7, 0xa4d1c46d, 0xd3d6f4fb,
+    0x4369e96a, 0x346ed9fc, 0xad678846, 0xda60b8d0, 0x44042d73, 0x33031de5, 0xaa0a4c5f, 0xdd0d7cc9,
+    0x5005713c, 0x270241aa, 0xbe0b1010, 0xc90c2086, 0x5768b525, 0x206f85b3, 0xb966d409, 0xce61e49f,
+    0x5edef90e, 0x29d9c998, 0xb0d09822, 0xc7d7a8b4, 0x59b33d17, 0x2eb40d81, 0xb7bd5c3b, 0xc0ba6cad,
+    0xedb88320, 0x9abfb3b6, 0x03b6e20c, 0x74b1d29a, 0xead54739, 0x9dd277af, 0x04db2615, 0x73dc1683,
+    0xe3630b12, 0x94643b84, 0x0d6d6a3e, 0x7a6a5aa8, 0xe40ecf0b, 0x9309ff9d, 0x0a00ae27, 0x7d079eb1,
+    0xf00f9344, 0x8708a3d2, 0x1e01f268, 0x6906c2fe, 0xf762575d, 0x806567cb, 0x196c3671, 0x6e6b06e7,
+    0xfed41b76, 0x89d32be0, 0x10da7a5a, 0x67dd4acc, 0xf9b9df6f, 0x8ebeeff9, 0x17b7be43, 0x60b08ed5,
+    0xd6d6a3e8, 0xa1d1937e, 0x38d8c2c4, 0x4fdff252, 0xd1bb67f1, 0xa6bc5767, 0x3fb506dd, 0x48b2364b,
+    0xd80d2bda, 0xaf0a1b4c, 0x36034af6, 0x41047a60, 0xdf60efc3, 0xa867df55, 0x316e8eef, 0x4669be79,
+    0xcb61b38c, 0xbc66831a, 0x256fd2a0, 0x5268e236, 0xcc0c7795, 0xbb0b4703, 0x220216b9, 0x5505262f,
+    0xc5ba3bbe, 0xb2bd0b28, 0x2bb45a92, 0x5cb36a04, 0xc2d7ffa7, 0xb5d0cf31, 0x2cd99e8b, 0x5bdeae1d,
+    0x9b64c2b0, 0xec63f226, 0x756aa39c, 0x026d930a, 0x9c0906a9, 0xeb0e363f, 0x72076785, 0x05005713,
+    0x95bf4a82, 0xe2b87a14, 0x7bb12bae, 0x0cb61b38, 0x92d28e9b, 0xe5d5be0d, 0x7cdcefb7, 0x0bdbdf21,
+    0x86d3d2d4, 0xf1d4e242, 0x68ddb3f8, 0x1fda836e, 0x81be16cd, 0xf6b9265b, 0x6fb077e1, 0x18b74777,
+    0x88085ae6, 0xff0f6a70, 0x66063bca, 0x11010b5c, 0x8f659eff, 0xf862ae69, 0x616bffd3, 0x166ccf45,
+    0xa00ae278, 0xd70dd2ee, 0x4e048354, 0x3903b3c2, 0xa7672661, 0xd06016f7, 0x4969474d, 0x3e6e77db,
+    0xaed16a4a, 0xd9d65adc, 0x40df0b66, 0x37d83bf0, 0xa9bcae53, 0xdebb9ec5, 0x47b2cf7f, 0x30b5ffe9,
+    0xbdbdf21c, 0xcabac28a, 0x53b39330, 0x24b4a3a6, 0xbad03605, 0xcdd70693, 0x54de5729, 0x23d967bf,
+    0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
+];
+if (typeof Int32Array !== 'undefined') {
+    TABLE = new Int32Array(TABLE);
+}
+const crc32 = (current, previous) => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    let crc = previous === 0 ? 0 : ~~previous ^ -1;
+    for (let index = 0; index < current.length; index++) {
+        crc = TABLE[(crc ^ current[index]) & 0xff] ^ (crc >>> 8);
+    }
+    return crc ^ -1;
+};
+/* harmony default export */ const calculators_crc32 = (crc32);
+
 // EXTERNAL MODULE: ./node_modules/buffer/index.js
-var node_modules_buffer = __webpack_require__(764);
-;// CONCATENATED MODULE: ./node_modules/buffer-crc32/dist/index.mjs
-function getDefaultExportFromCjs (x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+var buffer = __webpack_require__(764);
+;// CONCATENATED MODULE: ./node_modules/crc/mjs/create_buffer.js
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-prototype-builtins */
+
+const createBuffer = (value, encoding) => buffer/* Buffer */.lW.from(value, encoding);
+/* harmony default export */ const create_buffer = (createBuffer);
+
+;// CONCATENATED MODULE: ./node_modules/crc/mjs/define_crc.js
+
+function defineCrc(model, calculator) {
+    const result = (value, previous) => calculator(create_buffer(value), previous) >>> 0;
+    result.signed = (value, previous) => calculator(create_buffer(value), previous);
+    result.unsigned = result;
+    result.model = model;
+    return result;
 }
 
-const CRC_TABLE = new Int32Array([
-  0,
-  1996959894,
-  3993919788,
-  2567524794,
-  124634137,
-  1886057615,
-  3915621685,
-  2657392035,
-  249268274,
-  2044508324,
-  3772115230,
-  2547177864,
-  162941995,
-  2125561021,
-  3887607047,
-  2428444049,
-  498536548,
-  1789927666,
-  4089016648,
-  2227061214,
-  450548861,
-  1843258603,
-  4107580753,
-  2211677639,
-  325883990,
-  1684777152,
-  4251122042,
-  2321926636,
-  335633487,
-  1661365465,
-  4195302755,
-  2366115317,
-  997073096,
-  1281953886,
-  3579855332,
-  2724688242,
-  1006888145,
-  1258607687,
-  3524101629,
-  2768942443,
-  901097722,
-  1119000684,
-  3686517206,
-  2898065728,
-  853044451,
-  1172266101,
-  3705015759,
-  2882616665,
-  651767980,
-  1373503546,
-  3369554304,
-  3218104598,
-  565507253,
-  1454621731,
-  3485111705,
-  3099436303,
-  671266974,
-  1594198024,
-  3322730930,
-  2970347812,
-  795835527,
-  1483230225,
-  3244367275,
-  3060149565,
-  1994146192,
-  31158534,
-  2563907772,
-  4023717930,
-  1907459465,
-  112637215,
-  2680153253,
-  3904427059,
-  2013776290,
-  251722036,
-  2517215374,
-  3775830040,
-  2137656763,
-  141376813,
-  2439277719,
-  3865271297,
-  1802195444,
-  476864866,
-  2238001368,
-  4066508878,
-  1812370925,
-  453092731,
-  2181625025,
-  4111451223,
-  1706088902,
-  314042704,
-  2344532202,
-  4240017532,
-  1658658271,
-  366619977,
-  2362670323,
-  4224994405,
-  1303535960,
-  984961486,
-  2747007092,
-  3569037538,
-  1256170817,
-  1037604311,
-  2765210733,
-  3554079995,
-  1131014506,
-  879679996,
-  2909243462,
-  3663771856,
-  1141124467,
-  855842277,
-  2852801631,
-  3708648649,
-  1342533948,
-  654459306,
-  3188396048,
-  3373015174,
-  1466479909,
-  544179635,
-  3110523913,
-  3462522015,
-  1591671054,
-  702138776,
-  2966460450,
-  3352799412,
-  1504918807,
-  783551873,
-  3082640443,
-  3233442989,
-  3988292384,
-  2596254646,
-  62317068,
-  1957810842,
-  3939845945,
-  2647816111,
-  81470997,
-  1943803523,
-  3814918930,
-  2489596804,
-  225274430,
-  2053790376,
-  3826175755,
-  2466906013,
-  167816743,
-  2097651377,
-  4027552580,
-  2265490386,
-  503444072,
-  1762050814,
-  4150417245,
-  2154129355,
-  426522225,
-  1852507879,
-  4275313526,
-  2312317920,
-  282753626,
-  1742555852,
-  4189708143,
-  2394877945,
-  397917763,
-  1622183637,
-  3604390888,
-  2714866558,
-  953729732,
-  1340076626,
-  3518719985,
-  2797360999,
-  1068828381,
-  1219638859,
-  3624741850,
-  2936675148,
-  906185462,
-  1090812512,
-  3747672003,
-  2825379669,
-  829329135,
-  1181335161,
-  3412177804,
-  3160834842,
-  628085408,
-  1382605366,
-  3423369109,
-  3138078467,
-  570562233,
-  1426400815,
-  3317316542,
-  2998733608,
-  733239954,
-  1555261956,
-  3268935591,
-  3050360625,
-  752459403,
-  1541320221,
-  2607071920,
-  3965973030,
-  1969922972,
-  40735498,
-  2617837225,
-  3943577151,
-  1913087877,
-  83908371,
-  2512341634,
-  3803740692,
-  2075208622,
-  213261112,
-  2463272603,
-  3855990285,
-  2094854071,
-  198958881,
-  2262029012,
-  4057260610,
-  1759359992,
-  534414190,
-  2176718541,
-  4139329115,
-  1873836001,
-  414664567,
-  2282248934,
-  4279200368,
-  1711684554,
-  285281116,
-  2405801727,
-  4167216745,
-  1634467795,
-  376229701,
-  2685067896,
-  3608007406,
-  1308918612,
-  956543938,
-  2808555105,
-  3495958263,
-  1231636301,
-  1047427035,
-  2932959818,
-  3654703836,
-  1088359270,
-  936918e3,
-  2847714899,
-  3736837829,
-  1202900863,
-  817233897,
-  3183342108,
-  3401237130,
-  1404277552,
-  615818150,
-  3134207493,
-  3453421203,
-  1423857449,
-  601450431,
-  3009837614,
-  3294710456,
-  1567103746,
-  711928724,
-  3020668471,
-  3272380065,
-  1510334235,
-  755167117
-]);
-function ensureBuffer(input) {
-  if (Buffer.isBuffer(input)) {
-    return input;
-  }
-  if (typeof input === "number") {
-    return Buffer.alloc(input);
-  } else if (typeof input === "string") {
-    return Buffer.from(input);
-  } else {
-    throw new Error("input must be buffer, number, or string, received " + typeof input);
-  }
-}
-function bufferizeInt(num) {
-  const tmp = ensureBuffer(4);
-  tmp.writeInt32BE(num, 0);
-  return tmp;
-}
-function _crc32(buf, previous) {
-  buf = ensureBuffer(buf);
-  if (Buffer.isBuffer(previous)) {
-    previous = previous.readUInt32BE(0);
-  }
-  let crc = ~~previous ^ -1;
-  for (var n = 0; n < buf.length; n++) {
-    crc = CRC_TABLE[(crc ^ buf[n]) & 255] ^ crc >>> 8;
-  }
-  return crc ^ -1;
-}
-function crc32() {
-  return bufferizeInt(_crc32.apply(null, arguments));
-}
-crc32.signed = function() {
-  return _crc32.apply(null, arguments);
-};
-crc32.unsigned = function() {
-  return _crc32.apply(null, arguments) >>> 0;
-};
-var bufferCrc32 = crc32;
+;// CONCATENATED MODULE: ./node_modules/crc/mjs/crc32.js
 
-const index = /*@__PURE__*/getDefaultExportFromCjs(bufferCrc32);
+
+/* harmony default export */ const mjs_crc32 = (defineCrc('crc-32', calculators_crc32));
+
+// EXTERNAL MODULE: ./localFile (ignored)
+var localFile_ignored_ = __webpack_require__(721);
+var localFile_ignored_default = /*#__PURE__*/__webpack_require__.n(localFile_ignored_);
+;// CONCATENATED MODULE: ./node_modules/generic-filehandle2/esm/remoteFile.js
+function getMessage(e) {
+    const r = typeof e === 'object' && e !== null && 'message' in e
+        ? e.message
+        : `${e}`;
+    return r.replace(/\.$/, '');
+}
+class remoteFile_RemoteFile {
+    constructor(source, opts = {}) {
+        this.baseOverrides = {};
+        this.url = source;
+        const fetch = opts.fetch || globalThis.fetch.bind(globalThis);
+        if (opts.overrides) {
+            this.baseOverrides = opts.overrides;
+        }
+        this.fetchImplementation = fetch;
+    }
+    async fetch(input, init) {
+        let response;
+        try {
+            response = await this.fetchImplementation(input, init);
+        }
+        catch (e) {
+            if (`${e}`.includes('Failed to fetch')) {
+                // refetch to to help work around a chrome bug (discussed in
+                // generic-filehandle issue #72) in which the chrome cache returns a
+                // CORS error for content in its cache.  see also
+                // https://github.com/GMOD/jbrowse-components/pull/1511
+                console.warn(`generic-filehandle: refetching ${input} to attempt to work around chrome CORS header caching bug`);
+                try {
+                    response = await this.fetchImplementation(input, {
+                        ...init,
+                        cache: 'reload',
+                    });
+                }
+                catch (e) {
+                    throw new Error(`${getMessage(e)} fetching ${input}`, { cause: e });
+                }
+            }
+            else {
+                throw new Error(`${getMessage(e)} fetching ${input}`, { cause: e });
+            }
+        }
+        return response;
+    }
+    async read(length, position, opts = {}) {
+        const { headers = {}, signal, overrides = {} } = opts;
+        if (length < Infinity) {
+            headers.range = `bytes=${position}-${position + length}`;
+        }
+        else if (length === Infinity && position !== 0) {
+            headers.range = `bytes=${position}-`;
+        }
+        const res = await this.fetch(this.url, {
+            ...this.baseOverrides,
+            ...overrides,
+            headers: {
+                ...headers,
+                ...overrides.headers,
+                ...this.baseOverrides.headers,
+            },
+            method: 'GET',
+            redirect: 'follow',
+            mode: 'cors',
+            signal,
+        });
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status} fetching ${this.url}`);
+        }
+        if ((res.status === 200 && position === 0) || res.status === 206) {
+            const resData = await res.arrayBuffer();
+            // try to parse out the size of the remote file
+            const contentRange = res.headers.get('content-range');
+            const sizeMatch = /\/(\d+)$/.exec(contentRange || '');
+            if (sizeMatch?.[1]) {
+                this._stat = {
+                    size: parseInt(sizeMatch[1], 10),
+                };
+            }
+            return new Uint8Array(resData.slice(0, length));
+        }
+        // eslint-disable-next-line unicorn/prefer-ternary
+        if (res.status === 200) {
+            throw new Error(`${this.url} fetch returned status 200, expected 206`);
+        }
+        else {
+            throw new Error(`HTTP ${res.status} fetching ${this.url}`);
+        }
+    }
+    async readFile(options = {}) {
+        let encoding;
+        let opts;
+        if (typeof options === 'string') {
+            encoding = options;
+            opts = {};
+        }
+        else {
+            encoding = options.encoding;
+            opts = options;
+            delete opts.encoding;
+        }
+        const { headers = {}, signal, overrides = {} } = opts;
+        const res = await this.fetch(this.url, {
+            headers,
+            method: 'GET',
+            redirect: 'follow',
+            mode: 'cors',
+            signal,
+            ...this.baseOverrides,
+            ...overrides,
+        });
+        if (res.status !== 200) {
+            throw new Error(`HTTP ${res.status} fetching ${this.url}`);
+        }
+        if (encoding === 'utf8') {
+            return res.text();
+        }
+        else if (encoding) {
+            throw new Error(`unsupported encoding: ${encoding}`);
+        }
+        else {
+            return new Uint8Array(await res.arrayBuffer());
+        }
+    }
+    async stat() {
+        if (!this._stat) {
+            await this.read(10, 0);
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (!this._stat) {
+                throw new Error(`unable to determine size of file at ${this.url}`);
+            }
+        }
+        return this._stat;
+    }
+    async close() {
+        return;
+    }
+}
+//# sourceMappingURL=remoteFile.js.map
+;// CONCATENATED MODULE: ./node_modules/generic-filehandle2/esm/index.js
 
 
 
-// EXTERNAL MODULE: ./node_modules/@gmod/bgzf-filehandle/esm/index.js + 3 modules
-var esm = __webpack_require__(290);
-// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
-var generic_filehandle_esm = __webpack_require__(949);
-// EXTERNAL MODULE: ./node_modules/abortable-promise-cache/esm/index.js
-var abortable_promise_cache_esm = __webpack_require__(105);
-var esm_default = /*#__PURE__*/__webpack_require__.n(abortable_promise_cache_esm);
+function fromUrl(source, opts = {}) {
+    return new RemoteFile(source, opts);
+}
+function esm_open(maybeUrl, maybePath, maybeFilehandle, opts = {}) {
+    if (maybeFilehandle !== undefined) {
+        return maybeFilehandle;
+    }
+    if (maybeUrl !== undefined) {
+        return fromUrl(maybeUrl, opts);
+    }
+    if (maybePath !== undefined) {
+        return new LocalFile(maybePath, opts);
+    }
+    throw new Error('no url, path, or filehandle provided, cannot open');
+}
+
+
+
+
+//# sourceMappingURL=index.js.map
+// EXTERNAL MODULE: ./node_modules/pako/index.js
+var pako = __webpack_require__(591);
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/node_modules/@gmod/bgzf-filehandle/esm/util.js
+function util_sum(array) {
+    let sum = 0;
+    for (const entry of array) {
+        sum += entry.length;
+    }
+    return sum;
+}
+function esm_util_concatUint8Array(args) {
+    const mergedArray = new Uint8Array(util_sum(args));
+    let offset = 0;
+    for (const entry of args) {
+        mergedArray.set(entry, offset);
+        offset += entry.length;
+    }
+    return mergedArray;
+}
+//# sourceMappingURL=util.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/node_modules/@gmod/bgzf-filehandle/esm/unzip.js
+//@ts-ignore
+
+
+// browserify-zlib, which is the zlib shim used by default in webpacked code,
+// does not properly uncompress bgzf chunks that contain more than one bgzf
+// block, so export an unzip function that uses pako directly if we are running
+// in a browser.
+async function unzip_unzip(inputData) {
+    try {
+        let strm;
+        let pos = 0;
+        let inflator;
+        const blocks = [];
+        do {
+            const remainingInput = inputData.subarray(pos);
+            inflator = new pako.Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            pos += strm.next_in;
+            blocks.push(inflator.result);
+        } while (strm.avail_in);
+        return esm_util_concatUint8Array(blocks);
+    }
+    catch (e) {
+        // return a slightly more informative error message
+        if (/incorrect header check/.exec(`${e}`)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+// keeps track of the position of compressed blocks in terms of file offsets,
+// and a decompressed equivalent
+//
+// also slices (0,minv.dataPosition) and (maxv.dataPosition,end) off
+async function unzipChunkSlice(inputData, chunk) {
+    try {
+        let strm;
+        const { minv, maxv } = chunk;
+        let cpos = minv.blockPosition;
+        let dpos = minv.dataPosition;
+        const chunks = [];
+        const cpositions = [];
+        const dpositions = [];
+        let i = 0;
+        do {
+            const remainingInput = inputData.subarray(cpos - minv.blockPosition);
+            const inflator = new pako.Inflate();
+            ({ strm } = inflator);
+            inflator.push(remainingInput, pako.Z_SYNC_FLUSH);
+            if (inflator.err) {
+                throw new Error(inflator.msg);
+            }
+            const buffer = inflator.result;
+            chunks.push(buffer);
+            let len = buffer.length;
+            cpositions.push(cpos);
+            dpositions.push(dpos);
+            if (chunks.length === 1 && minv.dataPosition) {
+                // this is the first chunk, trim it
+                chunks[0] = chunks[0].subarray(minv.dataPosition);
+                len = chunks[0].length;
+            }
+            const origCpos = cpos;
+            cpos += strm.next_in;
+            dpos += len;
+            if (origCpos >= maxv.blockPosition) {
+                // this is the last chunk, trim it and stop decompressing. note if it is
+                // the same block is minv it subtracts that already trimmed part of the
+                // slice length
+                chunks[i] = chunks[i].subarray(0, maxv.blockPosition === minv.blockPosition
+                    ? maxv.dataPosition - minv.dataPosition + 1
+                    : maxv.dataPosition + 1);
+                cpositions.push(cpos);
+                dpositions.push(dpos);
+                break;
+            }
+            i++;
+        } while (strm.avail_in);
+        return {
+            buffer: esm_util_concatUint8Array(chunks),
+            cpositions,
+            dpositions,
+        };
+    }
+    catch (e) {
+        // return a slightly more informative error message
+        if (/incorrect header check/.exec(`${e}`)) {
+            throw new Error('problem decompressing block: incorrect gzip header check');
+        }
+        throw e;
+    }
+}
+//# sourceMappingURL=unzip.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/node_modules/@gmod/bgzf-filehandle/esm/gziIndex.js
+
+
+// const COMPRESSED_POSITION = 0
+const UNCOMPRESSED_POSITION = 1;
+class gziIndex_GziIndex {
+    constructor({ filehandle, path, }) {
+        if (filehandle) {
+            this.filehandle = filehandle;
+        }
+        else if (path) {
+            this.filehandle = new LocalFile(path);
+        }
+        else {
+            throw new TypeError('either filehandle or path must be defined');
+        }
+    }
+    _readLongWithOverflow(buf, offset = 0, unsigned = true) {
+        //@ts-ignore
+        const long = Long.fromBytesLE(buf.slice(offset, offset + 8), unsigned);
+        if (long.greaterThan(Number.MAX_SAFE_INTEGER) ||
+            long.lessThan(Number.MIN_SAFE_INTEGER)) {
+            throw new TypeError('integer overflow');
+        }
+        return long.toNumber();
+    }
+    _getIndex() {
+        if (!this.index) {
+            this.index = this._readIndex();
+        }
+        return this.index;
+    }
+    async _readIndex() {
+        const buf = await this.filehandle.read(8, 0);
+        const numEntries = this._readLongWithOverflow(buf, 0, true);
+        if (!numEntries) {
+            return [[0, 0]];
+        }
+        const entries = new Array(numEntries + 1);
+        entries[0] = [0, 0];
+        // TODO rewrite this to make an index-index that stays in memory
+        const bufSize = 8 * 2 * numEntries;
+        if (bufSize > Number.MAX_SAFE_INTEGER) {
+            throw new TypeError('integer overflow');
+        }
+        const buf2 = await this.filehandle.read(bufSize, 8);
+        for (let entryNumber = 0; entryNumber < numEntries; entryNumber += 1) {
+            const compressedPosition = this._readLongWithOverflow(buf2, entryNumber * 16);
+            const uncompressedPosition = this._readLongWithOverflow(buf2, entryNumber * 16 + 8);
+            entries[entryNumber + 1] = [compressedPosition, uncompressedPosition];
+        }
+        return entries;
+    }
+    async getLastBlock() {
+        const entries = await this._getIndex();
+        if (!entries.length) {
+            return undefined;
+        }
+        return entries[entries.length - 1];
+    }
+    async getRelevantBlocksForRead(length, position) {
+        const endPosition = position + length;
+        if (length === 0) {
+            return [];
+        }
+        const entries = await this._getIndex();
+        const relevant = [];
+        // binary search to find the block that the
+        // read starts in and extend forward from that
+        const compare = (entry, nextEntry) => {
+            const uncompressedPosition = entry[UNCOMPRESSED_POSITION];
+            const nextUncompressedPosition = nextEntry
+                ? nextEntry[UNCOMPRESSED_POSITION]
+                : Infinity;
+            // block overlaps read start
+            if (uncompressedPosition <= position &&
+                nextUncompressedPosition > position) {
+                return 0;
+                // block is before read start
+            }
+            if (uncompressedPosition < position) {
+                return -1;
+            }
+            // block is after read start
+            return 1;
+        };
+        let lowerBound = 0;
+        let upperBound = entries.length - 1;
+        let searchPosition = Math.floor(entries.length / 2);
+        let comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
+        while (comparison !== 0) {
+            if (comparison > 0) {
+                upperBound = searchPosition - 1;
+            }
+            else if (comparison < 0) {
+                lowerBound = searchPosition + 1;
+            }
+            searchPosition = Math.ceil((upperBound - lowerBound) / 2) + lowerBound;
+            comparison = compare(entries[searchPosition], entries[searchPosition + 1]);
+        }
+        // here's where we read forward
+        relevant.push(entries[searchPosition]);
+        let i = searchPosition + 1;
+        for (; i < entries.length; i += 1) {
+            relevant.push(entries[i]);
+            if (entries[i][UNCOMPRESSED_POSITION] >= endPosition) {
+                break;
+            }
+        }
+        if (relevant[relevant.length - 1][UNCOMPRESSED_POSITION] < endPosition) {
+            relevant.push([]);
+        }
+        return relevant;
+    }
+}
+//# sourceMappingURL=gziIndex.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/node_modules/@gmod/bgzf-filehandle/esm/bgzFilehandle.js
+
+// locals
+
+
+
+class BgzFilehandle {
+    constructor({ filehandle, path, gziFilehandle, gziPath, }) {
+        if (filehandle) {
+            this.filehandle = filehandle;
+        }
+        else if (path) {
+            this.filehandle = new LocalFile(path);
+        }
+        else {
+            throw new TypeError('either filehandle or path must be defined');
+        }
+        if (!gziFilehandle && !gziPath && !path) {
+            throw new TypeError('either gziFilehandle or gziPath must be defined');
+        }
+        this.gzi = new GziIndex({
+            filehandle: gziFilehandle,
+            path: !gziFilehandle && !gziPath && path ? gziPath : `${path}.gzi`,
+        });
+    }
+    async stat() {
+        const compressedStat = await this.filehandle.stat();
+        return Object.assign(compressedStat, {
+            size: await this.getUncompressedFileSize(),
+            blocks: undefined,
+            blksize: undefined,
+        });
+    }
+    async getUncompressedFileSize() {
+        // read the last block's ISIZE (see gzip RFC),
+        // and add it to its uncompressedPosition
+        const [, uncompressedPosition] = await this.gzi.getLastBlock();
+        const { size } = await this.filehandle.stat();
+        // note: there should be a 28-byte EOF marker (an empty block) at
+        // the end of the file, so we skip backward past that
+        const buf = await this.filehandle.read(4, size - 28 - 4);
+        const dataView = new DataView(buf.buffer);
+        const lastBlockUncompressedSize = dataView.getUint32(0, true);
+        return uncompressedPosition + lastBlockUncompressedSize;
+    }
+    async _readAndUncompressBlock([compressedPosition], [nextCompressedPosition]) {
+        let next = nextCompressedPosition;
+        if (!next) {
+            next = (await this.filehandle.stat()).size;
+        }
+        // read the compressed data into the block buffer
+        const blockCompressedLength = next - compressedPosition;
+        const blockBuffer = await this.filehandle.read(blockCompressedLength, compressedPosition);
+        // uncompress it
+        return unzip(blockBuffer);
+    }
+    async read(length, position) {
+        const blockPositions = await this.gzi.getRelevantBlocksForRead(length, position);
+        const blocks = [];
+        for (let blockNum = 0; blockNum < blockPositions.length - 1; blockNum += 1) {
+            const uncompressedBuffer = await this._readAndUncompressBlock(blockPositions[blockNum], blockPositions[blockNum + 1]);
+            const [, uncompressedPosition] = blockPositions[blockNum];
+            const sourceOffset = uncompressedPosition >= position ? 0 : position - uncompressedPosition;
+            const sourceEnd = Math.min(position + length, uncompressedPosition + uncompressedBuffer.length) - uncompressedPosition;
+            if (sourceOffset >= 0 && sourceOffset < uncompressedBuffer.length) {
+                blocks.push(uncompressedBuffer.subarray(sourceOffset, sourceEnd));
+            }
+        }
+        return concatUint8Array(blocks);
+    }
+}
+//# sourceMappingURL=bgzFilehandle.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/node_modules/@gmod/bgzf-filehandle/esm/index.js
+
+
+//# sourceMappingURL=index.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/abortable-promise-cache/esm/AggregateAbortController.js
+class NullSignal {
+}
+/**
+ * aggregates a number of abort signals, will only fire the aggregated
+ * abort if all of the input signals have been aborted
+ */
+class AggregateAbortController {
+    constructor() {
+        this.signals = new Set();
+        this.abortController = new AbortController();
+    }
+    /**
+     * @param {AbortSignal} [signal] optional AbortSignal to add. if falsy,
+     *  will be treated as a null-signal, and this abortcontroller will no
+     *  longer be abortable.
+     */
+    //@ts-ignore
+    addSignal(signal = new NullSignal()) {
+        if (this.signal.aborted) {
+            throw new Error('cannot add a signal, already aborted!');
+        }
+        // note that a NullSignal will never fire, so if we
+        // have one this thing will never actually abort
+        this.signals.add(signal);
+        if (signal.aborted) {
+            // handle the abort immediately if it is already aborted
+            // for some reason
+            this.handleAborted(signal);
+        }
+        else if (typeof signal.addEventListener === 'function') {
+            signal.addEventListener('abort', () => {
+                this.handleAborted(signal);
+            });
+        }
+    }
+    handleAborted(signal) {
+        this.signals.delete(signal);
+        if (this.signals.size === 0) {
+            this.abortController.abort();
+        }
+    }
+    get signal() {
+        return this.abortController.signal;
+    }
+    abort() {
+        this.abortController.abort();
+    }
+}
+//# sourceMappingURL=AggregateAbortController.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/abortable-promise-cache/esm/AggregateStatusReporter.js
+class AggregateStatusReporter {
+    constructor() {
+        this.callbacks = new Set();
+    }
+    addCallback(callback = () => { }) {
+        this.callbacks.add(callback);
+        callback(this.currentMessage);
+    }
+    callback(message) {
+        this.currentMessage = message;
+        for (const elt of this.callbacks) {
+            elt(message);
+        }
+    }
+}
+//# sourceMappingURL=AggregateStatusReporter.js.map
+;// CONCATENATED MODULE: ./node_modules/@gmod/abortable-promise-cache/esm/AbortablePromiseCache.js
+
+
+class AbortablePromiseCache {
+    constructor({ fill, cache, }) {
+        if (typeof fill !== 'function') {
+            throw new TypeError('must pass a fill function');
+        }
+        if (typeof cache !== 'object') {
+            throw new TypeError('must pass a cache object');
+        }
+        if (typeof cache.get !== 'function' ||
+            typeof cache.set !== 'function' ||
+            typeof cache.delete !== 'function') {
+            throw new TypeError('cache must implement get(key), set(key, val), and and delete(key)');
+        }
+        this.cache = cache;
+        this.fillCallback = fill;
+    }
+    static isAbortException(exception) {
+        return (
+        // DOMException
+        exception.name === 'AbortError' ||
+            // standard-ish non-DOM abort exception
+            //@ts-ignore
+            exception.code === 'ERR_ABORTED' ||
+            // stringified DOMException
+            exception.message === 'AbortError: aborted' ||
+            // stringified standard-ish exception
+            exception.message === 'Error: aborted');
+    }
+    evict(key, entry) {
+        if (this.cache.get(key) === entry) {
+            this.cache.delete(key);
+        }
+    }
+    fill(key, data, signal, statusCallback) {
+        const aborter = new AggregateAbortController();
+        const statusReporter = new AggregateStatusReporter();
+        statusReporter.addCallback(statusCallback);
+        const newEntry = {
+            aborter: aborter,
+            promise: this.fillCallback(data, aborter.signal, (message) => {
+                statusReporter.callback(message);
+            }),
+            settled: false,
+            statusReporter,
+            get aborted() {
+                return this.aborter.signal.aborted;
+            },
+        };
+        newEntry.aborter.addSignal(signal);
+        // remove the fill from the cache when its abortcontroller fires, if still in there
+        newEntry.aborter.signal.addEventListener('abort', () => {
+            if (!newEntry.settled) {
+                this.evict(key, newEntry);
+            }
+        });
+        // chain off the cached promise to record when it settles
+        newEntry.promise
+            .then(() => {
+            newEntry.settled = true;
+        }, () => {
+            newEntry.settled = true;
+            // if the fill throws an error (including abort) and is still in the cache, remove it
+            this.evict(key, newEntry);
+        })
+            .catch(error => {
+            // this will only be reached if there is some kind of
+            // bad bug in this library
+            console.error(error);
+            throw error;
+        });
+        this.cache.set(key, newEntry);
+    }
+    static checkSinglePromise(promise, signal) {
+        // check just this signal for having been aborted, and abort the
+        // promise if it was, regardless of what happened with the cached
+        // response
+        function checkForSingleAbort() {
+            if (signal === null || signal === void 0 ? void 0 : signal.aborted) {
+                throw Object.assign(new Error('aborted'), { code: 'ERR_ABORTED' });
+            }
+        }
+        return promise.then(result => {
+            checkForSingleAbort();
+            return result;
+        }, error => {
+            checkForSingleAbort();
+            throw error;
+        });
+    }
+    has(key) {
+        return this.cache.has(key);
+    }
+    /**
+     * Callback for getting status of the pending async
+     *
+     * @callback statusCallback
+     * @param {any} status, current status string or message object
+     */
+    /**
+     * @param {any} key cache key to use for this request
+     * @param {any} data data passed as the first argument to the fill callback
+     * @param {AbortSignal} [signal] optional AbortSignal object that aborts the request
+     * @param {statusCallback} a callback to get the current status of a pending async operation
+     */
+    get(key, data, signal, statusCallback) {
+        if (!signal && data instanceof AbortSignal) {
+            throw new TypeError('second get argument appears to be an AbortSignal, perhaps you meant to pass `null` for the fill data?');
+        }
+        const cacheEntry = this.cache.get(key);
+        if (cacheEntry) {
+            if (cacheEntry.aborted && !cacheEntry.settled) {
+                // if it's aborted but has not realized it yet, evict it and redispatch
+                this.evict(key, cacheEntry);
+                return this.get(key, data, signal, statusCallback);
+            }
+            if (cacheEntry.settled) {
+                // too late to abort, just return it
+                return cacheEntry.promise;
+            }
+            // request is in-flight, add this signal to its list of signals,
+            // or if there is no signal, the aborter will become non-abortable
+            cacheEntry.aborter.addSignal(signal);
+            cacheEntry.statusReporter.addCallback(statusCallback);
+            return AbortablePromiseCache.checkSinglePromise(cacheEntry.promise, signal);
+        }
+        // if we got here, it is not in the cache. fill.
+        this.fill(key, data, signal, statusCallback);
+        return AbortablePromiseCache.checkSinglePromise(
+        //see https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#non-null-assertion-operator-postfix-
+        this.cache.get(key).promise, signal);
+    }
+    /**
+     * delete the given entry from the cache. if it exists and its fill request has
+     * not yet settled, the fill will be signaled to abort.
+     *
+     * @param {any} key
+     */
+    delete(key) {
+        const cachedEntry = this.cache.get(key);
+        if (cachedEntry) {
+            if (!cachedEntry.settled) {
+                cachedEntry.aborter.abort();
+            }
+            this.cache.delete(key);
+        }
+    }
+    /**
+     * Clear all requests from the cache. Aborts any that have not settled.
+     * @returns {number} count of entries deleted
+     */
+    clear() {
+        // iterate without needing regenerator-runtime
+        const keyIter = this.cache.keys();
+        let deleteCount = 0;
+        for (let result = keyIter.next(); !result.done; result = keyIter.next()) {
+            this.delete(result.value);
+            deleteCount += 1;
+        }
+        return deleteCount;
+    }
+}
+//# sourceMappingURL=AbortablePromiseCache.js.map
 // EXTERNAL MODULE: ./node_modules/quick-lru/index.js
 var quick_lru = __webpack_require__(269);
 var quick_lru_default = /*#__PURE__*/__webpack_require__.n(quick_lru);
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/csi.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/csi.js
 
 
 
@@ -34273,36 +33912,34 @@ function rshift(num, bits) {
     return Math.floor(num / 2 ** bits);
 }
 class CSI extends IndexFile {
-    constructor() {
-        super(...arguments);
-        this.maxBinNumber = 0;
-        this.depth = 0;
-        this.minShift = 0;
-    }
+    maxBinNumber = 0;
+    depth = 0;
+    minShift = 0;
+    setupP;
     async lineCount(refId, opts) {
-        var _a, _b;
         const indexData = await this.parse(opts);
-        return ((_b = (_a = indexData.indices[refId]) === null || _a === void 0 ? void 0 : _a.stats) === null || _b === void 0 ? void 0 : _b.lineCount) || 0;
+        return indexData.indices[refId]?.stats?.lineCount || 0;
     }
     async indexCov() {
         return [];
     }
     parseAuxData(bytes, offset) {
-        const formatFlags = bytes.readInt32LE(offset);
+        const dataView = new DataView(bytes.buffer);
+        const formatFlags = dataView.getUint32(offset, true);
         const coordinateType = formatFlags & 0x10000 ? 'zero-based-half-open' : '1-based-closed';
         const format = { 0: 'generic', 1: 'SAM', 2: 'VCF' }[formatFlags & 0xf];
         if (!format) {
             throw new Error(`invalid Tabix preset format flags ${formatFlags}`);
         }
         const columnNumbers = {
-            ref: bytes.readInt32LE(offset + 4),
-            start: bytes.readInt32LE(offset + 8),
-            end: bytes.readInt32LE(offset + 12),
+            ref: dataView.getInt32(offset + 4, true),
+            start: dataView.getInt32(offset + 8, true),
+            end: dataView.getInt32(offset + 12, true),
         };
-        const metaValue = bytes.readInt32LE(offset + 16);
+        const metaValue = dataView.getInt32(offset + 16, true);
         const metaChar = metaValue ? String.fromCharCode(metaValue) : '';
-        const skipLines = bytes.readInt32LE(offset + 20);
-        const nameSectionLength = bytes.readInt32LE(offset + 24);
+        const skipLines = dataView.getInt32(offset + 20, true);
+        const nameSectionLength = dataView.getInt32(offset + 24, true);
         return {
             columnNumbers,
             coordinateType,
@@ -34317,37 +33954,38 @@ class CSI extends IndexFile {
     // fetch and parse the index
     async _parse(opts) {
         const buffer = await this.filehandle.readFile(opts);
-        const bytes = await (0,esm/* unzip */.Ri)(buffer);
+        const bytes = await unzip_unzip(buffer);
+        const dataView = new DataView(bytes.buffer);
         let csiVersion;
-        // check TBI magic numbers
-        if (bytes.readUInt32LE(0) === CSI1_MAGIC) {
+        const magic = dataView.getUint32(0, true);
+        if (magic === CSI1_MAGIC) {
             csiVersion = 1;
         }
-        else if (bytes.readUInt32LE(0) === CSI2_MAGIC) {
+        else if (magic === CSI2_MAGIC) {
             csiVersion = 2;
         }
         else {
-            throw new Error('Not a CSI file');
+            throw new Error(`Not a CSI file ${magic}`);
             // TODO: do we need to support big-endian CSI files?
         }
-        this.minShift = bytes.readInt32LE(4);
-        this.depth = bytes.readInt32LE(8);
+        this.minShift = dataView.getInt32(4, true);
+        this.depth = dataView.getInt32(8, true);
         this.maxBinNumber = ((1 << ((this.depth + 1) * 3)) - 1) / 7;
-        const auxLength = bytes.readInt32LE(12);
+        const auxLength = dataView.getInt32(12, true);
         const aux = auxLength >= 30 ? this.parseAuxData(bytes, 16) : undefined;
-        const refCount = bytes.readInt32LE(16 + auxLength);
+        const refCount = dataView.getInt32(16 + auxLength, true);
         // read the indexes for each reference sequence
         let curr = 16 + auxLength + 4;
         let firstDataLine;
         const indices = new Array(refCount);
         for (let i = 0; i < refCount; i++) {
             // the binning index
-            const binCount = bytes.readInt32LE(curr);
+            const binCount = dataView.getInt32(curr, true);
             curr += 4;
             const binIndex = {};
             let stats; // < provided by parsing a pseudo-bin, if present
             for (let j = 0; j < binCount; j++) {
-                const bin = bytes.readUInt32LE(curr);
+                const bin = dataView.getUint32(curr, true);
                 curr += 4;
                 if (bin > this.maxBinNumber) {
                     stats = parsePseudoBin(bytes, curr + 28);
@@ -34356,7 +33994,7 @@ class CSI extends IndexFile {
                 else {
                     firstDataLine = findFirstData(firstDataLine, fromBytes(bytes, curr));
                     curr += 8;
-                    const chunkCount = bytes.readInt32LE(curr);
+                    const chunkCount = dataView.getInt32(curr, true);
                     curr += 4;
                     const chunks = new Array(chunkCount);
                     for (let k = 0; k < chunkCount; k += 1) {
@@ -34387,7 +34025,8 @@ class CSI extends IndexFile {
             min = 0;
         }
         const indexData = await this.parse(opts);
-        const ba = indexData === null || indexData === void 0 ? void 0 : indexData.indices[refId];
+        const ba = indexData.indices[refId];
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!ba) {
             return [];
         }
@@ -34399,6 +34038,7 @@ class CSI extends IndexFile {
         // Find chunks in overlapping bins.  Leaf bins (< 4681) are not pruned
         for (const [start, end] of overlappingBins) {
             for (let bin = start; bin <= end; bin++) {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (ba.binIndex[bin]) {
                     const binChunks = ba.binIndex[bin];
                     for (const c of binChunks) {
@@ -34438,7 +34078,7 @@ class CSI extends IndexFile {
     }
     async parse(opts = {}) {
         if (!this.setupP) {
-            this.setupP = this._parse(opts).catch(e => {
+            this.setupP = this._parse(opts).catch((e) => {
                 this.setupP = undefined;
                 throw e;
             });
@@ -34446,13 +34086,12 @@ class CSI extends IndexFile {
         return this.setupP;
     }
     async hasRefSeq(seqId, opts = {}) {
-        var _a;
         const header = await this.parse(opts);
-        return !!((_a = header.indices[seqId]) === null || _a === void 0 ? void 0 : _a.binIndex);
+        return !!header.indices[seqId]?.binIndex;
     }
 }
 //# sourceMappingURL=csi.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/constants.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/constants.js
 /* harmony default export */ const esm_constants = ({
     //  the read is paired in sequencing, no matter whether it is mapped in a pair
     BAM_FPAIRED: 1,
@@ -34480,341 +34119,222 @@ class CSI extends IndexFile {
     BAM_FSUPPLEMENTARY: 2048,
 });
 //# sourceMappingURL=constants.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/record.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/record.js
 
 const SEQRET_DECODER = '=ACMGRSVTWYHKDBN'.split('');
 const CIGAR_DECODER = 'MIDNSHP=X???????'.split('');
-/**
- * Class of each BAM record returned by this API.
- */
 class BamRecord {
+    fileOffset;
+    bytes;
+    #dataView;
     constructor(args) {
-        this.data = {};
-        this._tagList = [];
-        this._allTagsParsed = false;
-        const { bytes, fileOffset } = args;
-        const { byteArray, start } = bytes;
-        this.data = {};
-        this.bytes = bytes;
-        this._id = fileOffset;
-        this._refID = byteArray.readInt32LE(start + 4);
-        this.data.start = byteArray.readInt32LE(start + 8);
-        this.flags = (byteArray.readInt32LE(start + 16) & 0xffff0000) >> 16;
+        this.bytes = args.bytes;
+        this.fileOffset = args.fileOffset;
+        this.#dataView = new DataView(this.bytes.byteArray.buffer);
     }
-    get(field) {
-        //@ts-ignore
-        if (this[field]) {
-            //@ts-ignore
-            if (this.data[field]) {
-                return this.data[field];
-            }
-            //@ts-ignore
-            this.data[field] = this[field]();
-            return this.data[field];
-        }
-        return this._get(field.toLowerCase());
+    get byteArray() {
+        return this.bytes.byteArray;
     }
-    end() {
-        return this.get('start') + this.get('length_on_ref');
+    get flags() {
+        return ((this.#dataView.getInt32(this.bytes.start + 16, true) & 0xffff0000) >> 16);
     }
-    seq_id() {
-        return this._refID;
+    get ref_id() {
+        return this.#dataView.getInt32(this.bytes.start + 4, true);
     }
-    // same as get(), except requires lower-case arguments.  used
-    // internally to save lots of calls to field.toLowerCase()
-    _get(field) {
-        if (field in this.data) {
-            return this.data[field];
-        }
-        this.data[field] = this._parseTag(field);
-        return this.data[field];
+    get start() {
+        return this.#dataView.getInt32(this.bytes.start + 8, true);
     }
-    _tags() {
-        this._parseAllTags();
-        let tags = ['seq'];
-        if (!this.isSegmentUnmapped()) {
-            tags.push('start', 'end', 'strand', 'score', 'qual', 'MQ', 'CIGAR', 'length_on_ref', 'template_length');
-        }
-        if (this.isPaired()) {
-            tags.push('next_segment_position', 'pair_orientation');
-        }
-        tags = tags.concat(this._tagList || []);
-        for (const k of Object.keys(this.data)) {
-            if (!k.startsWith('_') && k !== 'next_seq_id') {
-                tags.push(k);
-            }
-        }
-        const seen = {};
-        return tags.filter(t => {
-            if ((t in this.data && this.data[t] === undefined) ||
-                t === 'CG' ||
-                t === 'cg') {
-                return false;
-            }
-            const lt = t.toLowerCase();
-            const s = seen[lt];
-            seen[lt] = true;
-            return !s;
-        });
+    get end() {
+        return this.start + this.length_on_ref;
     }
-    parent() {
-        return;
+    get id() {
+        return this.fileOffset;
     }
-    children() {
-        return this.get('subfeatures');
-    }
-    id() {
-        return this._id;
-    }
-    // special parsers
-    /**
-     * Mapping quality score.
-     */
-    mq() {
-        const mq = (this.get('_bin_mq_nl') & 0xff00) >> 8;
+    get mq() {
+        const mq = (this.bin_mq_nl & 0xff00) >> 8;
         return mq === 255 ? undefined : mq;
     }
-    score() {
-        return this.get('mq');
+    get score() {
+        return this.mq;
     }
-    qual() {
-        var _a;
-        return (_a = this.qualRaw()) === null || _a === void 0 ? void 0 : _a.join(' ');
-    }
-    qualRaw() {
+    get qual() {
         if (this.isSegmentUnmapped()) {
             return;
         }
-        const { start, byteArray } = this.bytes;
-        const p = start +
-            36 +
-            this.get('_l_read_name') +
-            this.get('_n_cigar_op') * 4 +
-            this.get('_seq_bytes');
-        const lseq = this.get('seq_length');
-        return byteArray.subarray(p, p + lseq);
+        const p = this.b0 +
+            this.read_name_length +
+            this.num_cigar_ops * 4 +
+            this.num_seq_bytes;
+        return this.byteArray.subarray(p, p + this.seq_length);
     }
-    strand() {
+    get strand() {
         return this.isReverseComplemented() ? -1 : 1;
     }
-    multi_segment_next_segment_strand() {
-        if (this.isMateUnmapped()) {
-            return;
+    get b0() {
+        return this.bytes.start + 36;
+    }
+    get name() {
+        let str = '';
+        for (let i = 0; i < this.read_name_length - 1; i++) {
+            str += String.fromCharCode(this.byteArray[this.b0 + i]);
         }
-        return this.isMateReverseComplemented() ? -1 : 1;
+        return str;
     }
-    name() {
-        return this.get('_read_name');
-    }
-    _read_name() {
-        const nl = this.get('_l_read_name');
-        const { byteArray, start } = this.bytes;
-        return byteArray.toString('ascii', start + 36, start + 36 + nl - 1);
-    }
-    /**
-     * Get the value of a tag, parsing the tags as far as necessary.
-     * Only called if we have not already parsed that field.
-     */
-    _parseTag(tagName) {
-        // if all of the tags have been parsed and we're still being
-        // called, we already know that we have no such tag, because
-        // it would already have been cached.
-        if (this._allTagsParsed) {
-            return;
-        }
-        const { byteArray, start } = this.bytes;
-        let p = this._tagOffset ||
-            start +
-                36 +
-                this.get('_l_read_name') +
-                this.get('_n_cigar_op') * 4 +
-                this.get('_seq_bytes') +
-                this.get('seq_length');
+    get tags() {
+        let p = this.b0 +
+            this.read_name_length +
+            this.num_cigar_ops * 4 +
+            this.num_seq_bytes +
+            this.seq_length;
         const blockEnd = this.bytes.end;
-        let lcTag;
-        while (p < blockEnd && lcTag !== tagName) {
-            const tag = String.fromCharCode(byteArray[p], byteArray[p + 1]);
-            lcTag = tag.toLowerCase();
-            const type = String.fromCharCode(byteArray[p + 2]);
+        const tags = {};
+        while (p < blockEnd) {
+            const tag = String.fromCharCode(this.byteArray[p], this.byteArray[p + 1]);
+            const type = String.fromCharCode(this.byteArray[p + 2]);
             p += 3;
-            let value;
-            switch (type) {
-                case 'A': {
-                    value = String.fromCharCode(byteArray[p]);
-                    p += 1;
-                    break;
-                }
-                case 'i': {
-                    value = byteArray.readInt32LE(p);
-                    p += 4;
-                    break;
-                }
-                case 'I': {
-                    value = byteArray.readUInt32LE(p);
-                    p += 4;
-                    break;
-                }
-                case 'c': {
-                    value = byteArray.readInt8(p);
-                    p += 1;
-                    break;
-                }
-                case 'C': {
-                    value = byteArray.readUInt8(p);
-                    p += 1;
-                    break;
-                }
-                case 's': {
-                    value = byteArray.readInt16LE(p);
-                    p += 2;
-                    break;
-                }
-                case 'S': {
-                    value = byteArray.readUInt16LE(p);
-                    p += 2;
-                    break;
-                }
-                case 'f': {
-                    value = byteArray.readFloatLE(p);
-                    p += 4;
-                    break;
-                }
-                case 'Z':
-                case 'H': {
-                    value = '';
-                    while (p <= blockEnd) {
-                        const cc = byteArray[p++];
-                        if (cc === 0) {
-                            break;
-                        }
-                        else {
-                            value += String.fromCharCode(cc);
-                        }
+            if (type === 'A') {
+                tags[tag] = String.fromCharCode(this.byteArray[p]);
+                p += 1;
+            }
+            else if (type === 'i') {
+                tags[tag] = this.#dataView.getInt32(p, true);
+                p += 4;
+            }
+            else if (type === 'I') {
+                tags[tag] = this.#dataView.getUint32(p, true);
+                p += 4;
+            }
+            else if (type === 'c') {
+                tags[tag] = this.#dataView.getInt8(p);
+                p += 1;
+            }
+            else if (type === 'C') {
+                tags[tag] = this.#dataView.getUint8(p);
+                p += 1;
+            }
+            else if (type === 's') {
+                tags[tag] = this.#dataView.getInt16(p, true);
+                p += 2;
+            }
+            else if (type === 'S') {
+                tags[tag] = this.#dataView.getUint16(p, true);
+                p += 2;
+            }
+            else if (type === 'f') {
+                tags[tag] = this.#dataView.getFloat32(p, true);
+                p += 4;
+            }
+            else if (type === 'Z' || type === 'H') {
+                const value = [];
+                while (p <= blockEnd) {
+                    const cc = this.byteArray[p++];
+                    if (cc !== 0) {
+                        value.push(String.fromCharCode(cc));
                     }
-                    break;
+                    else {
+                        break;
+                    }
                 }
-                case 'B': {
-                    value = '';
-                    const cc = byteArray[p++];
-                    const Btype = String.fromCharCode(cc);
-                    const limit = byteArray.readInt32LE(p);
-                    p += 4;
-                    if (Btype === 'i') {
-                        if (tag === 'CG') {
-                            for (let k = 0; k < limit; k++) {
-                                const cigop = byteArray.readInt32LE(p);
-                                const lop = cigop >> 4;
-                                const op = CIGAR_DECODER[cigop & 0xf];
-                                value += lop + op;
-                                p += 4;
-                            }
-                        }
-                        else {
-                            for (let k = 0; k < limit; k++) {
-                                value += byteArray.readInt32LE(p);
-                                if (k + 1 < limit) {
-                                    value += ',';
-                                }
-                                p += 4;
-                            }
-                        }
-                    }
-                    if (Btype === 'I') {
-                        if (tag === 'CG') {
-                            for (let k = 0; k < limit; k++) {
-                                const cigop = byteArray.readUInt32LE(p);
-                                const lop = cigop >> 4;
-                                const op = CIGAR_DECODER[cigop & 0xf];
-                                value += lop + op;
-                                p += 4;
-                            }
-                        }
-                        else {
-                            for (let k = 0; k < limit; k++) {
-                                value += byteArray.readUInt32LE(p);
-                                if (k + 1 < limit) {
-                                    value += ',';
-                                }
-                                p += 4;
-                            }
-                        }
-                    }
-                    if (Btype === 's') {
+                tags[tag] = value.join('');
+            }
+            else if (type === 'B') {
+                const cc = this.byteArray[p++];
+                const Btype = String.fromCharCode(cc);
+                const limit = this.#dataView.getInt32(p, true);
+                p += 4;
+                if (Btype === 'i') {
+                    if (tag === 'CG') {
+                        const value = [];
                         for (let k = 0; k < limit; k++) {
-                            value += byteArray.readInt16LE(p);
-                            if (k + 1 < limit) {
-                                value += ',';
-                            }
-                            p += 2;
-                        }
-                    }
-                    if (Btype === 'S') {
-                        for (let k = 0; k < limit; k++) {
-                            value += byteArray.readUInt16LE(p);
-                            if (k + 1 < limit) {
-                                value += ',';
-                            }
-                            p += 2;
-                        }
-                    }
-                    if (Btype === 'c') {
-                        for (let k = 0; k < limit; k++) {
-                            value += byteArray.readInt8(p);
-                            if (k + 1 < limit) {
-                                value += ',';
-                            }
-                            p += 1;
-                        }
-                    }
-                    if (Btype === 'C') {
-                        for (let k = 0; k < limit; k++) {
-                            value += byteArray.readUInt8(p);
-                            if (k + 1 < limit) {
-                                value += ',';
-                            }
-                            p += 1;
-                        }
-                    }
-                    if (Btype === 'f') {
-                        for (let k = 0; k < limit; k++) {
-                            value += byteArray.readFloatLE(p);
-                            if (k + 1 < limit) {
-                                value += ',';
-                            }
+                            const cigop = this.#dataView.getInt32(p, true);
+                            const lop = cigop >> 4;
+                            const op = CIGAR_DECODER[cigop & 0xf];
+                            value.push(lop + op);
                             p += 4;
                         }
+                        tags[tag] = value.join('');
                     }
-                    break;
+                    else {
+                        const value = [];
+                        for (let k = 0; k < limit; k++) {
+                            value.push(this.#dataView.getInt32(p, true));
+                            p += 4;
+                        }
+                        tags[tag] = value;
+                    }
                 }
-                default: {
-                    console.warn(`Unknown BAM tag type '${type}', tags may be incomplete`);
-                    value = undefined;
-                    p = blockEnd;
-                } // stop parsing tags
+                else if (Btype === 'I') {
+                    if (tag === 'CG') {
+                        const value = [];
+                        for (let k = 0; k < limit; k++) {
+                            const cigop = this.#dataView.getUint32(p, true);
+                            const lop = cigop >> 4;
+                            const op = CIGAR_DECODER[cigop & 0xf];
+                            value.push(lop + op);
+                            p += 4;
+                        }
+                        tags[tag] = value.join('');
+                    }
+                    else {
+                        const value = [];
+                        for (let k = 0; k < limit; k++) {
+                            value.push(this.#dataView.getUint32(p, true));
+                            p += 4;
+                        }
+                        tags[tag] = value;
+                    }
+                }
+                else if (Btype === 's') {
+                    const value = [];
+                    for (let k = 0; k < limit; k++) {
+                        value.push(this.#dataView.getInt16(p, true));
+                        p += 2;
+                    }
+                    tags[tag] = value;
+                }
+                else if (Btype === 'S') {
+                    const value = [];
+                    for (let k = 0; k < limit; k++) {
+                        value.push(this.#dataView.getUint16(p, true));
+                        p += 2;
+                    }
+                    tags[tag] = value;
+                }
+                else if (Btype === 'c') {
+                    const value = [];
+                    for (let k = 0; k < limit; k++) {
+                        value.push(this.#dataView.getInt8(p));
+                        p += 1;
+                    }
+                    tags[tag] = value;
+                }
+                else if (Btype === 'C') {
+                    const value = [];
+                    for (let k = 0; k < limit; k++) {
+                        value.push(this.#dataView.getUint8(p));
+                        p += 1;
+                    }
+                    tags[tag] = value;
+                }
+                else if (Btype === 'f') {
+                    const value = [];
+                    for (let k = 0; k < limit; k++) {
+                        value.push(this.#dataView.getFloat32(p, true));
+                        p += 4;
+                    }
+                    tags[tag] = value;
+                }
             }
-            this._tagOffset = p;
-            this._tagList.push(tag);
-            if (lcTag === tagName) {
-                return value;
+            else {
+                console.error('Unknown BAM tag type', type);
+                break;
             }
-            this.data[lcTag] = value;
         }
-        this._allTagsParsed = true;
-        return;
-    }
-    _parseAllTags() {
-        this._parseTag('');
-    }
-    _parseCigar(cigar) {
-        return (
-        //@ts-ignore
-        cigar
-            .match(/\d+\D/g)
-            //@ts-ignore
-            .map(op => [op.match(/\D/)[0].toUpperCase(), Number.parseInt(op, 10)]));
+        return tags;
     }
     /**
-     * @returns {boolean} true if the read is paired, regardless of whether both segments are mapped
+     * @returns {boolean} true if the read is paired, regardless of whether both
+     * segments are mapped
      */
     isPaired() {
         return !!(this.flags & esm_constants.BAM_FPAIRED);
@@ -34863,98 +34383,94 @@ class BamRecord {
     isSupplementary() {
         return !!(this.flags & esm_constants.BAM_FSUPPLEMENTARY);
     }
-    cigar() {
+    get cigarAndLength() {
         if (this.isSegmentUnmapped()) {
-            return;
+            return {
+                length_on_ref: 0,
+                CIGAR: '',
+            };
         }
-        const { byteArray, start } = this.bytes;
-        const numCigarOps = this.get('_n_cigar_op');
-        let p = start + 36 + this.get('_l_read_name');
-        const seqLen = this.get('seq_length');
-        let cigar = '';
-        let lref = 0;
-        // check for CG tag by inspecting whether the CIGAR field
-        // contains a clip that consumes entire seqLen
-        let cigop = byteArray.readInt32LE(p);
+        const numCigarOps = this.num_cigar_ops;
+        let p = this.b0 + this.read_name_length;
+        const CIGAR = [];
+        // check for CG tag by inspecting whether the CIGAR field contains a clip
+        // that consumes entire seqLen
+        let cigop = this.#dataView.getInt32(p, true);
         let lop = cigop >> 4;
         let op = CIGAR_DECODER[cigop & 0xf];
-        if (op === 'S' && lop === seqLen) {
-            // if there is a CG the second CIGAR field will
-            // be a N tag the represents the length on ref
+        if (op === 'S' && lop === this.seq_length) {
+            // if there is a CG the second CIGAR field will be a N tag the represents
+            // the length on ref
             p += 4;
-            cigop = byteArray.readInt32LE(p);
+            cigop = this.#dataView.getInt32(p, true);
             lop = cigop >> 4;
             op = CIGAR_DECODER[cigop & 0xf];
             if (op !== 'N') {
                 console.warn('CG tag with no N tag');
             }
-            this.data.length_on_ref = lop;
-            return this.get('CG');
+            return {
+                CIGAR: this.tags.CG,
+                length_on_ref: lop,
+            };
         }
         else {
+            let lref = 0;
             for (let c = 0; c < numCigarOps; ++c) {
-                cigop = byteArray.readInt32LE(p);
+                cigop = this.#dataView.getInt32(p, true);
                 lop = cigop >> 4;
                 op = CIGAR_DECODER[cigop & 0xf];
-                cigar += lop + op;
-                // soft clip, hard clip, and insertion don't count toward
-                // the length on the reference
+                CIGAR.push(lop + op);
+                // soft clip, hard clip, and insertion don't count toward the length on
+                // the reference
                 if (op !== 'H' && op !== 'S' && op !== 'I') {
                     lref += lop;
                 }
                 p += 4;
             }
-            this.data.length_on_ref = lref;
-            return cigar;
+            return {
+                CIGAR: CIGAR.join(''),
+                length_on_ref: lref,
+            };
         }
     }
-    length_on_ref() {
-        if (this.data.length_on_ref) {
-            return this.data.length_on_ref;
-        }
-        else {
-            this.get('cigar'); // the length_on_ref is set as a side effect
-            return this.data.length_on_ref;
-        }
+    get length_on_ref() {
+        return this.cigarAndLength.length_on_ref;
     }
-    _n_cigar_op() {
-        return this.get('_flag_nc') & 0xffff;
+    get CIGAR() {
+        return this.cigarAndLength.CIGAR;
     }
-    _l_read_name() {
-        return this.get('_bin_mq_nl') & 0xff;
+    get num_cigar_ops() {
+        return this.flag_nc & 0xffff;
     }
-    /**
-     * number of bytes in the sequence field
-     */
-    _seq_bytes() {
-        return (this.get('seq_length') + 1) >> 1;
+    get read_name_length() {
+        return this.bin_mq_nl & 0xff;
     }
-    getReadBases() {
-        return this.seq();
+    get num_seq_bytes() {
+        return (this.seq_length + 1) >> 1;
     }
-    seq() {
-        const { byteArray, start } = this.bytes;
-        const p = start + 36 + this.get('_l_read_name') + this.get('_n_cigar_op') * 4;
-        const seqBytes = this.get('_seq_bytes');
-        const len = this.get('seq_length');
-        let buf = '';
+    get seq() {
+        const { byteArray } = this.bytes;
+        const p = this.b0 + this.read_name_length + this.num_cigar_ops * 4;
+        const seqBytes = this.num_seq_bytes;
+        const len = this.seq_length;
+        const buf = [];
         let i = 0;
         for (let j = 0; j < seqBytes; ++j) {
             const sb = byteArray[p + j];
-            buf += SEQRET_DECODER[(sb & 0xf0) >> 4];
+            buf.push(SEQRET_DECODER[(sb & 0xf0) >> 4]);
             i++;
             if (i < len) {
-                buf += SEQRET_DECODER[sb & 0x0f];
+                buf.push(SEQRET_DECODER[sb & 0x0f]);
                 i++;
             }
         }
-        return buf;
+        return buf.join('');
     }
     // adapted from igv.js
-    getPairOrientation() {
+    get pair_orientation() {
         if (!this.isSegmentUnmapped() &&
             !this.isMateUnmapped() &&
-            this._refID === this._next_refid()) {
+            this.ref_id === this.next_refid) {
             const s1 = this.isReverseComplemented() ? 'R' : 'F';
             const s2 = this.isMateReverseComplemented() ? 'R' : 'F';
             let o1 = ' ';
@@ -34968,7 +34484,7 @@ class BamRecord {
                 o2 = '1';
             }
             const tmp = [];
-            const isize = this.template_length();
+            const isize = this.template_length;
             if (isize > 0) {
                 tmp[0] = s1;
                 tmp[1] = o1;
@@ -34983,25 +34499,25 @@ class BamRecord {
             }
             return tmp.join('');
         }
-        return '';
+        return undefined;
     }
-    _bin_mq_nl() {
-        return this.bytes.byteArray.readInt32LE(this.bytes.start + 12);
+    get bin_mq_nl() {
+        return this.#dataView.getInt32(this.bytes.start + 12, true);
     }
-    _flag_nc() {
-        return this.bytes.byteArray.readInt32LE(this.bytes.start + 16);
+    get flag_nc() {
+        return this.#dataView.getInt32(this.bytes.start + 16, true);
     }
-    seq_length() {
-        return this.bytes.byteArray.readInt32LE(this.bytes.start + 20);
+    get seq_length() {
+        return this.#dataView.getInt32(this.bytes.start + 20, true);
     }
-    _next_refid() {
-        return this.bytes.byteArray.readInt32LE(this.bytes.start + 24);
+    get next_refid() {
+        return this.#dataView.getInt32(this.bytes.start + 24, true);
     }
-    _next_pos() {
-        return this.bytes.byteArray.readInt32LE(this.bytes.start + 28);
+    get next_pos() {
+        return this.#dataView.getInt32(this.bytes.start + 28, true);
     }
-    template_length() {
-        return this.bytes.byteArray.readInt32LE(this.bytes.start + 32);
+    get template_length() {
+        return this.#dataView.getInt32(this.bytes.start + 32, true);
     }
     toJSON() {
         const data = {};
@@ -35015,8 +34531,30 @@ class BamRecord {
         return data;
     }
 }
+function cacheGetter(ctor, prop) {
+    const desc = Object.getOwnPropertyDescriptor(ctor.prototype, prop);
+    if (!desc) {
+        throw new Error('OH NO, NO PROPERTY DESCRIPTOR');
+    }
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const getter = desc.get;
+    if (!getter) {
+        throw new Error('OH NO, NOT A GETTER');
+    }
+    Object.defineProperty(ctor.prototype, prop, {
+        get() {
+            const ret = getter.call(this);
+            Object.defineProperty(this, prop, { value: ret });
+            return ret;
+        },
+    });
+}
+cacheGetter(BamRecord, 'tags');
+cacheGetter(BamRecord, 'cigarAndLength');
+cacheGetter(BamRecord, 'seq');
+cacheGetter(BamRecord, 'qual');
 //# sourceMappingURL=record.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/sam.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/sam.js
 function sam_parseHeaderText(text) {
     const lines = text.split(/\r?\n/);
     const data = [];
@@ -35037,8 +34575,7 @@ function sam_parseHeaderText(text) {
     return data;
 }
 //# sourceMappingURL=sam.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/bamFile.js
-
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/bamFile.js
 
 
 
@@ -35074,46 +34611,38 @@ class NullFilehandle {
     }
 }
 class bamFile_BamFile {
+    renameRefSeq;
+    bam;
+    header;
+    chrToIndex;
+    indexToChr;
+    yieldThreadTime;
+    index;
+    htsget = false;
+    headerP;
+    featureCache = new AbortablePromiseCache({
+        cache: new (quick_lru_default())({
+            maxSize: 50,
+        }),
+        fill: async (args, signal) => {
+            const { chunk, opts } = args;
+            const { data, cpositions, dpositions } = await this._readChunk({
+                chunk,
+                opts: { ...opts, signal },
+            });
+            return this.readBamFeatures(data, cpositions, dpositions, chunk);
+        },
+    });
     constructor({ bamFilehandle, bamPath, bamUrl, baiPath, baiFilehandle, baiUrl, csiPath, csiFilehandle, csiUrl, htsget, yieldThreadTime = 100, renameRefSeqs = n => n, }) {
-        this.htsget = false;
-        this.featureCache = new (esm_default())({
-            cache: new (quick_lru_default())({
-                maxSize: 50,
-            }),
-            fill: async (args, signal) => {
-                const { chunk, opts } = args;
-                const { data, cpositions, dpositions } = await this._readChunk({
-                    chunk,
-                    opts: { ...opts, signal },
-                });
-                return this.readBamFeatures(data, cpositions, dpositions, chunk);
-            },
-        });
         this.renameRefSeq = renameRefSeqs;
         if (bamFilehandle) {
             this.bam = bamFilehandle;
         }
         else if (bamPath) {
-            this.bam = new generic_filehandle_esm/* LocalFile */.S9(bamPath);
+            this.bam = new (localFile_ignored_default())(bamPath);
         }
         else if (bamUrl) {
-            const bamUrlObj = new URL(bamUrl);
-            const bamUrlUsername = bamUrlObj.username;
-            const bamUrlPassword = bamUrlObj.password;
-            if (bamUrlUsername && bamUrlPassword) {
-                bamUrl = `${bamUrlObj.protocol}//${bamUrlObj.host}${bamUrlObj.pathname}${bamUrlObj.search}`;
-                this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl, {
-                    overrides: {
-                        credentials: 'include',
-                        headers: {
-                            Authorization: 'Basic ' + btoa(bamUrlUsername + ':' + bamUrlPassword),
-                        },
-                    },
-                });
-            }
-            else {
-                this.bam = new generic_filehandle_esm/* RemoteFile */.kC(bamUrl);
-            }
+            this.bam = new remoteFile_RemoteFile(bamUrl);
         }
         else if (htsget) {
             this.htsget = true;
@@ -35126,67 +34655,25 @@ class bamFile_BamFile {
             this.index = new CSI({ filehandle: csiFilehandle });
         }
         else if (csiPath) {
-            this.index = new CSI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(csiPath) });
+            this.index = new CSI({ filehandle: new (localFile_ignored_default())(csiPath) });
         }
         else if (csiUrl) {
-            this.index = new CSI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(csiUrl) });
+            this.index = new CSI({ filehandle: new remoteFile_RemoteFile(csiUrl) });
         }
         else if (baiFilehandle) {
             this.index = new BAI({ filehandle: baiFilehandle });
         }
         else if (baiPath) {
-            this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(baiPath) });
+            this.index = new BAI({ filehandle: new (localFile_ignored_default())(baiPath) });
         }
         else if (baiUrl) {
-            const baiUrlObj = new URL(baiUrl);
-            const baiUrlUsername = baiUrlObj.username;
-            const baiUrlPassword = baiUrlObj.password;
-            if (baiUrlUsername && baiUrlPassword) {
-                baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}${baiUrlObj.search}`;
-                // console.log(
-                //   `baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`,
-                // )
-                this.index = new BAI({
-                    filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl, {
-                        overrides: {
-                            credentials: 'include',
-                            headers: {
-                                Authorization: 'Basic ' + btoa(baiUrlUsername + ':' + baiUrlPassword),
-                            },
-                        },
-                    }),
-                });
-            }
-            else {
-                this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl) });
-            }
+            this.index = new BAI({ filehandle: new remoteFile_RemoteFile(baiUrl) });
         }
         else if (bamPath) {
-            this.index = new BAI({ filehandle: new generic_filehandle_esm/* LocalFile */.S9(`${bamPath}.bai`) });
+            this.index = new BAI({ filehandle: new (localFile_ignored_default())(`${bamPath}.bai`) });
         }
         else if (bamUrl) {
-            const baiUrlObj = new URL(bamUrl);
-            const baiUrlUsername = baiUrlObj.username;
-            const baiUrlPassword = baiUrlObj.password;
-            if (baiUrlUsername && baiUrlPassword) {
-                const baiUrl = `${baiUrlObj.protocol}//${baiUrlObj.host}${baiUrlObj.pathname}.bai${baiUrlObj.search}`;
-                // console.log(
-                //   `baiUrl | ${baiUrl} | ${baiUrlUsername} | ${baiUrlPassword}`,
-                // )
-                this.index = new BAI({
-                    filehandle: new generic_filehandle_esm/* RemoteFile */.kC(baiUrl, {
-                        overrides: {
-                            credentials: 'include',
-                            headers: {
-                                Authorization: 'Basic ' + btoa(baiUrlUsername + ':' + baiUrlPassword),
-                            },
-                        },
-                    }),
-                });
-            }
-            else {
-                this.index = new BAI({ filehandle: new generic_filehandle_esm/* RemoteFile */.kC(`${bamUrl}.bai`) });
-            }
+            this.index = new BAI({ filehandle: new remoteFile_RemoteFile(`${bamUrl}.bai`) });
         }
         else if (htsget) {
             this.htsget = true;
@@ -35198,533 +34685,6 @@ class bamFile_BamFile {
     }
     async getHeaderPre(origOpts) {
         const opts = makeOpts(origOpts);
-        // console.log(`[bam-js] getHeaderPre: ${JSON.stringify(opts)}`)
-        // if (opts.assemblyName && opts.assemblyName === 'hg38') {
-        //   this.chrToIndex = {
-        //     chr1: 0,
-        //     chr10: 1,
-        //     chr11: 2,
-        //     chr12: 3,
-        //     chr13: 4,
-        //     chr14: 5,
-        //     chr15: 6,
-        //     chr16: 7,
-        //     chr17: 8,
-        //     chr18: 9,
-        //     chr19: 10,
-        //     chr2: 11,
-        //     chr20: 12,
-        //     chr21: 13,
-        //     chr22: 14,
-        //     chr3: 15,
-        //     chr4: 16,
-        //     chr5: 17,
-        //     chr6: 18,
-        //     chr7: 19,
-        //     chr8: 20,
-        //     chr9: 21,
-        //     chrM: 22,
-        //     chrX: 23,
-        //     chrY: 24,
-        //   }
-        //   this.indexToChr = [
-        //     {
-        //       refName: 'chr1',
-        //       length: 248956422,
-        //     },
-        //     {
-        //       refName: 'chr10',
-        //       length: 133797422,
-        //     },
-        //     {
-        //       refName: 'chr11',
-        //       length: 135086622,
-        //     },
-        //     {
-        //       refName: 'chr12',
-        //       length: 133275309,
-        //     },
-        //     {
-        //       refName: 'chr13',
-        //       length: 114364328,
-        //     },
-        //     {
-        //       refName: 'chr14',
-        //       length: 107043718,
-        //     },
-        //     {
-        //       refName: 'chr15',
-        //       length: 101991189,
-        //     },
-        //     {
-        //       refName: 'chr16',
-        //       length: 90338345,
-        //     },
-        //     {
-        //       refName: 'chr17',
-        //       length: 83257441,
-        //     },
-        //     {
-        //       refName: 'chr18',
-        //       length: 80373285,
-        //     },
-        //     {
-        //       refName: 'chr19',
-        //       length: 58617616,
-        //     },
-        //     {
-        //       refName: 'chr2',
-        //       length: 242193529,
-        //     },
-        //     {
-        //       refName: 'chr20',
-        //       length: 64444167,
-        //     },
-        //     {
-        //       refName: 'chr21',
-        //       length: 46709983,
-        //     },
-        //     {
-        //       refName: 'chr22',
-        //       length: 50818468,
-        //     },
-        //     {
-        //       refName: 'chr3',
-        //       length: 198295559,
-        //     },
-        //     {
-        //       refName: 'chr4',
-        //       length: 190214555,
-        //     },
-        //     {
-        //       refName: 'chr5',
-        //       length: 181538259,
-        //     },
-        //     {
-        //       refName: 'chr6',
-        //       length: 170805979,
-        //     },
-        //     {
-        //       refName: 'chr7',
-        //       length: 159345973,
-        //     },
-        //     {
-        //       refName: 'chr8',
-        //       length: 145138636,
-        //     },
-        //     {
-        //       refName: 'chr9',
-        //       length: 138394717,
-        //     },
-        //     {
-        //       refName: 'chrM',
-        //       length: 16569,
-        //     },
-        //     {
-        //       refName: 'chrX',
-        //       length: 156040895,
-        //     },
-        //     {
-        //       refName: 'chrY',
-        //       length: 57227415,
-        //     },
-        //   ]
-        //   return
-        // }
-        if (opts.assemblyName && opts.assemblyName === 'hg38') {
-            this.chrToIndex = {
-                chr1: 0,
-                chr2: 1,
-                chr3: 2,
-                chr4: 3,
-                chr5: 4,
-                chr6: 5,
-                chr7: 6,
-                chr8: 7,
-                chr9: 8,
-                chr10: 9,
-                chr11: 10,
-                chr12: 11,
-                chr13: 12,
-                chr14: 13,
-                chr15: 14,
-                chr16: 15,
-                chr17: 16,
-                chr18: 17,
-                chr19: 18,
-                chr20: 19,
-                chr21: 20,
-                chr22: 21,
-                chrX: 22,
-                chrY: 23,
-                chrM: 24,
-                'GL000008.2': 25,
-                'GL000009.2': 26,
-                'GL000194.1': 27,
-                'GL000195.1': 28,
-                'GL000205.2': 29,
-                'GL000208.1': 30,
-                'GL000213.1': 31,
-                'GL000214.1': 32,
-                'GL000216.2': 33,
-                'GL000218.1': 34,
-                'GL000219.1': 35,
-                'GL000220.1': 36,
-                'GL000221.1': 37,
-                'GL000224.1': 38,
-                'GL000225.1': 39,
-                'GL000226.1': 40,
-                'KI270302.1': 41,
-                'KI270303.1': 42,
-                'KI270304.1': 43,
-                'KI270305.1': 44,
-                'KI270310.1': 45,
-                'KI270311.1': 46,
-                'KI270312.1': 47,
-                'KI270315.1': 48,
-                'KI270316.1': 49,
-                'KI270317.1': 50,
-                'KI270320.1': 51,
-                'KI270322.1': 52,
-                'KI270329.1': 53,
-                'KI270330.1': 54,
-                'KI270333.1': 55,
-                'KI270334.1': 56,
-                'KI270335.1': 57,
-                'KI270336.1': 58,
-                'KI270337.1': 59,
-                'KI270338.1': 60,
-                'KI270340.1': 61,
-                'KI270362.1': 62,
-                'KI270363.1': 63,
-                'KI270364.1': 64,
-                'KI270366.1': 65,
-                'KI270371.1': 66,
-                'KI270372.1': 67,
-                'KI270373.1': 68,
-                'KI270374.1': 69,
-                'KI270375.1': 70,
-                'KI270376.1': 71,
-                'KI270378.1': 72,
-                'KI270379.1': 73,
-                'KI270381.1': 74,
-                'KI270382.1': 75,
-                'KI270383.1': 76,
-                'KI270384.1': 77,
-                'KI270385.1': 78,
-                'KI270386.1': 79,
-                'KI270387.1': 80,
-                'KI270388.1': 81,
-                'KI270389.1': 82,
-                'KI270390.1': 83,
-                'KI270391.1': 84,
-                'KI270392.1': 85,
-                'KI270393.1': 86,
-                'KI270394.1': 87,
-                'KI270395.1': 88,
-                'KI270396.1': 89,
-                'KI270411.1': 90,
-                'KI270412.1': 91,
-                'KI270414.1': 92,
-                'KI270417.1': 93,
-                'KI270418.1': 94,
-                'KI270419.1': 95,
-                'KI270420.1': 96,
-                'KI270422.1': 97,
-                'KI270423.1': 98,
-                'KI270424.1': 99,
-                'KI270425.1': 100,
-                'KI270429.1': 101,
-                'KI270435.1': 102,
-                'KI270438.1': 103,
-                'KI270442.1': 104,
-                'KI270448.1': 105,
-                'KI270465.1': 106,
-                'KI270466.1': 107,
-                'KI270467.1': 108,
-                'KI270468.1': 109,
-                'KI270507.1': 110,
-                'KI270508.1': 111,
-                'KI270509.1': 112,
-                'KI270510.1': 113,
-                'KI270511.1': 114,
-                'KI270512.1': 115,
-                'KI270515.1': 116,
-                'KI270516.1': 117,
-                'KI270517.1': 118,
-                'KI270518.1': 119,
-                'KI270519.1': 120,
-                'KI270521.1': 121,
-                'KI270522.1': 122,
-                'KI270528.1': 123,
-                'KI270529.1': 124,
-                'KI270530.1': 125,
-                'KI270538.1': 126,
-                'KI270539.1': 127,
-                'KI270544.1': 128,
-                'KI270548.1': 129,
-                'KI270579.1': 130,
-                'KI270580.1': 131,
-                'KI270581.1': 132,
-                'KI270582.1': 133,
-                'KI270583.1': 134,
-                'KI270584.1': 135,
-                'KI270587.1': 136,
-                'KI270588.1': 137,
-                'KI270589.1': 138,
-                'KI270590.1': 139,
-                'KI270591.1': 140,
-                'KI270593.1': 141,
-                'KI270706.1': 142,
-                'KI270707.1': 143,
-                'KI270708.1': 144,
-                'KI270709.1': 145,
-                'KI270710.1': 146,
-                'KI270711.1': 147,
-                'KI270712.1': 148,
-                'KI270713.1': 149,
-                'KI270714.1': 150,
-                'KI270715.1': 151,
-                'KI270716.1': 152,
-                'KI270717.1': 153,
-                'KI270718.1': 154,
-                'KI270719.1': 155,
-                'KI270720.1': 156,
-                'KI270721.1': 157,
-                'KI270722.1': 158,
-                'KI270723.1': 159,
-                'KI270724.1': 160,
-                'KI270725.1': 161,
-                'KI270726.1': 162,
-                'KI270727.1': 163,
-                'KI270728.1': 164,
-                'KI270729.1': 165,
-                'KI270730.1': 166,
-                'KI270731.1': 167,
-                'KI270732.1': 168,
-                'KI270733.1': 169,
-                'KI270734.1': 170,
-                'KI270735.1': 171,
-                'KI270736.1': 172,
-                'KI270737.1': 173,
-                'KI270738.1': 174,
-                'KI270739.1': 175,
-                'KI270740.1': 176,
-                'KI270741.1': 177,
-                'KI270742.1': 178,
-                'KI270743.1': 179,
-                'KI270744.1': 180,
-                'KI270745.1': 181,
-                'KI270746.1': 182,
-                'KI270747.1': 183,
-                'KI270748.1': 184,
-                'KI270749.1': 185,
-                'KI270750.1': 186,
-                'KI270751.1': 187,
-                'KI270752.1': 188,
-                'KI270753.1': 189,
-                'KI270754.1': 190,
-                'KI270755.1': 191,
-                'KI270756.1': 192,
-                'KI270757.1': 193,
-            };
-            this.indexToChr = [
-                { refName: 'chr1', length: 248956422 },
-                { refName: 'chr2', length: 242193529 },
-                { refName: 'chr3', length: 198295559 },
-                { refName: 'chr4', length: 190214555 },
-                { refName: 'chr5', length: 181538259 },
-                { refName: 'chr6', length: 170805979 },
-                { refName: 'chr7', length: 159345973 },
-                { refName: 'chr8', length: 145138636 },
-                { refName: 'chr9', length: 138394717 },
-                { refName: 'chr10', length: 133797422 },
-                { refName: 'chr11', length: 135086622 },
-                { refName: 'chr12', length: 133275309 },
-                { refName: 'chr13', length: 114364328 },
-                { refName: 'chr14', length: 107043718 },
-                { refName: 'chr15', length: 101991189 },
-                { refName: 'chr16', length: 90338345 },
-                { refName: 'chr17', length: 83257441 },
-                { refName: 'chr18', length: 80373285 },
-                { refName: 'chr19', length: 58617616 },
-                { refName: 'chr20', length: 64444167 },
-                { refName: 'chr21', length: 46709983 },
-                { refName: 'chr22', length: 50818468 },
-                { refName: 'chrX', length: 156040895 },
-                { refName: 'chrY', length: 57227415 },
-                { refName: 'chrM', length: 16569 },
-                { refName: 'GL000008.2', length: 209709 },
-                { refName: 'GL000009.2', length: 201709 },
-                { refName: 'GL000194.1', length: 191469 },
-                { refName: 'GL000195.1', length: 182896 },
-                { refName: 'GL000205.2', length: 185591 },
-                { refName: 'GL000208.1', length: 92689 },
-                { refName: 'GL000213.1', length: 164239 },
-                { refName: 'GL000214.1', length: 137718 },
-                { refName: 'GL000216.2', length: 176608 },
-                { refName: 'GL000218.1', length: 161147 },
-                { refName: 'GL000219.1', length: 179198 },
-                { refName: 'GL000220.1', length: 161802 },
-                { refName: 'GL000221.1', length: 155397 },
-                { refName: 'GL000224.1', length: 179693 },
-                { refName: 'GL000225.1', length: 211173 },
-                { refName: 'GL000226.1', length: 15008 },
-                { refName: 'KI270302.1', length: 2274 },
-                { refName: 'KI270303.1', length: 1942 },
-                { refName: 'KI270304.1', length: 2165 },
-                { refName: 'KI270305.1', length: 1472 },
-                { refName: 'KI270310.1', length: 1201 },
-                { refName: 'KI270311.1', length: 12399 },
-                { refName: 'KI270312.1', length: 998 },
-                { refName: 'KI270315.1', length: 2276 },
-                { refName: 'KI270316.1', length: 1444 },
-                { refName: 'KI270317.1', length: 37690 },
-                { refName: 'KI270320.1', length: 4416 },
-                { refName: 'KI270322.1', length: 21476 },
-                { refName: 'KI270329.1', length: 1040 },
-                { refName: 'KI270330.1', length: 1652 },
-                { refName: 'KI270333.1', length: 2699 },
-                { refName: 'KI270334.1', length: 1368 },
-                { refName: 'KI270335.1', length: 1048 },
-                { refName: 'KI270336.1', length: 1026 },
-                { refName: 'KI270337.1', length: 1121 },
-                { refName: 'KI270338.1', length: 1428 },
-                { refName: 'KI270340.1', length: 1428 },
-                { refName: 'KI270362.1', length: 3530 },
-                { refName: 'KI270363.1', length: 1803 },
-                { refName: 'KI270364.1', length: 2855 },
-                { refName: 'KI270366.1', length: 8320 },
-                { refName: 'KI270371.1', length: 2805 },
-                { refName: 'KI270372.1', length: 1650 },
-                { refName: 'KI270373.1', length: 1451 },
-                { refName: 'KI270374.1', length: 2656 },
-                { refName: 'KI270375.1', length: 2378 },
-                { refName: 'KI270376.1', length: 1136 },
-                { refName: 'KI270378.1', length: 1048 },
-                { refName: 'KI270379.1', length: 1045 },
-                { refName: 'KI270381.1', length: 1930 },
-                { refName: 'KI270382.1', length: 4215 },
-                { refName: 'KI270383.1', length: 1750 },
-                { refName: 'KI270384.1', length: 1658 },
-                { refName: 'KI270385.1', length: 990 },
-                { refName: 'KI270386.1', length: 1788 },
-                { refName: 'KI270387.1', length: 1537 },
-                { refName: 'KI270388.1', length: 1216 },
-                { refName: 'KI270389.1', length: 1298 },
-                { refName: 'KI270390.1', length: 2387 },
-                { refName: 'KI270391.1', length: 1484 },
-                { refName: 'KI270392.1', length: 971 },
-                { refName: 'KI270393.1', length: 1308 },
-                { refName: 'KI270394.1', length: 970 },
-                { refName: 'KI270395.1', length: 1143 },
-                { refName: 'KI270396.1', length: 1880 },
-                { refName: 'KI270411.1', length: 2646 },
-                { refName: 'KI270412.1', length: 1179 },
-                { refName: 'KI270414.1', length: 2489 },
-                { refName: 'KI270417.1', length: 2043 },
-                { refName: 'KI270418.1', length: 2145 },
-                { refName: 'KI270419.1', length: 1029 },
-                { refName: 'KI270420.1', length: 2321 },
-                { refName: 'KI270422.1', length: 1445 },
-                { refName: 'KI270423.1', length: 981 },
-                { refName: 'KI270424.1', length: 2140 },
-                { refName: 'KI270425.1', length: 1884 },
-                { refName: 'KI270429.1', length: 1361 },
-                { refName: 'KI270435.1', length: 92983 },
-                { refName: 'KI270438.1', length: 112505 },
-                { refName: 'KI270442.1', length: 392061 },
-                { refName: 'KI270448.1', length: 7992 },
-                { refName: 'KI270465.1', length: 1774 },
-                { refName: 'KI270466.1', length: 1233 },
-                { refName: 'KI270467.1', length: 3920 },
-                { refName: 'KI270468.1', length: 4055 },
-                { refName: 'KI270507.1', length: 5353 },
-                { refName: 'KI270508.1', length: 1951 },
-                { refName: 'KI270509.1', length: 2318 },
-                { refName: 'KI270510.1', length: 2415 },
-                { refName: 'KI270511.1', length: 8127 },
-                { refName: 'KI270512.1', length: 22689 },
-                { refName: 'KI270515.1', length: 6361 },
-                { refName: 'KI270516.1', length: 1300 },
-                { refName: 'KI270517.1', length: 3253 },
-                { refName: 'KI270518.1', length: 2186 },
-                { refName: 'KI270519.1', length: 138126 },
-                { refName: 'KI270521.1', length: 7642 },
-                { refName: 'KI270522.1', length: 5674 },
-                { refName: 'KI270528.1', length: 2983 },
-                { refName: 'KI270529.1', length: 1899 },
-                { refName: 'KI270530.1', length: 2168 },
-                { refName: 'KI270538.1', length: 91309 },
-                { refName: 'KI270539.1', length: 993 },
-                { refName: 'KI270544.1', length: 1202 },
-                { refName: 'KI270548.1', length: 1599 },
-                { refName: 'KI270579.1', length: 31033 },
-                { refName: 'KI270580.1', length: 1553 },
-                { refName: 'KI270581.1', length: 7046 },
-                { refName: 'KI270582.1', length: 6504 },
-                { refName: 'KI270583.1', length: 1400 },
-                { refName: 'KI270584.1', length: 4513 },
-                { refName: 'KI270587.1', length: 2969 },
-                { refName: 'KI270588.1', length: 6158 },
-                { refName: 'KI270589.1', length: 44474 },
-                { refName: 'KI270590.1', length: 4685 },
-                { refName: 'KI270591.1', length: 5796 },
-                { refName: 'KI270593.1', length: 3041 },
-                { refName: 'KI270706.1', length: 175055 },
-                { refName: 'KI270707.1', length: 32032 },
-                { refName: 'KI270708.1', length: 127682 },
-                { refName: 'KI270709.1', length: 66860 },
-                { refName: 'KI270710.1', length: 40176 },
-                { refName: 'KI270711.1', length: 42210 },
-                { refName: 'KI270712.1', length: 176043 },
-                { refName: 'KI270713.1', length: 40745 },
-                { refName: 'KI270714.1', length: 41717 },
-                { refName: 'KI270715.1', length: 161471 },
-                { refName: 'KI270716.1', length: 153799 },
-                { refName: 'KI270717.1', length: 40062 },
-                { refName: 'KI270718.1', length: 38054 },
-                { refName: 'KI270719.1', length: 176845 },
-                { refName: 'KI270720.1', length: 39050 },
-                { refName: 'KI270721.1', length: 100316 },
-                { refName: 'KI270722.1', length: 194050 },
-                { refName: 'KI270723.1', length: 38115 },
-                { refName: 'KI270724.1', length: 39555 },
-                { refName: 'KI270725.1', length: 172810 },
-                { refName: 'KI270726.1', length: 43739 },
-                { refName: 'KI270727.1', length: 448248 },
-                { refName: 'KI270728.1', length: 1872759 },
-                { refName: 'KI270729.1', length: 280839 },
-                { refName: 'KI270730.1', length: 112551 },
-                { refName: 'KI270731.1', length: 150754 },
-                { refName: 'KI270732.1', length: 41543 },
-                { refName: 'KI270733.1', length: 179772 },
-                { refName: 'KI270734.1', length: 165050 },
-                { refName: 'KI270735.1', length: 42811 },
-                { refName: 'KI270736.1', length: 181920 },
-                { refName: 'KI270737.1', length: 103838 },
-                { refName: 'KI270738.1', length: 99375 },
-                { refName: 'KI270739.1', length: 73985 },
-                { refName: 'KI270740.1', length: 37240 },
-                { refName: 'KI270741.1', length: 157432 },
-                { refName: 'KI270742.1', length: 186739 },
-                { refName: 'KI270743.1', length: 210658 },
-                { refName: 'KI270744.1', length: 168472 },
-                { refName: 'KI270745.1', length: 41891 },
-                { refName: 'KI270746.1', length: 66486 },
-                { refName: 'KI270747.1', length: 198735 },
-                { refName: 'KI270748.1', length: 93321 },
-                { refName: 'KI270749.1', length: 158759 },
-                { refName: 'KI270750.1', length: 148850 },
-                { refName: 'KI270751.1', length: 150742 },
-                { refName: 'KI270752.1', length: 27745 },
-                { refName: 'KI270753.1', length: 62944 },
-                { refName: 'KI270754.1', length: 40191 },
-                { refName: 'KI270755.1', length: 36723 },
-                { refName: 'KI270756.1', length: 79590 },
-                { refName: 'KI270757.1', length: 71251 },
-            ];
-        }
         if (!this.index) {
             return;
         }
@@ -35735,35 +34695,27 @@ class bamFile_BamFile {
         let buffer;
         if (ret) {
             const s = ret + blockLen;
-            // console.log(`[bam-js] reading header [ ret ${ret} | s ${s} ]`)
-            const res = await this.bam.read(node_modules_buffer/* Buffer */.lW.alloc(s), 0, s, 0, opts);
-            if (!res.bytesRead) {
-                throw new Error('Error reading header');
-            }
-            buffer = res.buffer.subarray(0, Math.min(res.bytesRead, ret));
-            // console.log(`[bam-js] reading header [ res.bytesRead ${res.bytesRead} ]`)
+            buffer = await this.bam.read(s, 0);
         }
         else {
-            // console.log(`[bam-js] reading all of header`)
             buffer = await this.bam.readFile(opts);
         }
-        const uncba = await (0,esm/* unzip */.Ri)(buffer);
-        if (uncba.readInt32LE(0) !== bamFile_BAM_MAGIC) {
+        const uncba = await unzip_unzip(buffer);
+        const dataView = new DataView(uncba.buffer);
+        if (dataView.getInt32(0, true) !== bamFile_BAM_MAGIC) {
             throw new Error('Not a BAM file');
         }
-        const headLen = uncba.readInt32LE(4);
-        // console.log(`[bam-js] headLen ${headLen}`);
-        this.header = uncba.toString('utf8', 8, 8 + headLen);
+        const headLen = dataView.getInt32(4, true);
+        const decoder = new TextDecoder('utf8');
+        this.header = decoder.decode(uncba.subarray(8, 8 + headLen));
         const { chrToIndex, indexToChr } = await this._readRefSeqs(headLen + 8, 65535, opts);
         this.chrToIndex = chrToIndex;
         this.indexToChr = indexToChr;
-        // console.log(`this.chrToIndex ${JSON.stringify(this.chrToIndex)}`)
-        // console.log(`this.indexToChr ${JSON.stringify(this.indexToChr)}`)
         return sam_parseHeaderText(this.header);
     }
     getHeader(opts) {
         if (!this.headerP) {
-            this.headerP = this.getHeaderPre(opts).catch(e => {
+            this.headerP = this.getHeaderPre(opts).catch((e) => {
                 this.headerP = undefined;
                 throw e;
             });
@@ -35780,20 +34732,19 @@ class bamFile_BamFile {
         if (start > refSeqBytes) {
             return this._readRefSeqs(start, refSeqBytes * 2, opts);
         }
-        const size = refSeqBytes + blockLen;
-        const { bytesRead, buffer } = await this.bam.read(node_modules_buffer/* Buffer */.lW.alloc(size), 0, refSeqBytes, 0, opts);
-        if (!bytesRead) {
-            throw new Error('Error reading refseqs from header');
-        }
-        const uncba = await (0,esm/* unzip */.Ri)(buffer.subarray(0, Math.min(bytesRead, refSeqBytes)));
-        const nRef = uncba.readInt32LE(start);
+        // const size = refSeqBytes + blockLen <-- use this?
+        const buffer = await this.bam.read(refSeqBytes, 0, opts);
+        const uncba = await unzip_unzip(buffer);
+        const dataView = new DataView(uncba.buffer);
+        const nRef = dataView.getInt32(start, true);
         let p = start + 4;
         const chrToIndex = {};
         const indexToChr = [];
+        const decoder = new TextDecoder('utf8');
         for (let i = 0; i < nRef; i += 1) {
-            const lName = uncba.readInt32LE(p);
-            const refName = this.renameRefSeq(uncba.toString('utf8', p + 4, p + 4 + lName - 1));
-            const lRef = uncba.readInt32LE(p + lName + 4);
+            const lName = dataView.getInt32(p, true);
+            const refName = this.renameRefSeq(decoder.decode(uncba.subarray(p + 4, p + 4 + lName - 1)));
+            const lRef = dataView.getInt32(p + lName + 4, true);
             chrToIndex[refName] = i;
             indexToChr.push({ refName, length: lRef });
             p = p + 8 + lName;
@@ -35802,23 +34753,14 @@ class bamFile_BamFile {
                 return this._readRefSeqs(start, refSeqBytes * 2, opts);
             }
         }
-        // console.log(`[bam-js] chrToIndex: ${JSON.stringify(chrToIndex)}`)
-        // console.log(`[bam-js] indexToChr: ${JSON.stringify(indexToChr)}`)
         return { chrToIndex, indexToChr };
     }
     async getRecordsForRange(chr, min, max, opts) {
         return gen2array(this.streamRecordsForRange(chr, min, max, opts));
     }
     async *streamRecordsForRange(chr, min, max, opts) {
-        var _a;
-        // console.log(
-        //   `[bam-js] streamRecordsForRange | ${chr} | ${min} | ${max} | ${JSON.stringify(opts)}`,
-        // )
-        // console.log(`[bam-js] opts?.assemblyName ${opts?.assemblyName}`)
-        if ((opts === null || opts === void 0 ? void 0 : opts.assemblyName) && (opts === null || opts === void 0 ? void 0 : opts.assemblyName) !== 'hg38') {
-            await this.getHeader(opts);
-        }
-        const chrId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[chr];
+        await this.getHeader(opts);
+        const chrId = this.chrToIndex?.[chr];
         if (chrId === undefined || !this.index) {
             yield [];
         }
@@ -35835,13 +34777,13 @@ class bamFile_BamFile {
             const records = await this.featureCache.get(chunk.toString(), { chunk, opts }, opts.signal);
             const recs = [];
             for (const feature of records) {
-                if (feature.seq_id() === chrId) {
-                    if (feature.get('start') >= max) {
+                if (feature.ref_id === chrId) {
+                    if (feature.start >= max) {
                         // past end of range, can stop iterating
                         done = true;
                         break;
                     }
-                    else if (feature.get('end') >= min) {
+                    else if (feature.end >= min) {
                         // must be in range
                         recs.push(feature);
                     }
@@ -35865,8 +34807,8 @@ class bamFile_BamFile {
         feats.map(ret => {
             const readNames = {};
             for (const element of ret) {
-                const name = element.name();
-                const id = element.id();
+                const name = element.name;
+                const id = element.id;
                 if (!readNames[name]) {
                     readNames[name] = 0;
                 }
@@ -35882,10 +34824,10 @@ class bamFile_BamFile {
         const matePromises = [];
         feats.map(ret => {
             for (const f of ret) {
-                const name = f.name();
-                const start = f.get('start');
-                const pnext = f._next_pos();
-                const rnext = f._next_refid();
+                const name = f.name;
+                const start = f.start;
+                const pnext = f.next_pos;
+                const rnext = f.next_refid;
                 if (this.index &&
                     unmatedPairs[name] &&
                     (pairAcrossChr ||
@@ -35910,7 +34852,7 @@ class bamFile_BamFile {
             });
             const mateRecs = [];
             for (const feature of await this.readBamFeatures(data, cpositions, dpositions, chunk)) {
-                if (unmatedPairs[feature.get('name')] && !readIds[feature.id()]) {
+                if (unmatedPairs[feature.name] && !readIds[feature.id]) {
                     mateRecs.push(feature);
                 }
             }
@@ -35919,12 +34861,11 @@ class bamFile_BamFile {
         return mateFeatPromises.flat();
     }
     async _readRegion(position, size, opts = {}) {
-        const { bytesRead, buffer } = await this.bam.read(node_modules_buffer/* Buffer */.lW.alloc(size), 0, size, position, opts);
-        return buffer.subarray(0, Math.min(bytesRead, size));
+        return this.bam.read(size, position, opts);
     }
     async _readChunk({ chunk, opts }) {
         const buffer = await this._readRegion(chunk.minv.blockPosition, chunk.fetchedSize(), opts);
-        const { buffer: data, cpositions, dpositions, } = await (0,esm/* unzipChunkSlice */.y$)(buffer, chunk);
+        const { buffer: data, cpositions, dpositions, } = await unzipChunkSlice(buffer, chunk);
         return { data, cpositions, dpositions, chunk };
     }
     async readBamFeatures(ba, cpositions, dpositions, chunk) {
@@ -35932,10 +34873,12 @@ class bamFile_BamFile {
         const sink = [];
         let pos = 0;
         let last = +Date.now();
+        const dataView = new DataView(ba.buffer);
         while (blockStart + 4 < ba.length) {
-            const blockSize = ba.readInt32LE(blockStart);
+            const blockSize = dataView.getInt32(blockStart, true);
             const blockEnd = blockStart + 4 + blockSize - 1;
             // increment position to the current decompressed status
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (dpositions) {
                 while (blockStart + chunk.minv.dataPosition >= dpositions[pos++]) { }
                 pos--;
@@ -35974,7 +34917,8 @@ class bamFile_BamFile {
                             chunk.minv.dataPosition +
                             1
                         : // must be slice, not subarray for buffer polyfill on web
-                            index.signed(ba.slice(blockStart, blockEnd)),
+                            // @ts-expect-error
+                            mjs_crc32.signed(ba.subarray(blockStart, blockEnd)),
                 });
                 sink.push(feature);
                 if (this.yieldThreadTime && +Date.now() - last > this.yieldThreadTime) {
@@ -35987,38 +34931,34 @@ class bamFile_BamFile {
         return sink;
     }
     async hasRefSeq(seqName) {
-        var _a, _b;
-        const seqId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[seqName];
-        return seqId === undefined ? false : (_b = this.index) === null || _b === void 0 ? void 0 : _b.hasRefSeq(seqId);
+        const seqId = this.chrToIndex?.[seqName];
+        return seqId === undefined ? false : this.index?.hasRefSeq(seqId);
     }
     async lineCount(seqName) {
-        var _a;
-        const seqId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[seqName];
+        const seqId = this.chrToIndex?.[seqName];
         return seqId === undefined || !this.index ? 0 : this.index.lineCount(seqId);
     }
     async indexCov(seqName, start, end) {
-        var _a;
         if (!this.index) {
             return [];
         }
         await this.index.parse();
-        const seqId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[seqName];
+        const seqId = this.chrToIndex?.[seqName];
         return seqId === undefined ? [] : this.index.indexCov(seqId, start, end);
     }
     async blocksForRange(seqName, start, end, opts) {
-        var _a;
         if (!this.index) {
             return [];
         }
         await this.index.parse();
-        const seqId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[seqName];
+        const seqId = this.chrToIndex?.[seqName];
         return seqId === undefined
             ? []
             : this.index.blocksForRange(seqId, start, end, opts);
     }
 }
 //# sourceMappingURL=bamFile.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/htsget.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/htsget.js
 
 
 
@@ -36027,7 +34967,14 @@ async function concat(arr, opts) {
     const res = await Promise.all(arr.map(async (chunk) => {
         const { url, headers } = chunk;
         if (url.startsWith('data:')) {
-            return Buffer.from(url.split(',')[1], 'base64');
+            // pass base64 data url to fetch to decode to buffer
+            // https://stackoverflow.com/a/54123275/2129219
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error('failed to decode base64');
+            }
+            const ret = await res.arrayBuffer();
+            return new Uint8Array(ret);
         }
         else {
             //remove referer header, it is not even allowed to be specified
@@ -36035,27 +34982,28 @@ async function concat(arr, opts) {
             const { referer, ...rest } = headers;
             const res = await fetch(url, {
                 ...opts,
-                headers: { ...opts === null || opts === void 0 ? void 0 : opts.headers, ...rest },
+                headers: { ...opts?.headers, ...rest },
             });
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status} fetching ${url}: ${await res.text()}`);
             }
-            return Buffer.from(await res.arrayBuffer());
+            return new Uint8Array(await res.arrayBuffer());
         }
     }));
-    return Buffer.concat(await Promise.all(res.map(elt => unzip(elt))));
+    return concatUint8Array(await Promise.all(res.map(elt => unzip(elt))));
 }
 class HtsgetFile extends (/* unused pure expression or super */ null && (BamFile)) {
+    baseUrl;
+    trackId;
     constructor(args) {
         super({ htsget: true });
         this.baseUrl = args.baseUrl;
         this.trackId = args.trackId;
     }
     async *streamRecordsForRange(chr, min, max, opts) {
-        var _a;
         const base = `${this.baseUrl}/${this.trackId}`;
         const url = `${base}?referenceName=${chr}&start=${min}&end=${max}&format=BAM`;
-        const chrId = (_a = this.chrToIndex) === null || _a === void 0 ? void 0 : _a[chr];
+        const chrId = this.chrToIndex?.[chr];
         if (chrId === undefined) {
             yield [];
         }
@@ -36098,11 +35046,17 @@ class HtsgetFile extends (/* unused pure expression or super */ null && (BamFile
             ], chrId, min, max, opts);
         }
     }
+    // @ts-expect-error
     async _readChunk({ chunk }) {
         if (!chunk.buffer) {
             throw new Error('expected chunk.buffer in htsget');
         }
-        return { data: chunk.buffer, cpositions: [], dpositions: [], chunk };
+        return {
+            data: chunk.buffer,
+            cpositions: [],
+            dpositions: [],
+            chunk,
+        };
     }
     async getHeader(opts = {}) {
         const url = `${this.baseUrl}/${this.trackId}?referenceName=na&class=header`;
@@ -36112,11 +35066,13 @@ class HtsgetFile extends (/* unused pure expression or super */ null && (BamFile
         }
         const data = await result.json();
         const uncba = await concat(data.htsget.urls, opts);
-        if (uncba.readInt32LE(0) !== BAM_MAGIC) {
+        const dataView = new DataView(uncba.buffer);
+        if (dataView.getInt32(0, true) !== BAM_MAGIC) {
             throw new Error('Not a BAM file');
         }
-        const headLen = uncba.readInt32LE(4);
-        const headerText = uncba.toString('utf8', 8, 8 + headLen);
+        const headLen = dataView.getInt32(4, true);
+        const decoder = new TextDecoder('utf8');
+        const headerText = decoder.decode(uncba.subarray(8, 8 + headLen));
         const samHeader = parseHeaderText(headerText);
         // use the @SQ lines in the header to figure out the
         // mapping between ref ref ID numbers and names
@@ -36143,7 +35099,7 @@ class HtsgetFile extends (/* unused pure expression or super */ null && (BamFile
     }
 }
 //# sourceMappingURL=htsget.js.map
-;// CONCATENATED MODULE: ./node_modules/apr144-bam/esm/index.js
+;// CONCATENATED MODULE: ./node_modules/@gmod/bam/esm/index.js
 
 
 
@@ -36386,7 +35342,7 @@ const PILEUP_COLORS = {
   HIGHLIGHTS_MZEROA: [0.89, 0.84, 0.96, 1], // m0A highlights
   INDEX_DHS_BG: [0, 0, 0, 0],
   FIRE_SEGMENT_BG: [0, 0, 0, 0],
-  FIRE_BG: [0.88, 0.88, 0.88, 1],
+  FIRE_BG: [0.25, 0.25, 0.25],
   TFBS_SEGMENT_BG: [0, 0, 0, 1],
   TFBS_BG: [1, 1, 1, 1],
   GENERIC_BED_SEGMENT_BG: [0, 0, 0, 1],
@@ -36475,6 +35431,21 @@ const fireColors = (options) => {
   return {...PILEUP_COLORS, ...colorTable};
 };
 
+const ftFireColors = (options) => {
+  if (!options.ftFire) return {};
+  // console.log(`options.ftFire ${JSON.stringify(options.ftFire)}`);
+  const colorTable = {};
+  colorTable['FIRE_BG_TEST'] = [0.89, 0.89, 0.89, 1], // FIRE background default
+  Object.entries(options.ftFire.metadata.itemRGBMap).map((o) => {
+    const k = o[0];
+    // const v = o[1];
+    const v = k.split(',').map(d => parseFloat((parseFloat(d)/255).toFixed(2)));
+    colorTable[`FIRE_${k}`] = [...v, 1.0];
+  });
+  // console.log(`colorTable ${JSON.stringify(colorTable)}`);
+  return {...PILEUP_COLORS, ...colorTable};
+};
+
 const cigarTypeToText = (type) => {
   if (type === 'D') {
     return 'Deletion';
@@ -36536,6 +35507,36 @@ const parseMD = (mdString, useCounts) => {
   return substitutions;
 };
 
+// IUPAC degeneracies, to follow SAM specification
+const iupacComplementOf = {
+  'A' : 'T',
+  'C' : 'G', 
+  'G' : 'C', 
+  'T' : 'A',
+  'U' : 'A',
+  'Y' : 'R',
+  'R' : 'Y',
+  'S' : 'S',
+  'W' : 'W', 
+  'K' : 'M',
+  'M' : 'K',
+  'B' : 'V',
+  'V' : 'B',
+  'D' : 'H',
+  'H' : 'D',
+  'N' : 'N',
+};
+
+const getAllIndicesOfBaseValue = (arr, val) => {
+  let indices = [], i;
+  for (let i = 0; i < arr.length; ++i) {
+    if (arr[i] === val) {
+      indices.push(i);
+    }
+  }
+  return indices;
+}
+
 /**
  * Builds an array of all methylations in the segment, represented
  * as offsets from the 5' end of the sequence, using data available
@@ -36557,46 +35558,12 @@ const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
     "offsets" : [],
     "probabilities" : [],
   };
-  
-  const getAllIndexes = (arr, val) => {
-    let indices = [], i;
-    for (let i = 0; i < arr.length; ++i) {
-      if (arr[i] === val) {
-        indices.push(i);
-      }
-    }
-    return indices;
-  }
 
-  // include IUPAC degeneracies, to follow SAM specification
-  const complementOf = {
-    'A' : 'T',
-    'C' : 'G', 
-    'G' : 'C', 
-    'T' : 'A',
-    'U' : 'A',
-    'Y' : 'R',
-    'R' : 'Y',
-    'S' : 'S',
-    'W' : 'W', 
-    'K' : 'M',
-    'M' : 'K',
-    'B' : 'V',
-    'V' : 'B',
-    'D' : 'H',
-    'H' : 'D',
-    'N' : 'N',
-  };
-  // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
-  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
-
-  // console.log(`segment.mm | ${JSON.stringify(segment.mm)}`);
-  // console.log(`segment.ml | ${JSON.stringify(segment.ml)}`);
-
-  if (segment.mm && segment.ml) {
+  if (segment.MM && segment.ML) {
     let currentOffsetCount = 0;
-    const baseModifications = segment.mm.split(';');
-    const baseProbabilities = segment.ml.split(',');
+    const baseModifications = segment.MM.split(';');
+    // const baseProbabilities = segment.ML.split(','); // pre-v3 bam-js API
+    const baseProbabilities = (typeof segment.ML === 'string') ? Array.from(segment.ML.split(','), (d) => parseInt(d)) : (typeof segment.ML === 'number') ? [parseInt(segment.ML)] : (Array.isArray(segment.ML)) ? segment.ML : [];
     baseModifications.forEach((bm) => {
       if (bm.length === 0) return;
       const mo = Object.assign({}, moSkeleton);
@@ -36607,7 +35574,7 @@ const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
       const nOffsets = elems.length - 1;
       const offsets = new Array(nOffsets);
       const probabilities = new Array(nOffsets);
-      const baseIndices = (segment.strand === '+') ? getAllIndexes(seq, mo.unmodifiedBase) : getAllIndexes(seq, complementOf[mo.unmodifiedBase]);
+      const baseIndices = (segment.strand === '+') ? getAllIndicesOfBaseValue(seq, mo.unmodifiedBase) : getAllIndicesOfBaseValue(seq, iupacComplementOf[mo.unmodifiedBase]);
 
       //
       // build initial list of raw offsets
@@ -36723,18 +35690,400 @@ const getMethylationOffsets = (segment, seq, alignCpGEvents) => {
   return methylationOffsets;
 }
 
+const mapFibertoolsFIREProbabilityToFDR = (mspProbability) => {
+  return 100.0 - ((parseFloat(mspProbability) / 255.0) * 100.0);
+}
+
+/**
+ * https://github.com/fiberseq/fibertools-rs/blob/8f5cfc367759c8fa94285730e534143929367be1/src/lib.rs#L38-L48
+ */
+const fibertoolsFIRELinkerColor = '147,112,219';
+const fibertoolsFIRENucleosomeProbability = -255.0;
+const fibertoolsFIRENucleosomeColor = '169,169,169';
+const mapFibertoolsFIREFDRToColor = (fdr) => {
+  if (fdr <= 1.0) return '139,0,0';
+  else if (fdr <= 2.0) return '175,0,0';
+  else if (fdr <= 3.0) return '200,0,0';
+  else if (fdr <= 4.0) return '225,0,0';
+  else if (fdr <= 5.0) return '255,0,0';
+  else if (fdr <= 10.0) return '255,140,0';
+  else if (fdr <= 25.0) return '225,225,0';
+  else if (fdr <= 100.0) return fibertoolsFIRELinkerColor;
+  else if (fdr <= 200.0) return fibertoolsFIRENucleosomeColor;
+  else return fibertoolsFIRELinkerColor;
+}
+
+/**
+ * Builds an array of all fibertools FIRE nucs in the segment, represented
+ * as offsets from the 5' end of the sequence, using data available
+ * in the read's 'ns' and 'nl' tags
+ * 
+ * ref. https://samtools.github.io/hts-specs/SAMtags.pdf
+ * 
+ * @param  {String} segment  Current segment
+ * @return {Array}  Nucleosome offsets.
+ */
+const getFibertoolsFIRENucleosomeOffsets = (segment) => {
+  let nucOffsets = [];
+  const noSkeleton = {
+    "strand": "+",
+    "offsets": [],
+    "lengths": [],
+    // "probabilities": [],
+    // "fdrs": [],
+    "colors": [],
+    "offsetModifiers": [],
+    "clipLength": 0,
+  };
+
+  if (segment.ns && segment.nl) {
+    let currentOffsetCount = 0;
+    const nucStarts = (typeof segment.ns === 'string') ? Array.from(segment.ns.split(','), (d) => parseInt(d)) : (typeof segment.ns === 'number') ? [parseInt(segment.ns)] : (Array.isArray(segment.ns)) ? segment.ns : [];
+    const nucLengths = (typeof segment.nl === 'string') ? Array.from(segment.nl.split(','), (d) => parseInt(d)) : (typeof segment.nl === 'number') ? [parseInt(segment.nl)] : (Array.isArray(segment.nl)) ? segment.nl : [];
+    if (nucStarts.length !== nucLengths.length) {
+      console.warn(`FIRE nucleosome arrays are inconsistent | segment.readName ${segment.readName}`);
+      console.warn(`                                        | segment.ns ${segment.ns}`);
+      console.warn(`                                        | segment.nl ${segment.nl}`);
+      return nucOffsets;
+    }
+    if (nucStarts.length === 0) return nucOffsets;
+    const no = Object.assign({}, noSkeleton);
+    no.strand = segment.strand;
+    const nOffsets = nucStarts.length;
+    const offsets = new Array(nOffsets);
+    const lengths = new Array(nOffsets);
+    const probabilities = new Array(nOffsets);
+    const fdrs = new Array(nOffsets);
+    const colors = new Array(nOffsets);
+    if (segment.strand === '+') {
+      for (let i = 0; i < nOffsets; ++i) {
+        const nucStart = nucStarts[i];
+        const nucLength = nucLengths[i];
+        const nucProbability = fibertoolsFIRENucleosomeProbability;
+        offsets[i] = nucStart;
+        lengths[i] = nucLength;
+        probabilities[i] = nucProbability;
+        fdrs[i] = mapFibertoolsFIREProbabilityToFDR(probabilities[i]);
+        colors[i] = mapFibertoolsFIREFDRToColor(fdrs[i]);
+      }
+    }
+    else {
+      for (let i = 0; i < nOffsets; ++i) {
+        const strandedOffset = segment.length - nucStarts[i] - nucLengths[i];
+        const nucStart = strandedOffset;
+        const nucLength = nucLengths[i];
+        const nucProbability = fibertoolsFIRENucleosomeProbability;
+        const strandedIdx = nOffsets - i - 1;
+        offsets[strandedIdx] = nucStart;
+        lengths[strandedIdx] = nucLength;
+        probabilities[strandedIdx] = nucProbability;
+        fdrs[strandedIdx] = mapFibertoolsFIREProbabilityToFDR(nucProbability);
+        colors[strandedIdx] = mapFibertoolsFIREFDRToColor(fdrs[strandedIdx]);
+      }
+    }
+
+    const logModifier  = (segment.readName === '06318b68-46f6-4aa3-a5b3-8b7bad735eb8');
+
+    // if (segment.strand === '-') {
+    //   segment.substitutions.reverse();
+    //   let totalSoftClipLength = 0;
+    //   let startSoftClipLength = 0;
+    //   for (let i = 0; i < segment.substitutions.length; ++i) {
+    //     const sub = segment.substitutions[i];
+    //     if (sub.type === 'S') {
+    //       totalSoftClipLength += sub.length;
+    //       if (i === 0) {
+    //         startSoftClipLength = sub.length;
+    //       }
+    //     }
+    //   }
+    //   for (let i = 0; i < segment.substitutions.length; ++i) {
+    //     const sub = segment.substitutions[i];
+    //     if (sub.type === 'S') {
+    //       sub.pos = (sub.pos === -sub.length) ? 0 : -sub.length;
+    //     }
+    //     else {
+    //       sub.pos = segment.length - sub.pos - sub.length + 1 + startSoftClipLength;
+    //     }
+    //   }
+    // }
+
+    //
+    // modify raw offsets with CIGAR/substitution data
+    //
+    let offsetIdx = 0;
+    let offsetModifier = 0;
+    let clipLength = 0;
+    const modifiedOffsets = new Array();
+    const modifiedLengths = new Array();
+    // const modifiedProbabilities = new Array();
+    // const modifiedFDRs = new Array();
+    const modifiedColors = new Array();
+    const offsetModifiers = new Array();
+
+    for (const sub of segment.substitutions) {
+      if (logModifier) console.log(`sub ${JSON.stringify(sub)}`);
+      //
+      // if the read starts or ends with soft or hard clipping
+      //
+      if ((sub.type === 'S') || (sub.type === 'H')) {
+        offsetModifier -= sub.length;
+        clipLength = sub.length;
+        if (modifiedLengths.length > 0) { modifiedLengths[modifiedLengths.length - 1] -= sub.length; }
+        // if (offsetModifiers.length > 0) { offsetModifiers[offsetModifiers.length - 1] = offsetModifier; }
+      }
+      //
+      // walk through offsets and include those less than the current substitution position
+      //
+      else if ((sub.type === 'M') || (sub.type === '=')) {
+        while ((offsets[offsetIdx] + offsetModifier) < (sub.pos + sub.length)) {
+          if ((offsets[offsetIdx] + offsetModifier) >= sub.pos) {
+            if (logModifier) console.log(` --> pushing offset idx ${offsetIdx} | offset ${offsets[offsetIdx]} | offsetModifier ${offsetModifier} | clipLength ${clipLength}`);
+            modifiedOffsets.push(offsets[offsetIdx] + offsetModifier - clipLength);
+            modifiedLengths.push(lengths[offsetIdx]);
+            modifiedColors.push(colors[offsetIdx]);
+            offsetModifiers.push(offsetModifier);
+          }
+          offsetIdx++;
+        }
+      }
+      //
+      // filter out mismatches, else modify the offset padding
+      //
+      else if (sub.type === 'X') {
+        if ((offsets[offsetIdx] + offsetModifier) === sub.pos) {
+          offsetIdx++;
+        }
+      }
+      //
+      // handle substitution operations
+      //
+      else if (sub.type === 'D') {
+        offsetModifier += sub.length;
+        modifiedLengths[modifiedLengths.length - 1] += sub.length;
+        // offsetModifiers[offsetModifiers.length - 1] = offsetModifier;
+      }
+      else if (sub.type === 'I') {
+        offsetModifier -= sub.length;
+        modifiedLengths[modifiedLengths.length - 1] -= sub.length;
+        // offsetModifiers[offsetModifiers.length - 1] = offsetModifier;
+      }
+      else if (sub.type === 'N') {
+        offsetModifier += sub.length;
+        modifiedLengths[modifiedLengths.length - 1] += sub.length;
+        // offsetModifiers[offsetModifiers.length - 1] = offsetModifier;
+      }
+      //
+      // if the read ends with soft or hard clipping
+      //
+      if ((sub.type === 'S') || (sub.type === 'H')) {
+        offsetModifier += sub.length;
+        if (modifiedLengths.length > 0) { modifiedLengths[modifiedLengths.length - 1] += sub.length; }
+        // if (offsetModifiers.length > 0) { offsetModifiers[offsetModifiers.length - 1] = offsetModifier; }
+      }
+
+      if (logModifier) console.log(`offsetIdx ${offsetIdx} | offsetModifier ${offsetModifier} | clipLength ${clipLength}`);
+    }
+
+    no.offsets = modifiedOffsets;
+    no.lengths = modifiedLengths;
+    // no.probabilities = modifiedProbabilities;
+    // no.fdrs = modifiedFDRs;
+    no.colors = modifiedColors;
+    no.offsetModifiers = offsetModifiers;
+    no.clipLength = clipLength;
+
+    nucOffsets.push(no);
+    currentOffsetCount += nOffsets;
+  }
+
+  // console.log(`nucOffsets ${JSON.stringify(nucOffsets, null, 2)}`);
+
+  return nucOffsets;
+}
+
+/**
+ * Builds an array of all fibertools FIRE MSPs in the segment, represented
+ * as offsets from the 5' end of the sequence, using data available
+ * in the read's 'as' and 'al' tags
+ * 
+ * ref. https://samtools.github.io/hts-specs/SAMtags.pdf
+ * 
+ * @param  {String} segment  Current segment
+ * @return {Array}  Methylation offsets.
+ */
+const getFibertoolsFIREMSPOffsets = (segment) => {
+  let mspOffsets = [];
+  const moSkeleton = {
+    "strand": "+",
+    "offsets": [],
+    "lengths": [],
+    // "probabilities": [],
+    // "fdrs": [],
+    "colors": [],
+  };
+
+  // const reverseComplementString = (str) => str.split('').reduce((reversed, character) => complementOf[character] + reversed, '');
+  // const reverseString = (str) => str.split('').reduce((reversed, character) => character + reversed, '');
+
+  // console.log(`segment.as | ${JSON.stringify(segment.as)}`);
+  // console.log(`segment.al | ${JSON.stringify(segment.al)}`);
+
+  if (segment.as && segment.al && segment.aq) {
+    let currentOffsetCount = 0;
+    const mspStarts = (typeof segment.as === 'string') ? Array.from(segment.as.split(','), (d) => parseInt(d)) : (typeof segment.as === 'number') ? [parseInt(segment.as)] : (Array.isArray(segment.as)) ? segment.as : [];
+    // console.log(`mspStarts ${mspStarts instanceof Array} ${mspStarts.length} ${JSON.stringify(mspStarts)}`);
+    const mspLengths = (typeof segment.al === 'string') ? Array.from(segment.al.split(','), (d) => parseInt(d)) : (typeof segment.al === 'number') ? [parseInt(segment.al)] : (Array.isArray(segment.al)) ? segment.al : [];
+    // console.log(`mspLengths ${mspLengths instanceof Array} ${mspLengths.length} ${JSON.stringify(mspLengths)}`);
+    const mspProbabilities = (typeof segment.aq === 'string') ? Array.from(segment.aq.split(','), (d) => parseInt(d)) : (typeof segment.aq === 'number') ? [parseInt(segment.aq)] : (Array.isArray(segment.aq)) ? segment.aq : [];
+    // console.log(`mspProbabilities ${mspProbabilities instanceof Array} ${mspProbabilities.length} ${JSON.stringify(mspProbabilities)}`);
+    if (mspStarts.length !== mspLengths.length || mspStarts.length !== mspProbabilities.length || mspLengths.length !== mspProbabilities.length) {
+      console.warn(`FIRE MSP arrays are inconsistent | segment.readName ${segment.readName}`);
+      console.warn(`                                 | segment.as ${segment.as}`);
+      console.warn(`                                 | segment.al ${segment.al}`);
+      console.warn(`                                 | segment.aq ${segment.aq}`);
+      return mspOffsets;
+    }
+    if (mspStarts.length === 0) return mspOffsets;
+    const mo = Object.assign({}, moSkeleton);
+    mo.strand = segment.strand;
+    const nOffsets = mspStarts.length;
+    const offsets = new Array(nOffsets);
+    const lengths = new Array(nOffsets);
+    const probabilities = new Array(nOffsets);
+    const fdrs = new Array(nOffsets);
+    const colors = new Array(nOffsets);
+    if (segment.strand === '+') {
+      for (let i = 0; i < nOffsets; ++i) {
+        const mspStart = mspStarts[i];
+        const mspLength = mspLengths[i];
+        const mspProbability = mspProbabilities[i];
+        offsets[i] = mspStart;
+        lengths[i] = mspLength;
+        probabilities[i] = mspProbability;
+        fdrs[i] = mapFibertoolsFIREProbabilityToFDR(mspProbability);
+        colors[i] = mapFibertoolsFIREFDRToColor(fdrs[i]);
+      }
+    }
+    else {
+      for (let i = 0; i < nOffsets; ++i) {
+        const strandedOffset = segment.length - mspStarts[i] - mspLengths[i];
+        const mspStart = strandedOffset;
+        const mspLength = mspLengths[i];
+        const mspProbability = mspProbabilities[i];
+        const strandedIdx = nOffsets - i - 1;
+        offsets[strandedIdx] = mspStart;
+        lengths[strandedIdx] = mspLength;
+        probabilities[strandedIdx] = mspProbability;
+        fdrs[strandedIdx] = mapFibertoolsFIREProbabilityToFDR(mspProbability);
+        colors[strandedIdx] = mapFibertoolsFIREFDRToColor(fdrs[strandedIdx]);
+      }
+    }
+
+    const logModifier  = (segment.readName === '92da1af7-7170-41f8-a636-9c828d98378f');
+
+    //
+    // modify raw offsets with CIGAR/substitution data
+    //
+    let offsetIdx = 0;
+    let offsetModifier = 0;
+    let clipLength = 0;
+    const modifiedOffsets = new Array();
+    const modifiedLengths = new Array();
+    // const modifiedProbabilities = new Array();
+    // const modifiedFDRs = new Array();
+    const modifiedColors = new Array();
+
+    for (const sub of segment.substitutions) {
+      // if (logModifier) console.log(`sub ${JSON.stringify(sub)}`);
+      //
+      // if the read starts or ends with soft or hard clipping
+      //
+      if ((sub.type === 'S') || (sub.type === 'H')) {
+        offsetModifier -= sub.length;
+        clipLength = sub.length;
+        if (modifiedLengths.length > 0) { modifiedLengths[modifiedLengths.length - 1] -= sub.length; }
+      }
+      //
+      // walk through offsets and include those less than the current substitution position
+      //
+      else if ((sub.type === 'M') || (sub.type === '=')) {
+        while ((offsets[offsetIdx] + offsetModifier) < (sub.pos + sub.length)) {
+          if ((offsets[offsetIdx] + offsetModifier) >= sub.pos) {
+            modifiedOffsets.push(offsets[offsetIdx] + offsetModifier - clipLength);
+            modifiedLengths.push(lengths[offsetIdx]);
+            // modifiedProbabilities.push(probabilities[offsetIdx]);
+            // modifiedFDRs.push(fdrs[offsetIdx]);
+            modifiedColors.push(colors[offsetIdx]);
+          }
+          offsetIdx++;
+        }
+      }
+      //
+      // filter out mismatches, else modify the offset padding
+      //
+      else if (sub.type === 'X') {
+        if ((offsets[offsetIdx] + offsetModifier) === sub.pos) {
+          offsetIdx++;
+        }
+      }
+      //
+      // handle substitution operations
+      //
+      else if (sub.type === 'D') {
+        offsetModifier += sub.length;
+        modifiedLengths[modifiedLengths.length - 1] += sub.length;
+      }
+      else if (sub.type === 'I') {
+        offsetModifier -= sub.length;
+        modifiedLengths[modifiedLengths.length - 1] -= sub.length;
+      }
+      else if (sub.type === 'N') {
+        offsetModifier += sub.length;
+        modifiedLengths[modifiedLengths.length - 1] += sub.length;
+      }
+      //
+      // if the read ends with soft or hard clipping
+      //
+      if ((sub.type === 'S') || (sub.type === 'H')) {
+        offsetModifier += sub.length;
+        if (modifiedLengths.length > 0) { modifiedLengths[modifiedLengths.length - 1] += sub.length; }
+      }
+
+      // if (logModifier) console.log(`offsetIdx ${offsetIdx} | offsetModifier ${offsetModifier} | clipLength ${clipLength}`);
+    }
+
+    mo.offsets = modifiedOffsets;
+    mo.lengths = modifiedLengths;
+    // mo.probabilities = modifiedProbabilities;
+    // mo.fdrs = modifiedFDRs;
+    mo.colors = modifiedColors;
+
+    mspOffsets.push(mo);
+    currentOffsetCount += nOffsets;
+  }
+
+  // console.log(`mspOffsets ${JSON.stringify(mspOffsets, null, 2)}`);
+
+  return mspOffsets;
+}
+
 /**
  * Gets an array of all substitutions in the segment
  * @param  {String} segment  Current segment
  * @param  {String} seq   Read sequence from bam file.
  * @return {Boolean} includeClippingOps  Include soft or hard clipping operations in substitutions output.
  */
-const getSubstitutions = (segment, seq, includeClippingOps) => {
+const getSubstitutions = (segment, seq, includeClippingOps, reverseCIGAROps) => {
   let substitutions = [];
   let softClippingAtReadStart = null;
 
   if (segment.cigar) {
-    const cigarSubs = parseMD(segment.cigar, true);
+    let cigarSubs = parseMD(segment.cigar, true);
+
+    if (reverseCIGAROps) {
+      cigarSubs.reverse();
+    }
 
     let currPos = 0;
 
@@ -36849,25 +36198,25 @@ const getSubstitutions = (segment, seq, includeClippingOps) => {
     }
   }
 
-  if (segment.md) {
-    const mdSubstitutions = parseMD(segment.md, false);
+  // if (segment.md) {
+  //   const mdSubstitutions = parseMD(segment.md, false);
 
-    mdSubstitutions.forEach(function (substitution) {
-      let posStart = substitution['pos'] + substitution['bamSeqShift'];
-      let posEnd = posStart + substitution['length'];
-      // When there is soft clipping at the beginning,
-      // we need to shift the position where we read the variant from the sequence
-      // not necessary when there is hard clipping
-      if (softClippingAtReadStart !== null) {
-        posStart += softClippingAtReadStart.length;
-        posEnd += softClippingAtReadStart.length;
-      }
-      substitution['variant'] = seq.substring(posStart, posEnd);
-      delete substitution['bamSeqShift'];
-    });
+  //   mdSubstitutions.forEach(function (substitution) {
+  //     let posStart = substitution['pos'] + substitution['bamSeqShift'];
+  //     let posEnd = posStart + substitution['length'];
+  //     // When there is soft clipping at the beginning,
+  //     // we need to shift the position where we read the variant from the sequence
+  //     // not necessary when there is hard clipping
+  //     if (softClippingAtReadStart !== null) {
+  //       posStart += softClippingAtReadStart.length;
+  //       posEnd += softClippingAtReadStart.length;
+  //     }
+  //     substitution['variant'] = seq.substring(posStart, posEnd);
+  //     delete substitution['bamSeqShift'];
+  //   });
 
-    substitutions = mdSubstitutions.concat(substitutions);
-  }
+  //   substitutions = mdSubstitutions.concat(substitutions);
+  // }
 
   return substitutions;
 };
@@ -37714,6 +37063,8 @@ function ChromosomeInfo(filepath, success) {
 }
 // EXTERNAL MODULE: ./node_modules/apr144-hclust/build/hclust.min.js
 var hclust_min = __webpack_require__(803);
+// EXTERNAL MODULE: ./node_modules/generic-filehandle/esm/index.js + 2 modules
+var esm = __webpack_require__(949);
 ;// CONCATENATED MODULE: ./node_modules/d3/dist/package.js
 var package_name = "d3";
 var version = "6.7.0";
@@ -41436,7 +40787,7 @@ function count(node) {
 }
 
 ;// CONCATENATED MODULE: ./node_modules/d3-hierarchy/src/hierarchy/sum.js
-/* harmony default export */ function sum(value) {
+/* harmony default export */ function hierarchy_sum(value) {
   return this.eachAfter(function(node) {
     var sum = +value(node.data) || 0,
         children = node.children,
@@ -41621,7 +40972,7 @@ Node.prototype = hierarchy.prototype = {
   eachAfter: eachAfter,
   eachBefore: eachBefore,
   find: hierarchy_find,
-  sum: sum,
+  sum: hierarchy_sum,
   sort: hierarchy_sort,
   path: path,
   ancestors: ancestors,
@@ -46040,7 +45391,7 @@ function intersection(array) {
 
 // Complement of zip. Unzip accepts an array of arrays and groups
 // each array's elements on shared indices.
-function unzip_unzip(array) {
+function modules_unzip_unzip(array) {
   var length = (array && max_max(array, _getLength).length) || 0;
   var result = Array(length);
 
@@ -46056,7 +45407,7 @@ function unzip_unzip(array) {
 
 // Zip together multiple lists into a single array -- elements that share
 // an index go together.
-/* harmony default export */ const zip = (restArguments(unzip_unzip));
+/* harmony default export */ const zip = (restArguments(modules_unzip_unzip));
 
 ;// CONCATENATED MODULE: ./node_modules/underscore/modules/object.js
 
@@ -52138,6 +51489,7 @@ function neighborJoining(distanceMatrixArr, n, nodeList) {
 
 
 
+// import { BamFile } from 'apr144-bam';
 
 
 
@@ -52269,35 +51621,61 @@ function natcmp(xRow, yRow) {
 }
 
 const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegmentAttributesOnly) => {
-  const seq = bamRecord.get('seq');
-  const from = +bamRecord.get('start') + 1 + chrOffset;
-  const to = +bamRecord.get('end') + 1 + chrOffset;
+  // const seq = bamRecord.get('seq'); // pre-v3 bam-js API
+  const seq = bamRecord.seq;
+  // const from = +bamRecord.get('start') + 1 + chrOffset; // pre-v3 bam-js API
+  const from = bamRecord.start + 1 + chrOffset;
+  // const to = +bamRecord.get('end') + 1 + chrOffset; // pre-v3 bam-js API
+  const to = bamRecord.end + 1 + chrOffset;
 
   const segment = {
-    id: bamRecord.get('id'),
+    // id: bamRecord.get('id'), // pre-v3 bam-js API
+    id: bamRecord.id,
     mate_ids: [], // split reads can have multiple mates
-    start: +bamRecord.get('start') + 1,
+    // start: +bamRecord.get('start') + 1, // pre-v3 bam-js API
+    start: bamRecord.start + 1,
     from: from,
     to: to,
+    length: to - from - 1,
     fromWithClipping: from,
     toWithClipping: to,
-    md: bamRecord.get('MD'),
-    sa: bamRecord.get('SA'), // Needed to determine if this is a split read
+    // md: bamRecord.get('MD'), // pre-v3 bam-js API
+    md: bamRecord.tags.MD,
+    // sa: bamRecord.get('SA'), // Needed to determine if this is a split read // pre-v3 bam-js API
+    sa: bamRecord.tags.SA, // Needed to determine if this is a split read
     chrName,
     chrOffset,
-    cigar: bamRecord.get('cigar'),
-    mapq: bamRecord.get('mq'),
-    strand: bamRecord.get('strand') === 1 ? '+' : '-',
+    // cigar: bamRecord.get('cigar'), // pre-v3 bam-js API
+    cigar: bamRecord.CIGAR,
+    // mapq: bamRecord.get('mq'), // pre-v3 bam-js API
+    mapq: bamRecord.qual,
+    // strand: bamRecord.get('strand') === 1 ? '+' : '-', // pre-v3 bam-js API
+    strand: (bamRecord.flags & 16) ? '-' : '+',
     row: null,
-    readName: bamRecord.get('name'),
+    // readName: bamRecord.get('name'),
+    readName: bamRecord.name,
     seq: seq,
     color: bam_utils_PILEUP_COLOR_IXS.BG,
     colorOverride: null,
     mappingOrientation: null,
     substitutions: [],
     methylationOffsets: [],
-    mm: bamRecord.get('MM'),
-    ml: bamRecord.get('ML'),
+    mspOffsets: [],
+    nucOffsets: [],
+    // mm: bamRecord.get('MM'), // pre-v3 bam-js API
+    // ml: bamRecord.get('ML'), // pre-v3 bam-js API
+    // as: bamRecord.get('as'), // pre-v3 bam-js API
+    // al: bamRecord.get('al'), // pre-v3 bam-js API
+    // aq: bamRecord.get('aq'), // pre-v3 bam-js API
+    // ns: bamRecord.get('ns'), // pre-v3 bam-js API
+    // nl: bamRecord.get('nl'), // pre-v3 bam-js API
+    MM: bamRecord.tags.MM,
+    ML: bamRecord.tags.ML,
+    as: bamRecord.tags.as,
+    al: bamRecord.tags.al,
+    aq: bamRecord.tags.aq,
+    ns: bamRecord.tags.ns,
+    nl: bamRecord.tags.nl,
   };
 
   if (basicSegmentAttributesOnly) {
@@ -52312,15 +51690,18 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
   }
 
   const includeClippingOps = true;
+  const reverseCIGAROps = (trackOptions && trackOptions.ftFire && segment.strand === '-');
 
-  segment.substitutions = getSubstitutions(segment, seq, includeClippingOps);
+  segment.substitutions = getSubstitutions(segment, seq, includeClippingOps, reverseCIGAROps);
+
   if (trackOptions.methylation) {
     segment.methylationOffsets = getMethylationOffsets(segment, seq, trackOptions.methylation.alignCpGEvents);
     // console.log(`segment.methylationOffsets | ${JSON.stringify(segment.methylationOffsets)}`);
   }
 
   if (trackOptions.fire) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
     // segment.fireColors = fireColors(trackOptions);
     // const newPileupColorIdxs = {};
     // const highlightOffset = (trackOptions && trackOptions.methylation && trackOptions.methylation.hideSubstitutions && trackOptions.methylation.highlights && 'M0A' in trackOptions.methylation.highlights) ? 1 : 0;
@@ -52334,12 +51715,23 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
     // console.log(`PILEUP_COLOR_IXS ${JSON.stringify(PILEUP_COLOR_IXS)}`);
   }
 
+  if (trackOptions.ftFire) {
+    // const alignCpGEvents = true;
+    // segment.methylationOffsets = getMethylationOffsets(segment, seq, alignCpGEvents);
+    segment.mspOffsets = getFibertoolsFIREMSPOffsets(segment);
+    segment.nucOffsets = getFibertoolsFIRENucleosomeOffsets(segment);
+    segment.metadata = {};
+    segment.color = bam_utils_PILEUP_COLOR_IXS.FIRE_BG;
+  }
+
   if (trackOptions.tfbs) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
   }
 
   if (trackOptions.genericBed) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
     segment.genericBedColors = genericBedColors(trackOptions);
     const newPileupColorIdxs = {};
     Object.keys(segment.genericBedColors).map((x, i) => {
@@ -52350,7 +51742,8 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions, basicSegme
   }
 
   if (trackOptions.indexDHS) {
-    segment.metadata = JSON.parse(bamRecord.get('CO'));
+    // segment.metadata = JSON.parse(bamRecord.get('CO'));
+    segment.metadata = JSON.parse(bamRecord.tags.CO);
     // console.log(`trackOptions ${JSON.stringify(trackOptions)}`);
     segment.indexDHSColors = indexDHSColors(trackOptions);
 
@@ -52604,9 +51997,9 @@ const bam_fetcher_worker_init = (uid, bamUrl, baiUrl, fastaUrl, faiUrl, chromSiz
 
   if (fastaUrl && faiUrl) {
     // console.log(`setting up fasta | ${fastaUrl} | ${faiUrl}`);
-    const remoteFasta = new generic_filehandle_esm/* RemoteFile */.kC(fastaUrl);
-    const remoteFai = new generic_filehandle_esm/* RemoteFile */.kC(faiUrl);
-    const { IndexedFasta } = __webpack_require__(805);
+    const remoteFasta = new esm/* RemoteFile */.kC(fastaUrl);
+    const remoteFai = new esm/* RemoteFile */.kC(faiUrl);
+    const { IndexedFasta } = __webpack_require__(496);
     sequenceFiles[fastaUrl] = new IndexedFasta({
       fasta: remoteFasta,
       fai: remoteFai,
@@ -57832,7 +57225,7 @@ const renderSegments = (
 
     // data.length = 0;
   }
-  else if (fireIdentifierDataObj && trackOptions.fire) {
+  else if (fireIdentifierDataObj && (trackOptions.fire || trackOptions.ftFire)) {
     // console.log(`fireIdentifierDataObj ${JSON.stringify(fireIdentifierDataObj)}`);
     for (let key of Object.keys(grouped)) {
       const rows = segmentsToRows(grouped[key], {
@@ -58413,6 +57806,92 @@ const renderSegments = (
           // }
         }
 
+        else if (trackOptions && trackOptions.ftFire) {
+          const ftFireMetadata = (trackOptions.ftFire && trackOptions.ftFire.metadata) ? trackOptions.ftFire.metadata : null;
+          if (ftFireMetadata) {
+            const ftFireElementHeight = height * 0.25;
+            const topCorrection = ftFireElementHeight * 1.75;
+            const ftFireColors = ftFireMetadata.itemRGBMap;
+            
+            const nucleosomeData = segment.nucOffsets[0];
+            let nucleosomeOffsets = nucleosomeData.offsets;
+            let nucleosomeLengths = nucleosomeData.lengths;
+            let nucleosomeColors = nucleosomeData.colors;
+            let nucleosomeOffsetModifiers = nucleosomeData.offsetModifiers;
+            let nucleosomeClipLength = nucleosomeData.clipLength;
+            const mspData = segment.mspOffsets[0];
+            const mspOffsets = mspData.offsets;
+            const mspLengths = mspData.lengths;
+            const mspColors = mspData.colors;
+
+            /** draw molecule bounds before nucleosomes and MSPs */
+            const firstNucleosomeOffset = nucleosomeOffsets[0];
+            const lastNucleosomeOffsetEndpoint = nucleosomeOffsets[nucleosomeOffsets.length - 1] + nucleosomeLengths[nucleosomeLengths.length - 1];
+            const firstMSPOffset = mspOffsets[0];
+            const lastMSPOffsetEndpoint = mspOffsets[mspOffsets.length - 1] + mspLengths[mspLengths.length - 1];
+            const moleculeOffset = 0; // Math.min(firstNucleosomeOffset, firstMSPOffset);
+            const moleculeLength = segment.length; // Math.max(lastNucleosomeOffsetEndpoint, lastMSPOffsetEndpoint) - moleculeOffset;
+            const moleculeColorIdx = bam_utils_PILEUP_COLOR_IXS[`BLACK_05`];
+            const moleculeHeightFactor = 0.3;
+            const moleculeWidth = Math.max(1, xScale(moleculeLength) - xScale(0));
+            const moleculeXLeft = xScale(segment.from + moleculeOffset);
+            const moleculeYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * moleculeHeightFactor))) - topCorrection;
+            const moleculeHeight = Math.max(1, ftFireElementHeight * moleculeHeightFactor);
+            addRect(moleculeXLeft, moleculeYTop, moleculeWidth, moleculeHeight, moleculeColorIdx);
+
+            if (segment.strand === '-') {
+              nucleosomeOffsets = nucleosomeOffsets.map((d,i) => {
+                return d - nucleosomeOffsetModifiers[nucleosomeOffsetModifiers.length - i - 1] - nucleosomeClipLength + 1;
+              });
+              // nucleosomeLengths = nucleosomeLengths.map((d,i) => {
+              //   return d;
+              // });
+            }
+
+            // if (segment.readName === '06318b68-46f6-4aa3-a5b3-8b7bad735eb8') {
+            if (segment.readName === '06318b68-46f6-4aa3-a5b3-8b7bad735eb8') {
+              console.log(`segment.start ${segment.start} | segment.length ${segment.length} | segment.strand ${segment.strand}`);
+              // console.log(`segment.as ${segment.as} | segment.al ${segment.al} | segment.aq ${segment.aq}`);
+              // console.log(`segment.mspOffsets | ${JSON.stringify(segment.mspOffsets)}`);
+              console.log(`segment.ns ${segment.ns}`); 
+              console.log(`segment.nl ${segment.nl}`);
+              // console.log(`segment.nucOffsets | ${JSON.stringify(segment.nucOffsets)}`);
+              console.log(`nucleosomeOffsets | ${JSON.stringify(nucleosomeOffsets)}`);
+              console.log(`nucleosomeLengths | ${JSON.stringify(nucleosomeLengths)}`);
+              console.log(`nucleosomeOffsetModifiers | ${JSON.stringify(nucleosomeOffsetModifiers)}`);
+              console.log(`ftFireMetadata ${JSON.stringify(ftFireMetadata)}`);
+              console.log(`moleculeXLeft ${moleculeXLeft}, moleculeYTop ${moleculeYTop}, moleculeWidth ${moleculeWidth}, moleculeColorIdx ${moleculeColorIdx}`);
+            }
+
+            /** draw nucleosomes */
+            for (let i = 0; i < nucleosomeOffsets.length; ++i) {
+              const nucleosomeOffset = nucleosomeOffsets[i];
+              const nucleosomeLength = nucleosomeLengths[i];
+              const nucleosomeColor = nucleosomeColors[i];
+              const nucleosomeColorIdx = bam_utils_PILEUP_COLOR_IXS[`FIRE_${nucleosomeColor}`];
+              const nucleosomeHeightFactor = ftFireColors[nucleosomeColor].heightFactor;
+              const nucleosomeWidth = Math.max(1, xScale(nucleosomeLength) - xScale(0));
+              // const nucleosomeWidth = (segment.strand === '+') ? Math.max(1, xScale(nucleosomeLength) - xScale(0)) : Math.max(1, xScale(3/2*nucleosomeLength) - xScale(0));
+              const nucleosomeXLeft = xScale(segment.from + nucleosomeOffset);
+              // const nucleosomeXLeft = (segment.strand === '+') ? xScale(segment.from + nucleosomeOffset) : xScale(segment.from + (segment.length - nucleosomeOffset - (nucleosomeLength / 2)));
+              const nucleosomeYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * nucleosomeHeightFactor))) - topCorrection;
+              addRect(nucleosomeXLeft, nucleosomeYTop, nucleosomeWidth, ftFireElementHeight * nucleosomeHeightFactor, nucleosomeColorIdx);
+            }
+            /** draw MSPs */
+            // for (let i = 0; i < mspOffsets.length; ++i) {
+            //   const mspOffset = mspOffsets[i];
+            //   const mspLength = mspLengths[i];
+            //   const mspColor = mspColors[i];
+            //   const mspColorIdx = PILEUP_COLOR_IXS[`FIRE_${mspColor}`];
+            //   const mspHeightFactor = ftFireColors[mspColor].heightFactor;
+            //   const mspWidth = Math.max(1, xScale(mspLength) - xScale(0));
+            //   const mspXLeft = xScale(segment.from + mspOffset);
+            //   const mspYTop = yTop + ((yBottom - yTop) * (1 - (0.125 * mspHeightFactor))) - topCorrection;
+            //   addRect(mspXLeft, mspYTop, mspWidth, ftFireElementHeight * mspHeightFactor, mspColorIdx);
+            // }
+          }
+        }
+
         else if (trackOptions && trackOptions.fire) {
           // let showDims = true;
           const fireMetadata = (trackOptions.fire && trackOptions.fire.metadata) ? segment.metadata : {};
@@ -58426,14 +57905,16 @@ const renderSegments = (
           const fireElementHeight = yScale.bandwidth() * 0.25;
           const topCorrection = fireElementHeight * 1.75;
 
+          // console.log(`segment.metadata.colors ${JSON.stringify(segment.metadata.colors)}`);
+
           for (const substitution of segment.substitutions) {
-            // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos}`);
+            // console.log(`segment.from + substitution.pos ${segment.from} + ${substitution.pos} | substitution.length ${substitution.length}`);
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));
-            const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
+            // const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
             xRight = xLeft + width;
-
             const fireYTop = yTop + ((yBottom - yTop) * 0.5) - topCorrection;
+            // console.log(`xLeft ${xLeft} | width ${width} | fireYTop ${fireYTop}`);
             addRect(xLeft, fireYTop, width, fireElementHeight, defaultSegmentColor);
 
             // console.log(`xLeft ${xLeft} | fireYTop ${fireYTop} | width ${width} | fireElementHeight ${fireElementHeight} | defaultSegmentColor ${defaultSegmentColor}`);

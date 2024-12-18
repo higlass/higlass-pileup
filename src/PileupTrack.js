@@ -5,6 +5,7 @@ import {
   PILEUP_COLORS,
   indexDHSColors,
   fireColors,
+  ftFireColors,
   cigarTypeToText,
   areMatesRequired,
   calculateInsertSize
@@ -444,6 +445,18 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
         }
       }
 
+      //
+      // add Fibertools-sourced FIRE color table data, if available
+      //
+      if (options && options.ftFire) {
+        const ftFireColorDict = ftFireColors(options);
+        colorDict = {...colorDict, ...ftFireColorDict};
+        if (options.ftFire.metadata && options.ftFire.metadata.backgroundColor) {
+          // console.log(`[PileupTrack] options.ftFire.metadata.backgroundColor ${options.ftFire.metadata.backgroundColor}`);
+          colorDict.FIRE_BG = this.colorToArray(options.ftFire.metadata.backgroundColor);
+        }
+      }
+
       const colors = Object.values(colorDict);
 
       const [colorMapTex, colorMapTexRes] = createColorTexture(
@@ -586,7 +599,7 @@ varying vec4 vColor;
             // if (this.options.fire) console.log(`this.sessionId | ${JSON.stringify(this.sessionId)}`);
             // if (this.options.fire) console.log(`this.id | ${JSON.stringify(this.id)}`);
             // if (this.options.fire) console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
-            if (!this.options.fire || this.trackUpdatesAreFrozen)
+            if (!this.options.fire || !this.options.ftFire || this.trackUpdatesAreFrozen)
               break;
             if (data.sid !== this.sessionId)
               break;
@@ -612,7 +625,7 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "refresh-fire-layout-post-clustering":
-            if (!this.options.fire || this.trackUpdatesAreFrozen)
+            if (!this.options.fire || !this.options.ftFire || this.trackUpdatesAreFrozen)
               return;
             // console.log(`refresh-fire-layout-post-clustering | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`);
             if (data.sid !== this.sessionId)
@@ -1189,7 +1202,7 @@ varying vec4 vColor;
     updateExistingGraphics(skip) {
       // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (start) | ${this.id}`);
 
-      if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.methylation)) return;
+      if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.ftFire || this.options.methylation)) return;
 
       // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (post-start) | ${this.id}`);
 
@@ -1999,7 +2012,7 @@ varying vec4 vColor;
 
                   const readIntervalLabel = (this.options.methylation) ? 'Interval' : (this.options.indexDHS) ? 'Range' : 'Interval';
                   let readIntervalValue = `${read.chrName}:${read.from - read.chrOffset}-${read.to - read.chrOffset - 1}`;
-                  readIntervalValue += (this.options.methylation || this.options.tfbs) ? ` (${read.strand})` : '';
+                  readIntervalValue += (this.options.methylation || this.options.ftFire || this.options.tfbs) ? ` (${read.strand})` : '';
                   output += `<div class="track-mouseover-menu-table-item">
                     <label for="readInterval" class="track-mouseover-menu-table-item-label">${readIntervalLabel}</label>
                     <div name="readInterval" class="track-mouseover-menu-table-item-value">${readIntervalValue}</div>
