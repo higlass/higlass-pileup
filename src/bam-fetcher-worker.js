@@ -588,7 +588,9 @@ const tile = async (uid, z, x) => {
     const recordPromises = [];
 
     if (tileWidth > maxTileWidth) {
-      // this.errorTextText('Zoomed out too far for this track. Zoomin further to see reads');
+      // this.errorTextText(
+      //   'Zoomed out too far for this track. Zoomin further to see reads',
+      // );
       return new Promise((resolve) => resolve([]));
     }
 

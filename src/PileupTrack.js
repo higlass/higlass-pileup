@@ -912,14 +912,13 @@ varying vec4 vColor;
         );
 
         const DEFAULT_MAX_TILE_WIDTH = 2e5;
-
+        const currentMaxTileWidth =
+          (this.dataFetcher.dataConfig.options &&
+            this.dataFetcher.dataConfig.options.maxTileWidth) ||
+          this.options.maxTileWidth ||
+          DEFAULT_MAX_TILE_WIDTH;
         if (
-          tileWidth >
-          (this.tilesetInfo.max_tile_width ||
-            (this.dataFetcher.dataConfig.options &&
-              this.dataFetcher.dataConfig.options.maxTileWidth) ||
-            this.options.maxTileWidth ||
-            DEFAULT_MAX_TILE_WIDTH)
+          tileWidth > (this.tilesetInfo.max_tile_width || currentMaxTileWidth)
         ) {
           if (this.options.collapseWhenMaxTileWidthReached) {
             this.pubSub.publish('trackDimensionsModified', {
@@ -929,14 +928,19 @@ varying vec4 vColor;
               viewId: this.viewId,
             });
           }
+          const errorText =
+            `Zoom in to see details.\n` +
+            `Current tile span ${tileWidth}. Max span: ${currentMaxTileWidth}`;
 
-          this.errorTextText = 'Zoom in to see details';
+          this.setError(errorText, 'PileupTrack.tileWidth');
+          this.updateLoadingText();
           this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
           return;
         } else {
           this.maxTileWidthReached = false;
+          this.setError('', 'PileupTrack.tileWidth');
 
           if (this.options.collapseWhenMaxTileWidthReached) {
             this.pubSub.publish('trackDimensionsModified', {
@@ -948,7 +952,6 @@ varying vec4 vColor;
           }
         }
 
-        this.errorTextText = null;
         this.pBorder.clear();
         this.drawError();
         this.animate();
