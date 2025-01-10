@@ -321,11 +321,15 @@ const tabularJsonToRowJson = (tabularJson) => {
       // server has returned information about variants in the form
       // (queryPos, referencePos, substitution)
       // modeled on pysam's get_aligned_pairs
-      newRow.substitutions = newRow.variants.map((x) => ({
-        pos: x[1] - (newRow.from - newRow.chrOffset) + 1,
-        variant: x[2].toUpperCase(),
-        length: 1,
-      }));
+      newRow.substitutions = newRow.variants.map((x) => {
+        const sub = {
+          pos: x[1],
+          variant: x[2].toUpperCase(),
+          length: 1,
+        };
+
+        return sub;
+      });
     }
 
     if (newRow.cigars) {
