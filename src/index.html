@@ -67,21 +67,21 @@ const testViewConfig = {
   "views": [
     {
       "initialXDomain": [
-        133853.16217058073,
-        134429.67865594648
+        133316.84212529,
+        134172.6944366717
       ],
       "initialYDomain": [
-        -41978630.14659419,
-        -41978448.39084383
+        -41978532.357771374,
+        -41978262.53707586
       ],
       "tracks": {
         "top": [
           {
             "uid": "AdlJsUYFRzuJRZyYeKDX2A",
             "type": "chromosome-labels",
-            "width": 811,
+            "width": 904,
             "height": 30,
-            "server": "http://localhost:8087//higlass.io/api/v1",
+            "server": "http://higlass.io/api/v1",
             "options": {
               "color": "#808080",
               "stroke": "#ffffff",
@@ -103,7 +103,7 @@ const testViewConfig = {
               "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
             },
             "type": "horizontal-sequence",
-            "width": 768,
+            "width": 904,
             "height": 25,
             "options": {
               "name": "hg38",
@@ -158,8 +158,8 @@ const testViewConfig = {
               ],
               "showMousePosition": false,
               "outlineMateOnHover": false,
-              "showCoverage": false,
-              "coverageHeight": 10,
+              "showCoverage": true,
+              "coverageHeight": 100,
               "maxTileWidth": 200000,
               "collapseWhenMaxTileWidthReached": false,
               "minMappingQuality": 0,
@@ -167,7 +167,7 @@ const testViewConfig = {
               "largeInsertSizeThreshold": 1000,
               "viewAsPairs": false
             },
-            "height": 200,
+            "height": 335,
             "uid": "pu1",
             "data": {
               "type": "bam",
@@ -175,42 +175,7 @@ const testViewConfig = {
               "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_higlass.bam.bai",
               "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
             },
-            "width": 470
-          },
-          {
-            "type": "pileup",
-            "options": {
-              "axisPositionHorizontal": "right",
-              "axisLabelFormatting": "normal",
-              "outlineReadOnHover": "yes",
-              "groupBy": "strand",
-              "minusStrandColor": "#ffd1d4",
-              "plusStrandColor": "#cfd0ff",
-              "colorScale": [
-                "#08519c",
-                "#6baed6",
-                "#993404",
-                "#fe9929",
-                "#808080",
-                "#DCDCDC"
-              ],
-              "showMousePosition": false,
-              "outlineMateOnHover": false,
-              "showCoverage": false,
-              "coverageHeight": 10,
-              "maxTileWidth": 200000,
-              "collapseWhenMaxTileWidthReached": false,
-              "minMappingQuality": 0,
-              "highlightReadsBy": [],
-              "largeInsertSizeThreshold": 1000,
-              "viewAsPairs": false,
-              "name": "example_higlass"
-            },
-            "height": 200,
-            "uid": "pu2",
-            "server": "http://localhost:8000/api/v1",
-            "tilesetUid": "Q7KW5ehCSzKGYmc8IF7b3w",
-            "width": 470
+            "width": 904
           }
         ],
         "left": [],

@@ -529,6 +529,8 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     entry.range = range;
   });
 
+  console.log('coverage', coverage);
+
   return {
     coverage: coverage,
     maxCoverage: maxCoverage,
@@ -1087,28 +1089,26 @@ const renderSegments = (
     sections = segmentList.map((x) => createSection([x]));
   }
 
-  if (areMatesRequired(trackOptions)) {
-    // At this point reads are colored correctly, but we only want to align those reads that
-    // are within the visible tiles - not mates that are far away, as this can mess up the alignment
-    let tileMinPos = Number.MAX_VALUE;
-    let tileMaxPos = -Number.MAX_VALUE;
-    const tsInfo = tilesetInfos[uid];
-    tileIds.forEach((id) => {
-      const z = id.split('.')[0];
-      const x = id.split('.')[1];
-      const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
-      tileMinPos = Math.min(tileMinPos, startEnd[0]);
-      tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
-    });
+  // At this point reads are colored correctly, but we only want to align those reads that
+  // are within the visible tiles - not mates that are far away, as this can mess up the alignment
+  let tileMinPos = Number.MAX_VALUE;
+  let tileMaxPos = -Number.MAX_VALUE;
+  const tsInfo = tilesetInfos[uid];
+  tileIds.forEach((id) => {
+    const z = id.split('.')[0];
+    const x = id.split('.')[1];
+    const startEnd = tilesetInfoToStartEnd(tsInfo, +z, +x);
+    tileMinPos = Math.min(tileMinPos, startEnd[0]);
+    tileMaxPos = Math.max(tileMaxPos, startEnd[1]);
+  });
 
-    for (let i = 0; i < segmentList.length; i++) {
-      const segment = segmentList[i];
+  for (let i = 0; i < segmentList.length; i++) {
+    const segment = segmentList[i];
 
-      if (segment.to >= tileMinPos && segment.from <= tileMaxPos) {
-        segment.in_bounds = true;
-      } else {
-        segment.in_bounds = false;
-      }
+    if (segment.to >= tileMinPos && segment.from <= tileMaxPos) {
+      segment.in_bounds = true;
+    } else {
+      segment.in_bounds = false;
     }
   }
 
