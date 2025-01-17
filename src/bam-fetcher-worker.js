@@ -529,8 +529,6 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     entry.range = range;
   });
 
-  console.log('coverage', coverage);
-
   return {
     coverage: coverage,
     maxCoverage: maxCoverage,
