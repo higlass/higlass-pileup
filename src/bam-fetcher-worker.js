@@ -325,6 +325,7 @@ const tabularJsonToRowJson = (tabularJson) => {
         const sub = {
           pos: x[1],
           variant: x[2].toUpperCase(),
+          base: x[3].toUpperCase(),
           length: 1,
         };
 
