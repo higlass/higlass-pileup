@@ -1230,7 +1230,7 @@ function assignSectionToRow(
   }
 }
 
-function segmentsToRows(segments, optionsIn, trackOptions) {
+function segmentsToRows(segments, optionsIn) {
   const {
     prevRows,
     padding,
@@ -1243,7 +1243,6 @@ function segmentsToRows(segments, optionsIn, trackOptions) {
     },
     optionsIn || {},
   );
-  const viewAsPairs = trackOptions.viewAsPairs;
 
   // console.log(`optionsIn ${JSON.stringify(optionsIn)}`);
 
@@ -1256,108 +1255,71 @@ function segmentsToRows(segments, optionsIn, trackOptions) {
   // The following array contains elements fo the form
   // occupiedSpaceInRows[i] = {from: 100, to: 110}
   // This means that in row i, the space from 100 to 110 is occupied and reads cannot be placed there
-  // This array is updated with every section that is added to the scene
+  // This array is updated with every segment that is added to the scene
   let occupiedSpaceInRows = [];
-  const sectionIds = new Set(sections.map((x) => x.id));
+  const segmentIds = new Set(segments.map((x) => x.id));
 
-  // We only need those previous sections, that are in the current sections list
-  // We will assume that prevRows is already sorted by base so we won't modify it
-  const prevSections = prevRows
+  // We only need those previous segments, that are in the current segments list
+  const prevSegments = prevRows
     .flat()
-    .filter((section) => sectionIds.has(section.id));
+    .filter((segment) => segmentIds.has(segment.id));
 
   const maxRows = (optionsIn.maxRows) ? optionsIn.maxRows : null;
-  
-  // If there's prevSections, we'll assume that they're already sorted the way
-  // they should be because any change in the options would have caused a rerender
 
-  for (let i = 0; i < prevSections.length; i++) {
-    // prevSections contains already assigned sections. The function below therefore just
-    // builds the occupiedSpaceInRows array. For this, prevSections does not need to be sorted
-    assignSectionToRow(
-      prevSections[i],
-      occupiedSpaceInRows,
-      padding,
-      trackOptions,
-    );
+  for (let i = 0; i < prevSegments.length; i++) {
+    // prevSegments contains already assigned segments. The function below therefore just
+    // builds the occupiedSpaceInRows array. For this, prevSegments does not need to be sorted
+    assignSegmentToRow(prevSegments[i], occupiedSpaceInRows, padding);
   }
 
-  const prevSectionIds = new Set(prevSections.map((x) => x.id));
-  let filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
+  const prevSegmentIds = new Set(prevSegments.map((x) => x.id));
 
-  let sortedSections = [];
-  if (trackOptions.sortByBase) {
-    // We need to assign the sections to the rows that intersect the
-    // sorted base first.
-    sortedSections = groupSectionsBySortedBase(
-      filteredSections,
-      trackOptions.sortByBase,
-    );
+  let newSegments = [];
+  // We need to assign rows only to those segments, that are not in the prevSegments list
+  const filteredSegments = segments.filter((x) => !prevSegmentIds.has(x.id));
 
-    for (let section of sortedSections) {
-      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
-      prevSectionIds.add(section.id);
+  if (prevSegments.length === 0) {
+    filteredSegments.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
+    for (const segment of filteredSegments) {
+      assignSegmentToRow(segment, occupiedSpaceInRows, padding);
     }
-  }
-
-  // Filter again to remove sections which were rendered due to sorting
-  filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
-
-  let newSections = [];
-  // We need to assign rows only to those sections, that are not in the prevSections list
-
-  if (prevSections.length === 0) {
-    filteredSections.sort(segmentsSort);
-    filteredSections.forEach((section) => {
-      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
-    });
-    newSections = filteredSections;
+    // filteredSegments.forEach((segment) => {
+    //   assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    // });
+    newSegments = filteredSegments;
   } else {
-    // We subdivide the sections into those that are left/right of the existing previous segments
-    // Note that prevSections is sorted
-
-    // Use the median middle of the currently occupied space as the cutoff
-    // for left / right reads
-    const mids = [];
-    for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-      const region = occupiedSpaceInRows[i];
-      if (region) {
-        mids.push((region.from + region.to) / 2);
-      }
+    // We subdivide the segments into those that are left/right of the existing previous segments
+    // Note that prevSegments is sorted
+    const cutoff =
+      (prevSegments[0].fromWithClipping + prevSegments[prevSegments.length - 1].to) / 2;
+    const newSegmentsLeft = filteredSegments.filter((x) => x.fromWithClipping <= cutoff);
+    // The sort order for new segments that are appended left is reversed
+    newSegmentsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
+    for (const segment of newSegmentsLeft) {
+      assignSegmentToRow(segment, occupiedSpaceInRows, padding);
     }
+    // newSegmentsLeft.forEach((segment) => {
+    //   assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    // });
 
-    mids.sort();
-    const cutoff = mids[Math.floor(mids.length / 2)];
+    const newSegmentsRight = filteredSegments.filter((x) => x.fromWithClipping > cutoff);
+    newSegmentsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
+    for (const segment of newSegmentsRight) {
+      assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    }
+    // newSegmentsRight.forEach((segment) => {
+    //   assignSegmentToRow(segment, occupiedSpaceInRows, padding);
+    // });
 
-    const newSectionsLeft = filteredSections.filter(
-      (x) => x.fromWithClipping <= cutoff,
-    );
-    // The sort order for new sections that are appended left is reversed
-    newSectionsLeft.sort((a, b) => b.fromWithClipping - a.fromWithClipping);
-    newSectionsLeft.forEach((section) => {
-      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
-    });
-
-    const newSectionsRight = filteredSections.filter(
-      (x) => x.fromWithClipping > cutoff,
-    );
-    newSectionsRight.sort((a, b) => a.fromWithClipping - b.fromWithClipping);
-    newSectionsRight.forEach((section) => {
-      assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
-    });
-
-    newSections = newSectionsLeft.concat(
-      prevSections,
-      newSectionsRight,
-      viewAsPairs,
-    );
+    newSegments = newSegmentsLeft.concat(prevSegments, newSegmentsRight);
   }
 
   const outputRows = [];
-  for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-    outputRows[i] = newSections
-      .filter((x) => x.row === i)
-      .concat(sortedSections.filter((x) => x.row === i));
+  if (readNamesToFilterOn && readNamesToFilterOn.length > 0) {
+    // console.log(`newSegments ${JSON.stringify(newSegments)}`);
+    for (let i = 0; i < readNamesToFilterOn.length; i++) {
+      outputRows[i] = newSegments.filter((x) => x.readName === readNamesToFilterOn[i]);
+    }
   }
   else {
     for (let i = 0; i < occupiedSpaceInRows.length; i++) {
