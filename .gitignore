@@ -11,3 +11,4 @@ es
 *.bak
 yarn.lock
 package-lock.json
+dist.zip

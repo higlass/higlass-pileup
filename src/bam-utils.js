@@ -353,6 +353,24 @@ export const cigarTypeToText = (type) => {
   return type;
 };
 
+export const posToChrPos = (pos, chromsizes) => {
+  // Convert an absolute genomic position to a chromosome
+  // position. The chromsizes array should be an array of [chrom, size]
+  // tuples
+
+  // assume the position is 1-based
+
+  for (let i = 0; i < chromsizes.length; i++) {
+    if (pos <= chromsizes[i][1]) {
+      return [chromsizes[i][0], pos];
+    }
+
+    pos -= chromsizes[i][1];
+  }
+
+  throw new Error('Position extends beyond chromsizes');
+};
+
 export const parseMD = (mdString, useCounts) => {
   let currPos = 0;
   let currNum = 0;
@@ -1118,14 +1136,15 @@ export const getSubstitutions = (segment, seq, includeClippingOps, reverseCIGARO
 export const areMatesRequired = (trackOptions) => {
   return (
     trackOptions.highlightReadsBy.length > 0 ||
-    trackOptions.outlineMateOnHover
+    trackOptions.outlineMateOnHover ||
+    trackOptions.viewAsPairs
   );
 };
 
 /**
  * Calculates insert size between read segements
  */
- export const calculateInsertSize = (segment1, segment2) => {
+export const calculateInsertSize = (segment1, segment2) => {
   return segment1.from < segment2.from
     ? Math.max(0, segment2.from - segment1.to)
     : Math.max(0, segment1.from - segment2.to);

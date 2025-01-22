@@ -203,6 +203,7 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
         worker,
         HGC,
       );
+
       super(context, options);
       context.dataFetcher.track = this;
 
@@ -244,21 +245,6 @@ class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
       }
 
       this.externalInit(options);
-
-      // console.log(`setting up pileup-track: ${this.id}`);
-
-      // const debounce = (callback, wait) => {
-      //   let timeoutId = null;
-      //   return (...args) => {
-      //     window.clearTimeout(timeoutId);
-      //     timeoutId = window.setTimeout(() => {
-      //       callback(...args);
-      //     }, wait);
-      //   };
-      // };
-      //
-      // this.monitor = new BroadcastChannel(`pileup-track-viewer`);
-      // this.monitor.onmessage = debounce((event) => this.handlePileupTrackViewerMessage(event.data), 500);
 
       this.monitor = new BroadcastChannel(`pileup-track-viewer-${this.sessionId}`);
       this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
@@ -593,41 +579,21 @@ varying vec4 vColor;
             } catch (e) {}
             break;
           case "refresh-fire-layout":
-            // if (this.options.fire) console.log(`this.options.fire | ${JSON.stringify(this.options.fire)}`);
-            // if (this.options.fire) console.log(`this.trackUpdatesAreFrozen | ${JSON.stringify(this.trackUpdatesAreFrozen)}`);
-            // if (this.options.fire) console.log(`data.sid | ${JSON.stringify(data.sid)}`);
-            // if (this.options.fire) console.log(`this.sessionId | ${JSON.stringify(this.sessionId)}`);
-            // if (this.options.fire) console.log(`this.id | ${JSON.stringify(this.id)}`);
-            // if (this.options.fire) console.log(`refresh-fire-layout | ${this.id} | ${this.sessionId}`);
             if (!this.options.fire || !this.options.ftFire || this.trackUpdatesAreFrozen)
               break;
             if (data.sid !== this.sessionId)
               break;
-            
-            // this.dataFetcher = new BAMDataFetcher(
-            //   this.dataFetcher.dataConfig,
-            //   this.options,
-            //   this.worker,
-            //   HGC,
-            // );
-            // this.dataFetcher.track = this;
             this.prevRows = [];
             this.removeTiles(Object.keys(this.fetchedTiles));
             this.fetching.clear();
             this.refreshTiles();
             this.externalInit(this.options);
-            // this.fireIdentifierData = {
-            //   sourceTrackUid: data.sourceTrackUid,
-            //   identifiers: data.identifiers,
-            // };
-
             this.updateExistingGraphics(true);
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "refresh-fire-layout-post-clustering":
             if (!this.options.fire || !this.options.ftFire || this.trackUpdatesAreFrozen)
               return;
-            // console.log(`refresh-fire-layout-post-clustering | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`);
             if (data.sid !== this.sessionId)
               break;
             this.dataFetcher = new BAMDataFetcher(
@@ -651,7 +617,6 @@ varying vec4 vColor;
             this.prevOptions = Object.assign({}, this.options);
             break;
           case "cluster-layout":
-            // console.log(`[higlass-pileup] ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.clusterData} | ${this.trackUpdatesAreFrozen}`);
             if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
               break;
             if (data.sid !== this.sessionId)
@@ -730,11 +695,9 @@ varying vec4 vColor;
             this.exportIndexDHSOverlaps();
             break;
           case "recalculate-signal-matrices":
-            // console.log(`recalculate-signal-matrices (A) ${data.sid} | ${this.sessionId} | ${this.options.methylation} | ${this.trackUpdatesAreFrozen}`);
             if (typeof this.options.methylation === 'undefined' || this.options.methylation == null) break;
             if (!this.trackUpdatesAreFrozen) break;
             if (data.sid !== this.sessionId) break;
-            // console.log(`recalculate-signal-matrices (B)`);
             this.signalMatrixExportData = {
               uid: this.id,
               range: data.range,
@@ -822,6 +785,15 @@ varying vec4 vColor;
         this.externalInit(options);
       }
 
+      // Check if rows need to be recalculated
+      if (
+        JSON.stringify(this.prevOptions.sortByBase) !==
+        JSON.stringify(this.options.sortByBase)
+      ) {
+        // Base sorting has changed so we need to recalculate the rows
+        this.prevRows = {};
+      }
+
       this.updateExistingGraphics();
       this.prevOptions = Object.assign({}, options);
     }
@@ -877,8 +849,6 @@ varying vec4 vColor;
             if (this.uidTrackElementMidpointExportData) {
               this.uidTrackElementMidpointExportData = null;
             }
-
-            // console.log(`toExport ${JSON.stringify(toExport)}`);
 
             try {
               this.bc.postMessage({
@@ -1047,9 +1017,6 @@ varying vec4 vColor;
             this.uidTrackElementMidpointExportData,
           )
           .then((toExport) => {
-            // console.log(`--------`);
-            // console.log(`toExport ${JSON.stringify(toExport)}`);
-            // console.log(`uidTrackElementMidpointExportData ${JSON.stringify(this.uidTrackElementMidpointExportData)}`);
 
             if (Object.hasOwn(toExport, 'overlaps') && toExport.overlaps.length > 0) {
               if (this.clusterData) {
@@ -1089,9 +1056,7 @@ varying vec4 vColor;
               // expand search area and try again, if within bounds
               // else, reset data structures and return with no results
               const chrAttr = ASSEMBLY_ATTR_HG38.filter((x) => this.uidTrackElementMidpointExportData.range.left.chrom === x.refName);
-              // console.log(`chrAttr ${JSON.stringify(chrAttr)}`);
               const chrLen = chrAttr[0]['length'];
-              // console.log(`chrLen ${JSON.stringify(chrLen)}`);
               this.uidTrackElementMidpointExportData.rangeExtension *= 2;
               this.uidTrackElementMidpointExportData.range.left.start = Math.max(0, this.uidTrackElementMidpointExportData.range.left.start - this.uidTrackElementMidpointExportData.rangeExtension);
               this.uidTrackElementMidpointExportData.range.right.stop = Math.min(chrLen, this.uidTrackElementMidpointExportData.range.right.stop + this.uidTrackElementMidpointExportData.rangeExtension);
@@ -1136,7 +1101,6 @@ varying vec4 vColor;
     }
 
     exportBED12Layout() {
-      // console.log(`exportBED12Layout called`);
       try {
         this.bc.postMessage({
           state: 'export_bed12_start',
@@ -1160,8 +1124,6 @@ varying vec4 vColor;
             this.bed12ExportData,
           )
           .then((toExport) => {
-            // console.log(`toExport ${JSON.stringify(toExport)}`);
-
             if (this.clusterData) {
               this.clusterData = null;
             }
@@ -1200,11 +1162,7 @@ varying vec4 vColor;
     }
 
     updateExistingGraphics(skip) {
-      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (start) | ${this.id}`);
-
       if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.ftFire || this.options.methylation)) return;
-
-      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (post-start) | ${this.id}`);
 
       const updateExistingGraphicsStart = performance.now();
       if (!this.maxTileWidthReached) {
@@ -1219,7 +1177,6 @@ varying vec4 vColor;
         } catch (e) {}
       }
       else {
-        // console.log(`updateExistingGraphics (A) | ${this.id}`);
         this.worker.then((tileFunctions) => {
           tileFunctions
             .renderSegments(
@@ -1237,8 +1194,6 @@ varying vec4 vColor;
               this.fireIdentifierData,
             )
             .then((toRender) => {
-              // console.log(`toRender (maxTileWidthReached) ${JSON.stringify(toRender)}`);
-
               if (
                 this.segmentGraphics
               ) {
@@ -1255,7 +1210,6 @@ varying vec4 vColor;
                 sid: this.sessionId,
                 elapsedTime: elapsedTimeA,
               };
-              // console.log(`${JSON.stringify(msg)}`);
               try {
                 this.bc.postMessage(msg);
               } catch (e) {}
@@ -1264,7 +1218,6 @@ varying vec4 vColor;
         return;
       }
 
-      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (B1) | ${this.id}`);
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
         this.updateLoadingText();
@@ -1272,31 +1225,19 @@ varying vec4 vColor;
       }
 
       // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
-      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (B2) | ${this.id} | fetchedTileIds ${JSON.stringify(fetchedTileIds)}`);
       if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
         if (!skip) return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
 
-      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`updateExistingGraphics (B2+) | ${this.id}`);
-
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-
-      // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`fetchedTileKeys ${JSON.stringify(fetchedTileKeys)}`);
 
       for (const fetchedTileKey of fetchedTileKeys) {
         this.fetching.delete(fetchedTileKey);
         this.rendering.add(fetchedTileKey);
       }
 
-      // fetchedTileKeys.forEach((x) => {
-      //   this.fetching.delete(x);
-      //   this.rendering.add(x);
-      // });
-
       this.updateLoadingText();
-
-      // console.log(`updateExistingGraphics (B3) | ${this.id}`);
 
       this.worker.then((tileFunctions) => {
         tileFunctions
@@ -1316,12 +1257,9 @@ varying vec4 vColor;
             this.fireIdentifierData,
           )
           .then((toRender) => {
-            // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`toRender.tileIds ${JSON.stringify(toRender.tileIds)}`);
 
             if (!toRender)
               return;
-
-            // if (this.id === 'd2_stim_sequel.fire.061324') console.log(`toRender ${JSON.stringify(toRender)}`);
 
             if (this.fireIdentifierData) {
               this.fireIdentifierData = null;
@@ -1329,7 +1267,6 @@ varying vec4 vColor;
 
             if (toRender.clusterResultsToExport) {
               this.clusterResultsReadyToExport[this.id] = true;
-              // if (this.id === 'd2_stim_sequel.fire.061324')  console.log(`[higlass-pileup] toRender.clusterResultsToExport ${JSON.stringify(toRender.clusterResultsToExport)}`);
               try {
                 this.bc.postMessage({
                   state: 'export_subregion_clustering_results',
@@ -1345,34 +1282,15 @@ varying vec4 vColor;
 
             if (toRender.clusterResultsToExport && !this.clusterResultsReadyToExport[this.id]) return;
 
-            // if (toRender.drawnSegmentIdentifiers) {
-            //   this.bc.postMessage({
-            //     state: 'drawn_segment_identifiers',
-            //     msg: 'Completed segment identifier drawing',
-            //     uid: this.id,
-            //     sid: this.sessionId,
-            //     data: toRender.drawnSegmentIdentifiers,
-            //   });
-            // }
-
             this.loadingText.visible = false;
 
             for (const fetchedTileKey of fetchedTileKeys) {
               this.rendering.delete(fetchedTileKey);
             }
-            // fetchedTileKeys.forEach((x) => {
-            //   this.rendering.delete(x);
-            // });
 
             this.updateLoadingText();
 
             if (this.maxTileWidthReached) {
-              // if (
-              //   this.segmentGraphics &&
-              //   this.options.collapseWhenMaxTileWidthReached
-              // ) {
-              //   this.pMain.removeChild(this.segmentGraphics);
-              // }
               if (this.segmentGraphics) {
                 this.segmentGraphics.clear();
                 this.pMain.removeChild(this.segmentGraphics);
@@ -1398,7 +1316,6 @@ varying vec4 vColor;
                 sid: this.sessionId,
                 elapsedTime: elapsedTimeB,
               };
-              // console.log(`${JSON.stringify(msg)}`);
               try {
                 this.bc.postMessage(msg);
               } catch (e) {}
@@ -1432,14 +1349,6 @@ varying vec4 vColor;
                     this.readsById[segment.id]['groupKey'] = key;
                   }
                 }
-                // this.prevRows[key].rows.forEach((row) => {
-                //   row.forEach((segment) => {
-                //     if (segment.id in this.readsById) return;
-                //     this.readsById[segment.id] = segment;
-                //     // Will be needed later in the mouseover to determine the correct yPos for the mate
-                //     this.readsById[segment.id]['groupKey'] = key;
-                //   });
-                // });
               }
             }
 
@@ -1532,10 +1441,6 @@ varying vec4 vColor;
               this.signalMatrixExportData = null;
             }
 
-            // if (this.fireIdentifierData) {
-            //   this.fireIdentifierData = null;
-            // }
-
             const updateExistingGraphicsEndC = performance.now();
             const elapsedTimeC = updateExistingGraphicsEndC - updateExistingGraphicsStart;
             const msg = {
@@ -1545,24 +1450,10 @@ varying vec4 vColor;
               sid: this.sessionId,
               elapsedTime: elapsedTimeC,
             };
-            // console.log(`${JSON.stringify(msg)}`);
             try {
               this.bc.postMessage(msg);
             } catch (e) {}
           });
-        // .catch(err => {
-        //   // console.log('err:', err);
-        //   // console.log('err:', err.message);
-        //   this.errorTextText = err.message;
-
-        //   // console.log('errorTextText:', this.errorTextText);
-        //   // this.draw();
-        //   // this.animate();
-        //   this.drawError();
-        //   this.animate();
-
-        //   // console.log('this.pBorder:', this.pBorder);
-        // });
       });
     }
 
@@ -1738,20 +1629,6 @@ varying vec4 vColor;
 
       if (this.maxTileWidthReached) return;
 
-      // const trackY = this.valueScaleTransform.invert(track)
-      // this.mouseOverGraphics.clear();
-
-      // Prevents 'stuck' read outlines when hovering quickly
-      // requestAnimationFrame(this.animate);
-
-      // const msg = {
-      //   state: 'mouseover',
-      //   msg: 'mouseover event',
-      //   uid: this.id,
-      //   sid: this.sessionId,
-      // };
-      // this.monitor.postMessage(msg);
-
       const trackY = invY(trackYIn, this.valueScaleTransform);
 
       const bandCoverageStart = 0;
@@ -1773,80 +1650,98 @@ varying vec4 vColor;
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
 
-              for (const read of row) {
-                const readTrackFrom = this._xScale(read.from);
-                const readTrackTo = this._xScale(read.to);
+              for (const section of row) {
+                for (const read of section.segments) {
+                  const readTrackFrom = this._xScale(read.from);
+                  const readTrackTo = this._xScale(read.to);
 
-                if (readTrackFrom <= trackX && trackX <= readTrackTo) {
-                  const xPos = this._xScale(read.from);
-                  const yPos = transformY(
-                    yScaleBand(index),
-                    this.valueScaleTransform,
-                  );
+                  if (readTrackFrom <= trackX && trackX <= readTrackTo) {
+                    const xPos = this._xScale(read.from);
+                    const yPos = transformY(
+                      yScaleBand(index),
+                      this.valueScaleTransform,
+                    );
 
-                  const MAX_DIST = 10;
-                  const nearestDistance =
-                    this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
+                    const MAX_DIST = 10;
+                    const nearestDistance =
+                      this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
 
-                  const mousePos = this._xScale.invert(trackX);
-                  // find the nearest substitution (or indel)
-                  const nearestSub = findNearestSub(
-                    mousePos,
-                    read,
-                    nearestDistance,
-                  );
+                    const mousePos = this._xScale.invert(trackX);
+                    // find the nearest substitution (or indel)
+                    const nearestSub = findNearestSub(
+                      mousePos,
+                      read,
+                      nearestDistance,
+                    );
 
-                  if (this.options.outlineReadOnHover) {
-                    const width =
-                      this._xScale(read.to) - this._xScale(read.from);
-                    const height =
-                      yScaleBand.bandwidth() * this.valueScaleTransform.k;
+                    if (this.options.outlineReadOnHover) {
+                      const width =
+                        this._xScale(read.to) - this._xScale(read.from);
+                      const height =
+                        yScaleBand.bandwidth() * this.valueScaleTransform.k;
 
-                    this.mouseOverGraphics.lineStyle({
-                      width: 1,
-                      color: 0,
-                    });
-                    this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
-                    this.animate();
-                  }
-
-                  if (this.options.outlineMateOnHover) {
-                    this.outlineMate(read, yScaleBand);
-                  }
-
-                  const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
-                  const chimericReadHtml = read.mate_ids.length > 1 ? `<span style="color:red;">Chimeric alignment</span><br>`: ``;
-
-                  let mappingOrientationHtml = ``;
-                  if (read.mappingOrientation) {
-                    let style = ``;
-                    if (read.colorOverride) {
-                      const color = Object.keys(PILEUP_COLORS)[read.colorOverride];
-                      const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
-                      style = `style="color:${htmlColor};"`;
+                      this.mouseOverGraphics.lineStyle({
+                        width: 1,
+                        color: 0,
+                      });
+                      this.mouseOverGraphics.drawRect(
+                        xPos,
+                        yPos,
+                        width,
+                        height,
+                      );
+                      this.animate();
                     }
-                    mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+
+                    if (this.options.outlineMateOnHover) {
+                      this.outlineMate(read, yScaleBand);
+                    }
+
+                    const insertSizeHtml = this.getInsertSizeMouseoverHtml(
+                      read,
+                    );
+                    const chimericReadHtml =
+                      read.mate_ids.length > 1
+                        ? `<span style="color:red;">Chimeric alignment</span><br>`
+                        : ``;
+
+                    let mappingOrientationHtml = ``;
+                    if (read.mappingOrientation) {
+                      let style = ``;
+                      if (read.colorOverride) {
+                        const color = Object.keys(PILEUP_COLORS)[
+                          read.colorOverride
+                        ];
+                        const htmlColor = this.colorArrayToString(
+                          PILEUP_COLORS[color],
+                        );
+                        style = `style="color:${htmlColor};"`;
+                      }
+                      mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+                    }
+
+                    let mouseOverHtml =
+                      `ID: ${read.id}<br>` +
+                      `Position: ${read.chrName}:${
+                        read.from - read.chrOffset
+                      }<br>` +
+                      `Read length: ${read.to - read.from}<br>` +
+                      `MAPQ: ${read.mapq}<br>` +
+                      `Strand: ${read.strand}<br>` +
+                      insertSizeHtml +
+                      chimericReadHtml +
+                      mappingOrientationHtml;
+
+                    if (nearestSub && nearestSub.type) {
+                      mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
+                        nearestSub.type,
+                      )} (${nearestSub.length})`;
+                    } else if (nearestSub && nearestSub.variant) {
+                      mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+                    }
+
+                    return mouseOverHtml;
                   }
-
-                  // let mouseOverHtml =
-                  //   `Name: ${read.readName}<br>` +
-                  //   `Position: ${read.chrName}:${
-                  //     read.from - read.chrOffset
-                  //   }<br>` +
-                  //   `Read length: ${read.to - read.from}<br>` +
-                  //   `MAPQ: ${read.mapq}<br>` +
-                  //   `Strand: ${read.strand}<br>` +
-                  //   insertSizeHtml +
-                  //   chimericReadHtml +
-                  //   mappingOrientationHtml;
-
-                  // if (nearestSub && nearestSub.type) {
-                  //   mouseOverHtml += `Nearest operation: ${cigarTypeToText(
-                  //     nearestSub.type,
-                  //   )} (${nearestSub.length})`;
-                  // } else if (nearestSub && nearestSub.variant) {
-                  //   mouseOverHtml += `Nearest operation: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
-                  // }
 
                   const dataX = this._xScale.invert(trackX);
                   let position = null;
@@ -1862,9 +1757,7 @@ varying vec4 vColor;
                     const methylationOffset = position - (read.from - read.chrOffset);
                     for (const mo of read.methylationOffsets) {
                       const moQuery = mo.offsets.indexOf(methylationOffset);
-                      // if (eventText && eventProbability) break;
                       if (moQuery !== -1) {
-                        // console.log(`mo @ ${methylationOffset} ${moQuery} | ${JSON.stringify(mo)} ${mo.unmodifiedBase} ${mo.strand} ${mo.code} ${mo.probabilities[moQuery]}`);
                         const candidateEventProbability = parseInt(mo.probabilities[moQuery]);
                         if (eventProbability && eventProbability < candidateEventProbability) {
                           eventProbability = candidateEventProbability;
@@ -1903,70 +1796,6 @@ varying vec4 vColor;
                     </div>
                     `;
                   }
-
-                  // let cellLineText = null;
-                  // if (this.options.methylation && this.options.methylation.group && this.options.methylation.set) {
-                  //   groupText = `${this.options.methylation.group}/${this.options.methylation.set}`;
-                  //   if (this.options.methylation.haplotype) {
-                  //     groupText += ` (${this.options.methylation.haplotype})`;
-                  //   }
-                  // }
-
-                  // let cellLineText = null;
-                  // if (this.options.methylation && this.options.methylation.group) {
-                  //   cellLineText = `${this.options.methylation.group}`;
-                  // }
-
-                  // if (cellLineText) {
-                  //   output += `
-                  //   <div class="track-mouseover-menu-table-item">
-                  //     <label for="cell_line" class="track-mouseover-menu-table-item-label">Cell line</label>
-                  //     <div name="cell_line" class="track-mouseover-menu-table-item-value">${cellLineText}</div>
-                  //   </div>
-                  //   `;
-                  // }
-
-                  // let conditionText = null;
-                  // if (this.options.methylation && this.options.methylation.set) {
-                  //   conditionText = `${this.options.methylation.set}`;
-                  // }
-
-                  // if (conditionText) {
-                  //   output += `
-                  //   <div class="track-mouseover-menu-table-item">
-                  //     <label for="condition" class="track-mouseover-menu-table-item-label">Condition</label>
-                  //     <div name="condition" class="track-mouseover-menu-table-item-value">${conditionText}</div>
-                  //   </div>
-                  //   `;
-                  // }
-
-                  // let donorText = null;
-                  // if (this.options.methylation && this.options.methylation.donor) {
-                  //   donorText = `${this.options.methylation.donor}`;
-                  // }
-
-                  // if (donorText) {
-                  //   output += `
-                  //   <div class="track-mouseover-menu-table-item">
-                  //     <label for="donor" class="track-mouseover-menu-table-item-label">Donor</label>
-                  //     <div name="donor" class="track-mouseover-menu-table-item-value">${donorText}</div>
-                  //   </div>
-                  //   `;
-                  // }
-
-                  // let haplotypeText = null;
-                  // if (this.options.methylation && this.options.methylation.haplotype) {
-                  //   haplotypeText = `${this.options.methylation.haplotype}`;
-                  // }
-
-                  // if (haplotypeText) {
-                  //   output += `
-                  //   <div class="track-mouseover-menu-table-item">
-                  //     <label for="haplotype" class="track-mouseover-menu-table-item-label">Haplotype</label>
-                  //     <div name="haplotype" class="track-mouseover-menu-table-item-value">${haplotypeText}</div>
-                  //   </div>
-                  //   `;
-                  // }
 
                   if (this.options.genericBed) {
                     const genericBedNameLabel = 'Name';
@@ -2037,7 +1866,6 @@ varying vec4 vColor;
                     const tfbsSequence = read.seq;
                     if (position) {
                       const tfbsSequencePositionToHighlight = position - (read.from - read.chrOffset) + 1;
-                      // console.log(`tfbsSequencePositionToHighlight ${tfbsSequencePositionToHighlight} | ${position} | ${read.from} | ${read.chrOffset} | ${tfbsSequence}`);
                       if (tfbsSequence && tfbsSequencePositionToHighlight >= 1 && tfbsSequencePositionToHighlight <= tfbsSequence.length) {
                         let tfbsSequencePieces = '';
                         if (tfbsSequencePositionToHighlight === 1) {
@@ -2053,7 +1881,6 @@ varying vec4 vColor;
                           tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(tfbsSequencePositionToHighlight - 1, tfbsSequencePositionToHighlight)}</span>`;
                           tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(tfbsSequencePositionToHighlight, tfbsSequence.length)}</span>`;
                         }
-                        // console.log(`tfbsSequencePieces ${tfbsSequencePieces}`);
                         output += `<div class="track-mouseover-menu-table-item">
                           <label for="tfbsSequence" class="track-mouseover-menu-table-item-label">Sequence</label>
                           <div name="tfbsSequence" class="track-mouseover-menu-table-item-value">${tfbsSequencePieces}</div>
@@ -2106,32 +1933,15 @@ varying vec4 vColor;
                     </div>`;
                   }
 
-                  // if (nearestSub && nearestSub.type) {
-                  //   const readNearestOp = `${nearestSub.length}${cigarTypeToText(nearestSub.type)}`;
-                  //   output += `<div class="track-mouseover-menu-table-item">
-                  //     <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
-                  //     <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
-                  //   </div>`;
-                  // }
-                  // else if (nearestSub && nearestSub.variant) {
-                  //   const readNearestOp = `${nearestSub.length} (${nearestSub.variant})`;
-                  //   output += `<div class="track-mouseover-menu-table-item">
-                  //     <label for="readNearestOp" class="track-mouseover-menu-table-item-label">Nearest op</label>
-                  //     <div name="readNearestOp" class="track-mouseover-menu-table-item-value">${readNearestOp}</div>
-                  //   </div>`;
-                  // }
-
                   output += `</div>`;
 
                   return output;
-                  // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                 }
               }
             }
           }
         }
 
-        // var val = self.yScale.domain()[index];
         if (
           this.options.showCoverage &&
           bandCoverageStart <= trackY &&
@@ -2171,13 +1981,11 @@ varying vec4 vColor;
       return '';
     }
 
-    getInsertSizeMouseoverHtml(read){
+    getInsertSizeMouseoverHtml(read) {
       let insertSizeHtml = ``;
       if (
         this.options.highlightReadsBy.includes('insertSize') ||
-        this.options.highlightReadsBy.includes(
-          'insertSizeAndPairOrientation',
-        )
+        this.options.highlightReadsBy.includes('insertSizeAndPairOrientation')
       ) {
         if (
           read.mate_ids.length === 1 &&
@@ -2188,10 +1996,14 @@ varying vec4 vColor;
           const insertSize = calculateInsertSize(read, mate);
           let style = ``;
           if (
-            ('largeInsertSizeThreshold' in this.options && insertSize > this.options.largeInsertSizeThreshold) ||
-            ('smallInsertSizeThreshold' in this.options && insertSize < this.options.smallInsertSizeThreshold)
+            ('largeInsertSizeThreshold' in this.options &&
+              insertSize > this.options.largeInsertSizeThreshold) ||
+            ('smallInsertSizeThreshold' in this.options &&
+              insertSize < this.options.smallInsertSizeThreshold)
           ) {
-            const color = Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
+            const color = Object.keys(PILEUP_COLORS)[
+              read.colorOverride || read.color
+            ];
             const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
             style = `style="color:${htmlColor};"`;
           }
@@ -2208,10 +2020,8 @@ varying vec4 vColor;
         }
         const mate = this.readsById[mate_id];
         // We assume the mate height is the same, but width might be different
-        const mate_width =
-          this._xScale(mate.to) - this._xScale(mate.from);
-        const mate_height =
-          yScaleBand.bandwidth() * this.valueScaleTransform.k;
+        const mate_width = this._xScale(mate.to) - this._xScale(mate.from);
+        const mate_height = yScaleBand.bandwidth() * this.valueScaleTransform.k;
         const mate_xPos = this._xScale(mate.from);
         const mate_yPos = transformY(
           this.yScaleBands[mate.groupKey](mate.row),
@@ -2228,32 +2038,6 @@ varying vec4 vColor;
           mate_height,
         );
       }
-      // read.mate_ids.forEach((mate_id) => {
-      //   if (!this.readsById[mate_id]) {
-      //     return;
-      //   }
-      //   const mate = this.readsById[mate_id];
-      //   // We assume the mate height is the same, but width might be different
-      //   const mate_width =
-      //     this._xScale(mate.to) - this._xScale(mate.from);
-      //   const mate_height =
-      //     yScaleBand.bandwidth() * this.valueScaleTransform.k;
-      //   const mate_xPos = this._xScale(mate.from);
-      //   const mate_yPos = transformY(
-      //     this.yScaleBands[mate.groupKey](mate.row),
-      //     this.valueScaleTransform,
-      //   );
-      //   this.mouseOverGraphics.lineStyle({
-      //     width: 1,
-      //     color: 0,
-      //   });
-      //   this.mouseOverGraphics.drawRect(
-      //     mate_xPos,
-      //     mate_yPos,
-      //     mate_width,
-      //     mate_height,
-      //   );
-      // });
       this.animate();
     }
 
@@ -2280,14 +2064,13 @@ varying vec4 vColor;
         );
 
         const DEFAULT_MAX_TILE_WIDTH = 2e5;
-
+        const currentMaxTileWidth =
+          (this.dataFetcher.dataConfig.options &&
+            this.dataFetcher.dataConfig.options.maxTileWidth) ||
+          this.options.maxTileWidth ||
+          DEFAULT_MAX_TILE_WIDTH;
         if (
-          tileWidth >
-          (this.tilesetInfo.max_tile_width ||
-            (this.dataFetcher.dataConfig.options &&
-              this.dataFetcher.dataConfig.options.maxTileWidth) ||
-            this.options.maxTileWidth ||
-            DEFAULT_MAX_TILE_WIDTH)
+          tileWidth > (this.tilesetInfo.max_tile_width || currentMaxTileWidth)
         ) {
           if (this.options.collapseWhenMaxTileWidthReached) {
             this.pubSub.publish('trackDimensionsModified', {
@@ -2297,6 +2080,9 @@ varying vec4 vColor;
               viewId: this.viewId,
             });
           }
+          const errorText =
+            `Zoom in to see details.\n` +
+            `Current tile span ${tileWidth}. Max span: ${currentMaxTileWidth}`;
 
           this.errorTextText = (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage) ? this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage : "Zoom in to load data";
           this.drawError();
@@ -2304,7 +2090,6 @@ varying vec4 vColor;
           this.maxTileWidthReached = true;
 
           const msg = {state: 'update_end', msg: 'Completed (calculateVisibleTiles)',  uid: this.id};
-          // console.log(`${JSON.stringify(msg)}`);
           try {
             this.bc.postMessage(msg);
           } catch (e) {}
@@ -2316,6 +2101,7 @@ varying vec4 vColor;
           this.drawError();
           this.animate();
           this.maxTileWidthReached = false;
+          this.setError('', 'PileupTrack.tileWidth');
 
           if (this.options.collapseWhenMaxTileWidthReached) {
             this.pubSub.publish('trackDimensionsModified', {
@@ -2327,14 +2113,10 @@ varying vec4 vColor;
           }
         }
 
-        this.errorTextText = null;
         this.pBorder.clear();
         this.drawError();
         this.animate();
       }
-      // const { tileX, tileWidth } = getTilePosAndDimensions(
-      //   this.calculateZoomLevel(),
-      // )
 
       this.setVisibleTiles(tiles);
     }
@@ -2466,36 +2248,6 @@ varying vec4 vColor;
 
         // gSegment.appendChild(image);
       }
-      // if (this.positions) {
-      //   // short for colorIndex
-      //   let ci = 0;
-
-      //   for (let i = 0; i < this.positions.length; i += 12) {
-      //     const rect = document.createElement('rect');
-
-      //     rect.setAttribute('x', this.positions[i]);
-      //     rect.setAttribute('y', this.positions[i + 1]);
-
-      //     rect.setAttribute(
-      //       'width',
-      //       this.positions[i + 10] - this.positions[i]
-      //     );
-
-      //     rect.setAttribute(
-      //       'height',
-      //       this.positions[i + 11] - this.positions[i + 1]
-      //     );
-
-      //     const red = Math.ceil(255 * this.colors[ci]);
-      //     const green = Math.ceil(255 * this.colors[ci + 1]);
-      //     const blue = Math.ceil(255 * this.colors[ci + 2]);
-      //     const alpha = this.colors[ci + 3];
-
-      //     rect.setAttribute('fill', `rgba(${red},${green},${blue},${alpha})`);
-      //     gSegment.appendChild(rect);
-      //     ci += 24;
-      //   }
-      // }
 
       return [base, base];
     }
@@ -2603,28 +2355,19 @@ PileupTrack.config = {
           name: 'None',
         },
         insertSize: {
-          value: [
-            "insertSize"
-          ],
+          value: ['insertSize'],
           name: 'Insert size',
         },
         pairOrientation: {
-          value: [
-            "pairOrientation"
-          ],
+          value: ['pairOrientation'],
           name: 'Pair orientation',
         },
         insertSizeAndPairOrientation: {
-          value: [
-            "insertSizeAndPairOrientation"
-          ],
+          value: ['insertSizeAndPairOrientation'],
           name: 'Insert size and pair orientation',
         },
         insertSizeOrPairOrientation: {
-          value: [
-            "insertSize",
-            "pairOrientation"
-          ],
+          value: ['insertSize', 'pairOrientation'],
           name: 'Insert size or pair orientation',
         },
       },
@@ -2660,6 +2403,19 @@ PileupTrack.config = {
     },
     showCoverage: {
       name: 'Show coverage',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    viewAsPairs: {
+      name: 'View as pairs',
       inlineOptions: {
         yes: {
           value: true,

@@ -4,6 +4,7 @@ class BAMDataFetcher {
   constructor(dataConfig, trackOptions, worker, HGC) {
     this.dataConfig = dataConfig;
     this.uid = HGC.libraries.slugid.nice();
+
     this.worker = worker;
     this.isServerFetcher = !(dataConfig.type && dataConfig.type === 'bam');
     this.prevRequestTime = 0;
@@ -11,23 +12,23 @@ class BAMDataFetcher {
     this.toFetch = new Set();
     this.fetchTimeout = null;
 
-    this.initPromise = this.worker.then(tileFunctions => {
+    this.initPromise = this.worker.then((tileFunctions) => {
       if (this.isServerFetcher) {
         return tileFunctions
           .serverInit(
             this.uid,
             dataConfig.server,
             dataConfig.tilesetUid,
-            HGC.services.authHeader
+            HGC.services.authHeader,
           )
           .then(() => this.worker);
       }
 
-      if (dataConfig.url && !dataConfig.bamUrl){
+      if (dataConfig.url && !dataConfig.bamUrl) {
         dataConfig["bamUrl"] = dataConfig.url;
       }
 
-      if (!dataConfig.baiUrl){
+      if (!dataConfig.baiUrl) {
         dataConfig["baiUrl"] = dataConfig["bamUrl"] + ".bai";
       }
 
@@ -53,7 +54,7 @@ class BAMDataFetcher {
   }
 
   tilesetInfo(callback) {
-    this.worker.then(tileFunctions => {
+    this.worker.then((tileFunctions) => {
       if (this.isServerFetcher) {
         tileFunctions.serverTilesetInfo(this.uid).then(callback);
       } else {
@@ -63,10 +64,12 @@ class BAMDataFetcher {
   }
 
   fetchTilesDebounced(receivedTiles, tileIds) {
-    const { toFetch  } = this;
+    const { toFetch } = this;
 
     const thisZoomLevel = tileIds[0].split('.')[0];
-    const toFetchZoomLevel = toFetch.size ? [...toFetch][0].split('.')[0] : null;
+    const toFetchZoomLevel = toFetch.size
+      ? [...toFetch][0].split('.')[0]
+      : null;
 
     if (thisZoomLevel !== toFetchZoomLevel) {
       for (const tileId of this.toFetch) {
@@ -75,22 +78,22 @@ class BAMDataFetcher {
       this.toFetch.clear();
     }
 
-    tileIds.forEach(x => this.toFetch.add(x)) ;
+    tileIds.forEach((x) => this.toFetch.add(x));
 
     if (this.fetchTimeout) {
-      clearTimeout(this.fetchTimeout)
+      clearTimeout(this.fetchTimeout);
     }
 
     this.fetchTimeout = setTimeout(() => {
-      this.sendFetch(receivedTiles, [...this.toFetch])
-      this.toFetch.clear()
-    }, DEBOUNCE_TIME)
+      this.sendFetch(receivedTiles, [...this.toFetch]);
+      this.toFetch.clear();
+    }, DEBOUNCE_TIME);
   }
 
   sendFetch(receivedTiles, tileIds) {
     this.track.updateLoadingText();
 
-    this.worker.then(tileFunctions => {
+    this.worker.then((tileFunctions) => {
       if (this.isServerFetcher) {
         tileFunctions
           .serverFetchTilesDebounced(this.uid, tileIds)
