@@ -1,5 +1,7 @@
 const path = require('path');
 
+const WorkerFileUpdaterPlugin = require('./worker-file-updater-plugin');
+
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const UnminifiedWebpackPlugin = require('unminified-webpack-plugin');
@@ -10,7 +12,7 @@ const fs = require('fs');
 // the WaitPlugin is copypasta from:
 // https://www.viget.com/articles/run-multiple-webpack-configs-sequentially/
 class WaitPlugin extends WebpackBeforeBuildPlugin {
-  constructor(file, interval = 100, timeout = 10000) {
+  constructor(file, interval = 100, timeout = 100000) {
     super(function (stats, callback) {
       let start = Date.now();
 
@@ -32,16 +34,28 @@ class WaitPlugin extends WebpackBeforeBuildPlugin {
 }
 
 const workerConfig = {
+  resolve: {
+    fallback: {
+      "buffer": require.resolve("buffer/")
+    }
+  },
   output: {
     filename: 'worker.js',
     path: path.resolve(__dirname, 'dist'),
   },
-  entry: path.resolve(__dirname, 'src/bam-fetcher-worker'),
+  entry: {
+    "webworker" : path.resolve(__dirname, 'src/bam-fetcher-worker'),
+  },
   target: 'webworker',
-  plugins: [new UnminifiedWebpackPlugin(), new ThreadsPlugin()],
+  plugins: [new UnminifiedWebpackPlugin(), new ThreadsPlugin(), new WorkerFileUpdaterPlugin()],
 };
 
 const libraryConfig = {
+  resolve: {
+    fallback: {
+      "buffer": require.resolve("buffer/")
+    }
+  },
   output: {
     filename: 'higlass-pileup.min.js',
     library: 'higlass-pileup',
@@ -49,9 +63,9 @@ const libraryConfig = {
     path: path.resolve(__dirname, 'dist'),
   },
   devServer: {
-    contentBase: [path.join(__dirname, 'node_modules/higlass/dist')],
-    watchContentBase: true,
-    writeToDisk: true,
+    devMiddleware: {
+      writeToDisk: true,
+    },
   },
   optimization: {
     minimizer: [

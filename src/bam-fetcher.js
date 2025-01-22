@@ -25,22 +25,31 @@ class BAMDataFetcher {
       }
 
       if (dataConfig.url && !dataConfig.bamUrl) {
-        dataConfig['bamUrl'] = dataConfig.url;
+        dataConfig["bamUrl"] = dataConfig.url;
       }
+
       if (!dataConfig.baiUrl) {
-        dataConfig['baiUrl'] = dataConfig['bamUrl'] + '.bai';
+        dataConfig["baiUrl"] = dataConfig["bamUrl"] + ".bai";
       }
 
       return tileFunctions
         .init(
-          this.uid,
-          dataConfig.bamUrl,
-          dataConfig.baiUrl,
-          dataConfig.chromSizesUrl,
-          dataConfig.options,
-          trackOptions,
-        )
+          this.uid, 
+          dataConfig.bamUrl, 
+          dataConfig.baiUrl, 
+          dataConfig.fastaUrl,
+          dataConfig.faiUrl,
+          dataConfig.chromSizesUrl, 
+          dataConfig.options, 
+          trackOptions
+          )
         .then(() => this.worker);
+    });
+  }
+
+  cleanup() {
+    this.initPromise = this.worker.then(tileFunctions => {
+      tileFunctions.cleanup();
     });
   }
 

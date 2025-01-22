@@ -1,11 +1,14 @@
 import BAMDataFetcher from './bam-fetcher';
-import { spawn, BlobWorker } from 'threads';
+import { spawn, Thread, BlobWorker } from 'threads';
 import {
+  ASSEMBLY_ATTR_HG38,
   PILEUP_COLORS,
+  indexDHSColors,
+  fireColors,
+  ftFireColors,
   cigarTypeToText,
   areMatesRequired,
-  calculateInsertSize,
-  posToChrPos,
+  calculateInsertSize
 } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
@@ -26,6 +29,16 @@ const createColorTexture = (PIXI, colors) => {
 
   return [PIXI.Texture.fromBuffer(rgba, colorTexRes, colorTexRes), colorTexRes];
 };
+
+function debounce(callback, wait) {
+  let timeoutId = null;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => {
+      callback.apply(null, args);
+    }, wait);
+  };
+}
 
 function transformY(p, t) {
   return p * t.k + t.y;
@@ -166,16 +179,21 @@ function isIn(as) {
   };
 }
 
-const PileupTrack = (HGC, ...args) => {
-  if (!new.target) {
-    throw new Error(
-      'Uncaught TypeError: Class constructor cannot be invoked without "new"',
-    );
-  }
+const workersAvail = []
 
-  class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
+const PileupTrack = (HGC, ...args) => {
+  /**
+     if (!new.target) {
+       throw new Error(
+         'Uncaught TypeError: Class constructor cannot be invoked without "new"',
+       );
+     }
+    */
+
+class PileupTrackClass extends HGC.tracks.Tiled1DPixiTrack {
     constructor(context, options) {
-      const worker = spawn(BlobWorker.fromText(MyWorkerWeb));
+      // console.log("Workers available :", workersAvail.length);
+      const worker = workersAvail.length > 0 ? workersAvail.pop() : spawn(BlobWorker.fromText(MyWorkerWeb));
 
       // this is where the threaded tile fetcher is called
       // We also need to pass the track options as some of them influence how the data needs to be loaded
@@ -189,12 +207,24 @@ const PileupTrack = (HGC, ...args) => {
       super(context, options);
       context.dataFetcher.track = this;
 
+      // console.log(`${this.id} | context.dataConfig ${JSON.stringify(context.dataConfig)}`);
+
+      this.sessionId = context.dataConfig.sid;
+      this.originatingTrackId = JSON.parse(JSON.stringify(this.id));
       this.trackId = this.id;
       this.viewId = context.viewUid;
       this.originalHeight = context.definition.height;
       this.worker = worker;
       this.isShowGlobalMousePosition = context.isShowGlobalMousePosition;
       this.valueScaleTransform = HGC.libraries.d3Zoom.zoomIdentity;
+      this.trackUpdatesAreFrozen = false;
+      this.alignCpGEvents = true;
+      this.clusterResultsReadyToExport = {};
+
+      // this.optionsDict = {};
+      // this.optionsDict[trackId] = options;
+
+      // this.backgroundColor = (options.methylation) ? '#1c1c1cff' : (options.indexDHS) '#00000000';
 
       this.maxTileWidthReached = false;
 
@@ -210,9 +240,37 @@ const PileupTrack = (HGC, ...args) => {
       this.loadingText.anchor.x = 0;
       this.loadingText.anchor.y = 0;
 
-      this.pLabel.addChild(this.loadingText);
+      if (this.options.showLoadingText) {
+        this.pLabel.addChild(this.loadingText);
+      }
 
       this.externalInit(options);
+
+      this.monitor = new BroadcastChannel(`pileup-track-viewer-${this.sessionId}`);
+      this.monitor.onmessage = (event) => this.handlePileupTrackViewerMessage(event.data);
+
+      this.bc = new BroadcastChannel(`pileup-track-${this.id}`);
+      try {
+        this.bc.postMessage({
+          state: 'loading',
+          msg: this.loadingText.text,
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
+
+      // this.handlePileupMessage = this.handlePileupTrackViewerMessage;
+    }
+
+    remove() {
+      // console.log(`[PileupTrack] remove | ${this.id} | ${this.sessionId}`);
+      if (super.remove) super.remove();
+      this.monitor.close();
+      this.bc.close();
+      this.pLabel.destroy(true);  // clean up pixi stuff
+      this.fetching.clear();
+      this.dataFetcher.cleanup();
+      workersAvail.push(this.dataFetcher.worker)
     }
 
     // Some of the initialization code is factored out, so that we can
@@ -253,14 +311,18 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
-      this.setUpShaderAndTextures();
+      this.clusterData = null;
+      this.bed12ExportData = null;
+      this.fireIdentifierData = null;
+
+      this.setUpShaderAndTextures(options);
+
     }
 
     initTile() {}
 
     colorToArray(color) {
       const rgb = HGC.libraries.d3Color.rgb(color);
-
       const array = [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
       return array;
     }
@@ -274,14 +336,14 @@ const PileupTrack = (HGC, ...args) => {
       return color.hex();
     }
 
-    setUpShaderAndTextures() {
-      const colorDict = PILEUP_COLORS;
+    setUpShaderAndTextures(options) {
+      // console.log(`setUpShaderAndTextures`);
 
-      if (
-        this.options &&
-        this.options.colorScale &&
-        this.options.colorScale.length == 6
-      ) {
+      // console.log(`setUpShaderAndTextures | ${this.id} | options ${JSON.stringify(options)}`);
+
+      let colorDict = PILEUP_COLORS;
+
+      if (options && options.colorScale && options.colorScale.length == 6) {
         [
           colorDict.A,
           colorDict.T,
@@ -289,12 +351,9 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.C,
           colorDict.N,
           colorDict.X,
-        ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      } else if (
-        this.options &&
-        this.options.colorScale &&
-        this.options.colorScale.length == 11
-      ) {
+        ] = options.colorScale.map((x) => this.colorToArray(x));
+      }
+      else if (options && options.colorScale && options.colorScale.length == 11) {
         [
           colorDict.A,
           colorDict.T,
@@ -307,21 +366,81 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.LL,
           colorDict.RR,
           colorDict.RL,
-        ] = this.options.colorScale.map((x) => this.colorToArray(x));
-      } else if (this.options && this.options.colorScale) {
-        console.error(
-          'colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.',
-        );
+        ] = options.colorScale.map((x) => this.colorToArray(x));
+      } else if (options && options.colorScale){
+        console.error("colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.")
       }
 
-      if (this.options && this.options.plusStrandColor) {
-        colorDict.PLUS_STRAND = this.colorToArray(this.options.plusStrandColor);
+      // console.log(`this.options.methylationTagColor ${this.options.methylationTagColor}`);
+      // if (this.options && this.options.methylationTagColor) {
+      //   colorDict.MM = this.colorToArray(this.options.methylationTagColor);
+      // }
+      if (options && options.methylation && options.methylation.categories && options.methylation.colors) {
+        options.methylation.categories.forEach((category, index) => {
+          if (category.unmodifiedBase === 'A' && category.code === 'a' && category.strand === '+') {
+            colorDict.MM_M6A_FOR = this.colorToArray(options.methylation.colors[index]);
+          }
+          else if (category.unmodifiedBase === 'T' && category.code === 'a' && category.strand === '-') {
+            colorDict.MM_M6A_REV = this.colorToArray(options.methylation.colors[index]);
+          }
+          else if (category.unmodifiedBase === 'C' && category.code === 'm' && category.strand === '+') {
+            colorDict.MM_M5C_FOR = this.colorToArray(options.methylation.colors[index]);
+          }
+          else if (category.unmodifiedBase === 'G' && category.code === 'm' && category.strand === '-') {
+            colorDict.MM_M5C_REV = this.colorToArray(options.methylation.colors[index]);
+          }
+        });
       }
 
-      if (this.options && this.options.minusStrandColor) {
-        colorDict.MINUS_STRAND = this.colorToArray(
-          this.options.minusStrandColor,
-        );
+      if (options && options.methylation && options.methylation.highlights) {
+        const highlights = Object.keys(options.methylation.highlights);
+        highlights.forEach((highlight) => {
+          colorDict[`HIGHLIGHTS_${highlight}`] = this.colorToArray(options.methylation.highlights[highlight]);
+        })
+      }
+
+      if (options && typeof options.plusStrandColor !== 'undefined') {
+        colorDict.PLUS_STRAND = this.colorToArray(options.plusStrandColor);
+      }
+
+      if (options && typeof options.minusStrandColor !== 'undefined') {
+        colorDict.MINUS_STRAND = this.colorToArray(options.minusStrandColor);
+      }
+
+      //
+      // add Index DHS color table data, if available
+      //
+      if (options && options.indexDHS) {
+        const indexDHSColorDict = indexDHSColors(options);
+        colorDict = {...colorDict, ...indexDHSColorDict};
+        if (options.indexDHS.backgroundColor) {
+          // console.log(`[PileupTrack] options.indexDHS.backgroundColor ${options.indexDHS.backgroundColor}`);
+          colorDict.INDEX_DHS_BG = this.colorToArray(options.indexDHS.backgroundColor);
+        }
+      }
+
+      //
+      // add FIRE color table data, if available
+      //
+      if (options && options.fire) {
+        const fireColorDict = fireColors(options);
+        colorDict = {...colorDict, ...fireColorDict};
+        if (options.fire.metadata && options.fire.metadata.backgroundColor) {
+          // console.log(`[PileupTrack] options.fire.metadata.backgroundColor ${options.fire.metadata.backgroundColor}`);
+          colorDict.FIRE_BG = this.colorToArray(options.fire.metadata.backgroundColor);
+        }
+      }
+
+      //
+      // add Fibertools-sourced FIRE color table data, if available
+      //
+      if (options && options.ftFire) {
+        const ftFireColorDict = ftFireColors(options);
+        colorDict = {...colorDict, ...ftFireColorDict};
+        if (options.ftFire.metadata && options.ftFire.metadata.backgroundColor) {
+          // console.log(`[PileupTrack] options.ftFire.metadata.backgroundColor ${options.ftFire.metadata.backgroundColor}`);
+          colorDict.FIRE_BG = this.colorToArray(options.ftFire.metadata.backgroundColor);
+        }
       }
 
       const colors = Object.values(colorDict);
@@ -373,6 +492,251 @@ varying vec4 vColor;
       );
     }
 
+    handlePileupTrackViewerMessage(data) {
+      // console.log(`data ${JSON.stringify(data)} | ${JSON.stringify(this.options)}`);
+      // console.log(`handlePileupTrackViewerMessage [${data.state} : ${data.sid}]`);
+      if (data.state === 'mouseover') {
+        if (this.id !== data.uid) {
+          this.clearMouseOver();
+        }
+      }
+      if (data.state === 'initialize_session_id') {
+        // console.log(`loading | ${this.id} | ${this.sessionId} | ${data.sid}`);
+        if (!this.sessionId) {
+          // console.log(`updating ${this.id} session id to ${data.sid}`);
+          this.sessionId = data.sid;
+        }
+      }
+      if (data.state === 'request') {
+        // console.log(`request | ${this.id} | ${this.sessionId} | ${data.sid}`);
+        if (!this.sessionId && data.sid) {
+          // console.log(`updating ${this.id} session id to ${data.sid}`);
+          this.sessionId = data.sid;
+        }
+        if (this.sessionId !== data.sid) {
+          // console.log(`${data.msg} | session id mismatch ${this.sessionId} !== ${data.sid}`);
+          return;
+        }
+        switch (data.msg) {
+          case "track-updates-freeze":
+            if (data.sid !== this.sessionId)
+              break;
+            this.trackUpdatesAreFrozen = true;
+            break;
+          case "track-updates-unfreeze":
+            if (data.sid !== this.sessionId)
+              break;
+            this.trackUpdatesAreFrozen = false;
+            break;
+          case "refresh-layout":
+            if (!this.options.methylation || this.trackUpdatesAreFrozen)
+              break;
+            // console.log(`refresh-layout | ${this.id} | ${this.sessionId} | ${JSON.stringify(data)}`);
+            // if (this.options.fire)
+            //   break;
+            if (data.sid !== this.sessionId)
+              break;
+            // this.dataFetcher = new BAMDataFetcher(
+            //   this.dataFetcher.dataConfig,
+            //   this.options,
+            //   this.worker,
+            //   HGC,
+            // );
+            // this.dataFetcher.track = this;
+            // console.log(`refresh-layout | id ${this.id} | sessionId ${this.sessionId} | recalculateOffsets ${data.recalculateOffsets}`);
+            if (data.recalculateOffsets) {
+              this.alignCpGEvents = data.alignCpGEvents;
+              this.removeTiles(Object.keys(this.fetchedTiles));
+              this.fetching.clear();
+              this.refreshTiles();
+              this.externalInit(this.options);
+              this.updateExistingGraphics();
+              this.prevOptions = Object.assign({}, this.options);
+            }
+            else {
+              for (const key in this.prevRows) {
+                for (const row of this.prevRows[key].rows) {
+                  for (const segment of row) {
+                    // console.log(`rerender > segment.id ${segment.id} | ${Object.getOwnPropertyNames(segment)}`);
+                    segment.methylationOffsets = [];
+                  }
+                }
+              }
+              this.prevRows = [];
+              this.removeTiles(Object.keys(this.fetchedTiles));
+              this.fetching.clear();
+              this.refreshTiles();
+              this.externalInit(this.options);
+              this.updateExistingGraphics();
+              this.prevOptions = Object.assign({}, this.options);
+            }
+            try {
+              this.bc.postMessage({
+                state: 'refresh_layout_end',
+                uid: this.id,
+                sid: this.sessionId,
+              });
+            } catch (e) {}
+            break;
+          case "refresh-fire-layout":
+            if (!this.options.fire || !this.options.ftFire || this.trackUpdatesAreFrozen)
+              break;
+            if (data.sid !== this.sessionId)
+              break;
+            this.prevRows = [];
+            this.removeTiles(Object.keys(this.fetchedTiles));
+            this.fetching.clear();
+            this.refreshTiles();
+            this.externalInit(this.options);
+            this.updateExistingGraphics(true);
+            this.prevOptions = Object.assign({}, this.options);
+            break;
+          case "refresh-fire-layout-post-clustering":
+            if (!this.options.fire || !this.options.ftFire || this.trackUpdatesAreFrozen)
+              return;
+            if (data.sid !== this.sessionId)
+              break;
+            this.dataFetcher = new BAMDataFetcher(
+              this.dataFetcher.dataConfig,
+              this.options,
+              this.worker,
+              HGC,
+            );
+            this.dataFetcher.track = this;
+            this.prevRows = [];
+            this.removeTiles(Object.keys(this.fetchedTiles));
+            this.fetching.clear();
+            this.refreshTiles();
+            this.externalInit(this.options);
+            this.fireIdentifierData = {
+              sourceTrackUid: data.sourceTrackUid,
+              identifiers: data.identifiers,
+            };
+            this.clusterResultsReadyToExport[this.id] = false;
+            this.updateExistingGraphics();
+            this.prevOptions = Object.assign({}, this.options);
+            break;
+          case "cluster-layout":
+            if ((!this.options.methylation) || this.clusterData || this.trackUpdatesAreFrozen)
+              break;
+            if (data.sid !== this.sessionId)
+              break;
+            this.dataFetcher = new BAMDataFetcher(
+              this.dataFetcher.dataConfig,
+              this.options,
+              this.worker,
+              HGC,
+            );
+            this.dataFetcher.track = this;
+            this.prevRows = [];
+            this.removeTiles(Object.keys(this.fetchedTiles));
+            this.fetching.clear();
+            this.refreshTiles();
+            this.externalInit(this.options);
+            this.clusterData = {
+              range: data.range,
+              viewportRange: data.viewportRange,
+              method: data.method,
+              distanceFn: data.distanceFn,
+              eventCategories: data.eventCategories,
+              linkage: data.linkage,
+              epsilon: data.epsilon,
+              minimumPoints: data.minimumPoints,
+              probabilityThresholdRange: data.probabilityThresholdRange,
+              eventOverlapType: data.eventOverlapType,
+              filterFiberMinLength: data.filterFiberMinLength,
+              filterFiberMaxLength: data.filterFiberMaxLength,
+              filterFiberStrands: data.filterFiberStrands,
+              basesPerPixel: data.basesPerPixel,
+              viewportWidthInPixels: data.viewportWidthInPixels,
+            };
+            this.updateExistingGraphics();
+            this.prevOptions = Object.assign({}, this.options);
+            break;
+          case "bed12-layout":
+            if (!this.options.methylation)
+              break;
+            if (data.sid !== this.sessionId)
+              break;
+            const bed12Name = `${this.options.methylation.group}/${this.options.methylation.set}`;
+            const bed12Colors = this.options.methylation.colors;
+            this.bed12ExportData = {
+              range: data.range,
+              method: data.method,
+              distanceFn: data.distanceFn,
+              eventCategories: data.eventCategories,
+              linkage: data.linkage,
+              epsilon: data.epsilon,
+              minimumPoints: data.minimumPoints,
+              probabilityThresholdRange: data.probabilityThresholdRange,
+              eventOverlapType: data.eventOverlapType,
+              uid: this.id,
+              name: bed12Name,
+              colors: bed12Colors,
+            };
+            this.exportBED12Layout();
+            break;
+          case "retrieve-tfbs-overlaps":
+            if (!this.options.tfbs) break;
+            if (data.sid !== this.sessionId) break;
+            this.tfbsExportData = {
+              range: data.range,
+              uid: this.id,
+            }
+            this.exportTFBSOverlaps();
+            break;
+          case "retrieve-indexDHS-overlaps":
+            if (!this.options.indexDHS) break;
+            if (data.sid !== this.sessionId) break;
+            this.indexDHSExportData = {
+              range: data.range,
+              uid: this.id,
+            }
+            this.exportIndexDHSOverlaps();
+            break;
+          case "recalculate-signal-matrices":
+            if (typeof this.options.methylation === 'undefined' || this.options.methylation == null) break;
+            if (!this.trackUpdatesAreFrozen) break;
+            if (data.sid !== this.sessionId) break;
+            this.signalMatrixExportData = {
+              uid: this.id,
+              range: data.range,
+              viewportRange: data.viewportRange,
+              method: data.method,
+              distanceFn: data.distanceFn,
+              eventCategories: data.eventCategories,
+              linkage: data.linkage,
+              epsilon: data.epsilon,
+              minimumPoints: data.minimumPoints,
+              probabilityThresholdRange: data.probabilityThresholdRange,
+              eventOverlapType: data.eventOverlapType,
+              filterFiberMinLength: data.filterFiberMinLength,
+              filterFiberMaxLength: data.filterFiberMaxLength,
+              filterFiberStrands: data.filterFiberStrands,
+              basesPerPixel: data.basesPerPixel,
+              viewportWidthInPixels: data.viewportWidthInPixels,
+            };
+            this.exportSignalMatrices();
+            break;
+          case 'get-uid-track-element-midpoint':
+            if (typeof this.options.genericBed === 'undefined') break;
+            if (data.sid !== this.sessionId) break;
+            if (data.trackUid !== this.id) break;
+            this.uidTrackElementMidpointExportData = {
+              uid: this.id,
+              trackUid: data.trackUid,
+              range: data.viewportRange,
+              rangeExtension: data.rangeExtension,
+              offset: data.offset,
+            };
+            this.exportUidTrackElements();
+            break;
+          default:
+            break;
+        }
+      }
+    }
+
     rerender(options) {
       super.rerender(options);
 
@@ -391,7 +755,7 @@ varying vec4 vColor;
         this.hideMousePosition = undefined;
       }
 
-      this.setUpShaderAndTextures();
+      this.setUpShaderAndTextures(options);
       // Reset the following, so the graphic actually updates
       this.previousTileIdsUsedForRendering = {};
 
@@ -414,7 +778,6 @@ varying vec4 vColor;
           HGC,
         );
         this.dataFetcher.track = this;
-
         this.prevRows = [];
         this.removeTiles(Object.keys(this.fetchedTiles));
         this.fetching.clear();
@@ -435,8 +798,425 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
-    updateExistingGraphics() {
-      this.loadingText.text = 'Rendering...';
+    exportSignalMatrices() {
+      try {
+        this.bc.postMessage({
+          state: 'export_signal_matrices_start',
+          msg: 'Begin signal matrix export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportSignalMatrices(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.signalMatrixExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
+            try {
+              this.bc.postMessage({
+                state: 'export_signal_matrices_end',
+                msg: 'Completed (exportSignalMatrices Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
+          })
+      });
+    }
+
+    exportTFBSOverlaps() {
+      try {
+        this.bc.postMessage({
+          state: 'export_tfbs_overlaps_start',
+          msg: 'Begin TFBS overlap export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportTFBSOverlaps(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.tfbsExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
+            try {
+              this.bc.postMessage({
+                state: 'export_tfbs_overlaps_end',
+                msg: 'Completed (exportTFBSOverlaps Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
+          })
+      });
+    }
+
+    exportIndexDHSOverlaps() {
+      try {
+        this.bc.postMessage({
+          state: 'export_indexDHS_overlaps_start',
+          msg: 'Begin Index DHS overlap export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportIndexDHSOverlaps(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.indexDHSExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
+            try {
+              this.bc.postMessage({
+                state: 'export_indexDHS_overlaps_end',
+                msg: 'Completed (exportIndexDHSOverlaps Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
+          })
+      });
+    }
+
+    exportUidTrackElements() {
+      try {
+        this.bc.postMessage({
+          state: 'export_uid_track_element_midpoint_start',
+          msg: 'Begin UID track element midpoint export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportUidTrackElements(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.uidTrackElementMidpointExportData,
+          )
+          .then((toExport) => {
+
+            if (Object.hasOwn(toExport, 'overlaps') && toExport.overlaps.length > 0) {
+              if (this.clusterData) {
+                this.clusterData = null;
+              }
+
+              if (this.bed12ExportData) {
+                this.bed12ExportData = null;
+              }
+
+              if (this.fireIdentifierData) {
+                this.fireIdentifierData = null;
+              }
+
+              if (this.tfbsExportData) {
+                this.tfbsExportData = null;
+              }
+
+              if (this.signalMatrixExportData) {
+                this.signalMatrixExportData = null;
+              }
+
+              try {
+                this.bc.postMessage({
+                  state: 'export_uid_track_element_midpoint_end',
+                  msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                  uid: this.id,
+                  sid: this.sessionId,
+                  data: toExport,
+                });
+              } catch (e) {}
+            }
+            else {
+              if (!this.uidTrackElementMidpointExportData.rangeExtension) {
+                this.uidTrackElementMidpointExportData.rangeExtension = 5000;
+              }
+              // expand search area and try again, if within bounds
+              // else, reset data structures and return with no results
+              const chrAttr = ASSEMBLY_ATTR_HG38.filter((x) => this.uidTrackElementMidpointExportData.range.left.chrom === x.refName);
+              const chrLen = chrAttr[0]['length'];
+              this.uidTrackElementMidpointExportData.rangeExtension *= 2;
+              this.uidTrackElementMidpointExportData.range.left.start = Math.max(0, this.uidTrackElementMidpointExportData.range.left.start - this.uidTrackElementMidpointExportData.rangeExtension);
+              this.uidTrackElementMidpointExportData.range.right.stop = Math.min(chrLen, this.uidTrackElementMidpointExportData.range.right.stop + this.uidTrackElementMidpointExportData.rangeExtension);
+
+              if (this.uidTrackElementMidpointExportData.range.left.start === 0 && this.uidTrackElementMidpointExportData.range.right.stop === chrLen) {
+                if (this.clusterData) {
+                  this.clusterData = null;
+                }
+  
+                if (this.bed12ExportData) {
+                  this.bed12ExportData = null;
+                }
+  
+                if (this.fireIdentifierData) {
+                  this.fireIdentifierData = null;
+                }
+  
+                if (this.tfbsExportData) {
+                  this.tfbsExportData = null;
+                }
+  
+                if (this.signalMatrixExportData) {
+                  this.signalMatrixExportData = null;
+                }
+  
+                try {
+                  this.bc.postMessage({
+                    state: 'export_uid_track_element_midpoint_end',
+                    msg: 'Completed (exportUidTrackElementMidpoint Promise fulfillment)',
+                    uid: this.id,
+                    sid: this.sessionId,
+                    data: toExport,
+                  });
+                } catch (e) {}
+              }
+              else {
+                this.exportUidTrackElements();
+              }
+            }
+          })
+      });
+    }
+
+    exportBED12Layout() {
+      try {
+        this.bc.postMessage({
+          state: 'export_bed12_start',
+          msg: 'Begin BED12 export worker processing',
+          uid: this.id,
+          sid: this.sessionId,
+        });
+      } catch (e) {}
+      this.worker.then((tileFunctions) => {
+        tileFunctions
+          .exportSegmentsAsBED12(
+            this.sessionId,
+            this.dataFetcher.uid,
+            Object.values(this.fetchedTiles).map((x) => x.remoteId),
+            this._xScale.domain(),
+            this._xScale.range(),
+            this.position,
+            this.dimensions,
+            this.prevRows,
+            this.options,
+            this.bed12ExportData,
+          )
+          .then((toExport) => {
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            if (this.uidTrackElementMidpointExportData) {
+              this.uidTrackElementMidpointExportData = null;
+            }
+
+            try {
+              this.bc.postMessage({
+                state: 'export_bed12_end',
+                msg: 'Completed (exportBED12Layout Promise fulfillment)',
+                uid: this.id,
+                sid: this.sessionId,
+                data: toExport,
+              });
+            } catch (e) {}
+          })
+      });
+    }
+
+    updateExistingGraphics(skip) {
+      if ((this.trackUpdatesAreFrozen) && (this.options.fire || this.options.ftFire || this.options.methylation)) return;
+
+      const updateExistingGraphicsStart = performance.now();
+      if (!this.maxTileWidthReached) {
+        this.loadingText.text = 'Rendering...';
+        try {
+          this.bc.postMessage({
+            state: 'update_start',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
+      }
+      else {
+        this.worker.then((tileFunctions) => {
+          tileFunctions
+            .renderSegments(
+              this.sessionId,
+              this.dataFetcher.uid,
+              Object.values(this.fetchedTiles).map((x) => x.remoteId),
+              this._xScale.domain(),
+              this._xScale.range(),
+              this.position,
+              this.dimensions,
+              this.prevRows,
+              this.options,
+              this.alignCpGEvents,
+              this.clusterData,
+              this.fireIdentifierData,
+            )
+            .then((toRender) => {
+              if (
+                this.segmentGraphics
+              ) {
+                this.pMain.removeChild(this.segmentGraphics);
+              }
+              this.draw();
+              this.animate();
+              const updateExistingGraphicsEndA = performance.now();
+              const elapsedTimeA = updateExistingGraphicsEndA - updateExistingGraphicsStart;
+              const msg = {
+                state: 'update_end',
+                msg: 'Completed (maxTileWidthReached)',
+                uid: this.id,
+                sid: this.sessionId,
+                elapsedTime: elapsedTimeA,
+              };
+              try {
+                this.bc.postMessage(msg);
+              } catch (e) {}
+            });
+        });
+        return;
+      }
 
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
       if (!eqSet(this.visibleTileIds, fetchedTileIds)) {
@@ -446,20 +1226,23 @@ varying vec4 vColor;
 
       // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
       if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
-        return;
+        if (!skip) return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
 
       const fetchedTileKeys = Object.keys(this.fetchedTiles);
-      fetchedTileKeys.forEach((x) => {
-        this.fetching.delete(x);
-        this.rendering.add(x);
-      });
+
+      for (const fetchedTileKey of fetchedTileKeys) {
+        this.fetching.delete(fetchedTileKey);
+        this.rendering.add(fetchedTileKey);
+      }
+
       this.updateLoadingText();
 
       this.worker.then((tileFunctions) => {
         tileFunctions
           .renderSegments(
+            this.sessionId,
             this.dataFetcher.uid,
             Object.values(this.fetchedTiles).map((x) => x.remoteId),
             this._xScale.domain(),
@@ -468,25 +1251,75 @@ varying vec4 vColor;
             this.dimensions,
             this.prevRows,
             this.options,
+            this.alignCpGEvents,
+            this.id,
+            this.clusterData,
+            this.fireIdentifierData,
           )
           .then((toRender) => {
+
+            if (!toRender)
+              return;
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (toRender.clusterResultsToExport) {
+              this.clusterResultsReadyToExport[this.id] = true;
+              try {
+                this.bc.postMessage({
+                  state: 'export_subregion_clustering_results',
+                  msg: 'Completed subregion clustering',
+                  uid: this.id,
+                  sid: this.sessionId,
+                  data: toRender.clusterResultsToExport,
+                });
+              } catch (e) {}
+
+              toRender.clusterResultsToExport = null;
+            }
+
+            if (toRender.clusterResultsToExport && !this.clusterResultsReadyToExport[this.id]) return;
+
             this.loadingText.visible = false;
 
-            fetchedTileKeys.forEach((x) => {
-              this.rendering.delete(x);
-            });
+            for (const fetchedTileKey of fetchedTileKeys) {
+              this.rendering.delete(fetchedTileKey);
+            }
+
             this.updateLoadingText();
 
             if (this.maxTileWidthReached) {
-              if (
-                this.segmentGraphics &&
-                this.options.collapseWhenMaxTileWidthReached
-              ) {
+              if (this.segmentGraphics) {
+                this.segmentGraphics.clear();
                 this.pMain.removeChild(this.segmentGraphics);
+                this.pBorder.clear();
+              }
+              if (this.mouseOverGraphics) {
+                requestAnimationFrame(this.animate);
+                this.mouseOverGraphics.clear();
+                this.pMain.removeChild(this.mouseOverGraphics);
+                this.pBorder.clear();
               }
               this.loadingText.visible = false;
               this.draw();
               this.animate();
+              requestAnimationFrame(this.animate);
+
+              const updateExistingGraphicsEndB = performance.now();
+              const elapsedTimeB = updateExistingGraphicsEndB - updateExistingGraphicsStart;
+              const msg = {
+                state: 'update_end',
+                msg: 'Completed (maxTileWidthReached)',
+                uid: this.id,
+                sid: this.sessionId,
+                elapsedTime: elapsedTimeB,
+              };
+              try {
+                this.bc.postMessage(msg);
+              } catch (e) {}
+
               return;
             }
 
@@ -508,17 +1341,14 @@ varying vec4 vColor;
             if (this.loadMates) {
               this.readsById = {};
               for (let key in this.prevRows) {
-                this.prevRows[key].rows.forEach((row) => {
-                  row.forEach((section) => {
-                    section.segments.forEach((segment) => {
-                      if (segment.id in this.readsById) return;
 
-                      this.readsById[segment.id] = segment;
-                      // Will be needed later in the mouseover to determine the correct yPos for the mate
-                      this.readsById[segment.id]['groupKey'] = key;
-                    });
-                  });
-                });
+                for (const row of this.prevRows[key].rows) {
+                  for (const segment of row) {
+                    if (segment.id in this.readsById) return;
+                    this.readsById[segment.id] = segment;
+                    this.readsById[segment.id]['groupKey'] = key;
+                  }
+                }
               }
             }
 
@@ -586,20 +1416,44 @@ varying vec4 vColor;
 
             this.draw();
             this.animate();
+
+            if (this.clusterData) {
+              this.clusterData = null;
+            }
+
+            if (this.bed12ExportData) {
+              this.bed12ExportData = null;
+            }
+
+            if (this.fireIdentifierData) {
+              this.fireIdentifierData = null;
+            }
+
+            if (this.tfbsExportData) {
+              this.tfbsExportData = null;
+            }
+
+            if (this.indexDHSExportData) {
+              this.indexDHSExportData = null;
+            }
+
+            if (this.signalMatrixExportData) {
+              this.signalMatrixExportData = null;
+            }
+
+            const updateExistingGraphicsEndC = performance.now();
+            const elapsedTimeC = updateExistingGraphicsEndC - updateExistingGraphicsStart;
+            const msg = {
+              state: 'update_end',
+              msg: 'Completed (renderSegments Promise fulfillment)',
+              uid: this.id,
+              sid: this.sessionId,
+              elapsedTime: elapsedTimeC,
+            };
+            try {
+              this.bc.postMessage(msg);
+            } catch (e) {}
           });
-        // .catch(err => {
-        //   // console.log('err:', err);
-        //   // console.log('err:', err.message);
-        //   this.errorTextText = err.message;
-
-        //   // console.log('errorTextText:', this.errorTextText);
-        //   // this.draw();
-        //   // this.animate();
-        //   this.drawError();
-        //   this.animate();
-
-        //   // console.log('this.pBorder:', this.pBorder);
-        // });
       });
     }
 
@@ -607,23 +1461,50 @@ varying vec4 vColor;
       this.loadingText.visible = true;
       this.loadingText.text = '';
 
-      if (!this.tilesetInfo) {
+      if (this.maxTileWidthReached) return;
+
+      if (!this.tilesetInfo && this.bc) {
         this.loadingText.text = 'Fetching tileset info...';
+        try {
+          this.bc.postMessage({
+            state: 'fetching_tileset_info',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
         return;
       }
 
-      if (this.fetching.size) {
+      if (this.fetching.size && this.bc) {
         this.loadingText.text = `Fetching... ${[...this.fetching]
           .map((x) => x.split('|')[0])
           .join(' ')}`;
+        try {
+          this.bc.postMessage({
+            state: 'fetching',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
       }
 
-      if (this.rendering.size) {
+      if (this.rendering.size && this.bc) {
         this.loadingText.text = `Rendering... ${[...this.rendering].join(' ')}`;
+        try {
+          this.bc.postMessage({
+            state: 'rendering',
+            msg: this.loadingText.text,
+            uid: this.id,
+            sid: this.sessionId,
+          });
+        } catch (e) {}
       }
 
-      if (!this.fetching.size && !this.rendering.size) {
+      if (!this.fetching.size && !this.rendering.size && this.tilesetInfo) {
         this.loadingText.visible = false;
+        // this.bc.postMessage({state: 'update_end', msg: 'Completed',  uid: this.id});
       }
     }
 
@@ -633,42 +1514,121 @@ varying vec4 vColor;
       //   .domain([0, this.prevRows.length])
       //   .range([0, this.dimensions[1]]);
       // HGC.utils.trackUtils.drawAxis(this, valueScale);
-      this.trackNotFoundText.text = 'Track not found.';
+      this.trackNotFoundText.text = 'Track not found';
       this.trackNotFoundText.visible = true;
     }
 
-    contextMenuItems(trackX, trackY) {
-      /* Get a list of context menu items to display and the actions
-         to take */
-
-      // This should return items like this:
-      return [
-        {
-          label: 'Sort by base',
-          onClick: (evt, onTrackOptionsChanged) => {
-            // The onTrackOptionsChanged handler will handle any changes
-            // to the track's options that are triggered in this event.
-            // The only thing that needs to be passed is the new option being
-            // passed
-
-            const currPos = Math.floor(this._xScale.invert(trackX));
-            const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
-            onTrackOptionsChanged({
-              sortByBase: {
-                chr: chrPos[0],
-                pos: chrPos[1],
-              },
-            });
-          },
-        },
-      ];
+    indexDHSElementCategory(colormap, rgb) {
+      return `<div style="display:inline-block; position:relative; top:-2px;">
+        <svg width="10" height="10">
+          <rect width="10" height="10" rx="2" ry="2" style="fill:rgb(${rgb});stroke:black;stroke-width:2;" />
+        </svg>
+        <span style="position:relative; top:1px; font-weight:600;">${colormap[rgb]}</span>
+      </div>`;
     }
 
-    getMouseOverHtml(trackX, trackYIn) {
-      // const trackY = this.valueScaleTransform.invert(track)
+    indexDHSElementCartoon(elementStart, elementEnd, rgb, subs, summitStart, summitEnd, elementId) {
+      let elementCartoon = '';
+      const elementCartoonWidth = 200;
+      const elementCartoonGeneHeight = 30;
+      const elementCartoonHeight = elementCartoonGeneHeight + 10;
+      const elementCartoonMiddle = elementCartoonHeight / 2;
+      function pos2pixel(pos) {
+        return ((pos - elementStart) / ((elementEnd - elementStart) * 1.0)) * elementCartoonWidth;
+      }
+      let blockCount = 0;
+      let blockStarts = [];
+      let blockSizes = [];
+      for (const sub of subs) {
+        if (sub.type === 'M') {
+          blockCount++;
+          blockStarts.push(sub.pos);
+          blockSizes.push(sub.length);
+        }
+      }
+      if (blockCount > 0) {
+        elementCartoon += `<svg width="${elementCartoonWidth}" height="${elementCartoonHeight}">
+          <style type="text/css">
+            .ticks {stroke:rgb(${rgb});stroke-width:1px;fill:none;}
+            .gene {stroke:rgb(${rgb});stroke-width:1px;fill:none;}
+            .translate { fill:rgb(${rgb});fill-opacity:1;}
+            .exon { fill:rgb(${rgb});fill-opacity:1;}
+            .score { fill:rgb(${rgb});fill-opacity:1;font:bold 12px sans-serif;}
+            .id { fill:rgb(${rgb});fill-opacity:1;font:bold 12px sans-serif;}
+          </style>
+          <defs>
+            <path id="ft" class="ticks" d="m -3 -3  l 3 3  l -3 3" />
+            <path id="rt" class="ticks" d="m 3 -3  l -3 3  l 3 3" />
+          </defs>
+        `;
+        const isElementBarPlotLike = true;
+        const ecStart = pos2pixel(elementStart);
+        const ecEnd = pos2pixel(elementEnd);
+        elementCartoon += `<line class="gene" x1=${ecStart} x2=${ecEnd} y1=${elementCartoonMiddle} y2=${elementCartoonMiddle} />`;
+        const ecThickStart = pos2pixel(summitStart);
+        const ecThickEnd = pos2pixel(summitEnd);
+        const ecThickY = elementCartoonMiddle - elementCartoonGeneHeight / 4;
+        const ecThickHeight = elementCartoonGeneHeight / 2;
+        let ecThickWidth = ecThickEnd - ecThickStart;
+        if (isElementBarPlotLike) {
+          ecThickWidth = ecThickWidth !== 1 ? 1 : ecThickWidth;
+        }
+        let realIdTextAnchor = '';
+        if (ecThickStart < 0.15 * elementCartoonWidth) {
+          realIdTextAnchor = 'start';
+        } else if (
+          ecThickStart >= 0.15 * elementCartoonWidth &&
+          ecThickStart <= 0.85 * elementCartoonWidth
+        ) {
+          realIdTextAnchor = 'middle';
+        } else {
+          realIdTextAnchor = 'end';
+        }
+        elementCartoon += `<rect class="translate" x=${ecThickStart} y=${ecThickY} width=${ecThickWidth} height=${ecThickHeight} />`;
+        const ecLabelDy = '-0.25em';
+        elementCartoon += `<text class="id" text-anchor="${realIdTextAnchor}" x=${ecThickStart} y=${ecThickY} dy=${ecLabelDy}>${elementId}</text>`;
+
+        let ecExonStart = 0;
+        let ecExonWidth = 0;
+        const ecExonY = elementCartoonMiddle - elementCartoonGeneHeight / 8;
+        const ecExonHeight = elementCartoonGeneHeight / 4;
+        for (let i = 0; i < blockCount; i++) {
+          ecExonStart = pos2pixel(elementStart + +blockStarts[i]);
+          ecExonWidth = pos2pixel(elementStart + +blockSizes[i]);
+          elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
+        }
+        // add whiskers separately
+        if (isElementBarPlotLike) {
+          // leftmost whisker
+          ecExonStart = ecStart;
+          ecExonWidth = ecStart + 1;
+          elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
+          // rightmost whisker
+          ecExonStart = ecEnd - 1;
+          ecExonWidth = ecEnd;
+          elementCartoon += `<rect class="exon" x=${ecExonStart} y=${ecExonY} width=${ecExonWidth} height=${ecExonHeight} />`;
+        }
+
+        elementCartoon += '</svg>';
+      }
+      return elementCartoon;
+    }
+
+    clearMouseOver() {
       this.mouseOverGraphics.clear();
-      // Prevents 'stuck' read outlines when hovering quickly
       requestAnimationFrame(this.animate);
+    }
+
+    getMouseOverHtml(trackX, trackYIn, isShiftDown) {
+      this.mouseOverGraphics.clear();
+      requestAnimationFrame(this.animate);
+
+      if (!this.options || (!this.options.showTooltip && !isShiftDown)) {
+        return '';
+      }
+
+      if (this.maxTileWidthReached) return;
+
       const trackY = invY(trackYIn, this.valueScaleTransform);
 
       const bandCoverageStart = 0;
@@ -781,15 +1741,207 @@ varying vec4 vColor;
                     }
 
                     return mouseOverHtml;
-                    // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
                   }
+
+                  const dataX = this._xScale.invert(trackX);
+                  let position = null;
+                  let positionText = null;
+                  let eventText = null;
+                  let eventProbability = null;
+                  
+                  if (this.options.chromInfo) {
+                    const atcX = HGC.utils.absToChr(dataX, this.options.chromInfo);
+                    const chrom = atcX[0];
+                    position = Math.ceil(atcX[1]);
+                    positionText = `${chrom}:${position}`;
+                    const methylationOffset = position - (read.from - read.chrOffset);
+                    for (const mo of read.methylationOffsets) {
+                      const moQuery = mo.offsets.indexOf(methylationOffset);
+                      if (moQuery !== -1) {
+                        const candidateEventProbability = parseInt(mo.probabilities[moQuery]);
+                        if (eventProbability && eventProbability < candidateEventProbability) {
+                          eventProbability = candidateEventProbability;
+                          eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
+                        }
+                        else if (!eventProbability) {
+                          if (candidateEventProbability >= this.options.methylation.probabilityThresholdRange[0]) {
+                            eventProbability = candidateEventProbability;
+                            eventText = ((mo.unmodifiedBase === 'A') || (mo.unmodifiedBase === 'T')) ? 'm6A' : ((mo.unmodifiedBase === 'C') && mo.code === 'm') ? '5mC' : '5hmC';
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  let output = `<div class="track-mouseover-menu-table">`;
+
+                  if (positionText) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="position" class="track-mouseover-menu-table-item-label">Position</label>
+                      <div name="position" class="track-mouseover-menu-table-item-value">${positionText}</div>
+                    </div>
+                    `;
+                  }
+
+                  if (eventText && eventProbability) {
+                    output += `
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="eventType" class="track-mouseover-menu-table-item-label">Event</label>
+                      <div name="eventType" class="track-mouseover-menu-table-item-value">${eventText}</div>
+                    </div>
+                    <div class="track-mouseover-menu-table-item">
+                      <label for="eventProbability" class="track-mouseover-menu-table-item-label">Probability (ML)</label>
+                      <div name="eventProbability" class="track-mouseover-menu-table-item-value">${eventProbability}</div>
+                    </div>
+                    `;
+                  }
+
+                  if (this.options.genericBed) {
+                    const genericBedNameLabel = 'Name';
+                    const genericBedNameValue = (read.readName !== '.') ? read.readName : this.options.name;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readName" class="track-mouseover-menu-table-item-label">${genericBedNameLabel}</label>
+                      <div name="readName" class="track-mouseover-menu-table-item-value">${genericBedNameValue}</div>
+                    </div>`;
+                  }
+
+                  else if (this.options.tfbs) {
+                    const tfbsValue = read.readName;
+                    const [tfbsClusterName, tfbsModelName] = tfbsValue.split('%%');
+                    const tfbsClusterNameLabel = 'Cluster';
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="tfbs" class="track-mouseover-menu-table-item-label">${tfbsClusterNameLabel}</label>
+                      <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsClusterName}</div>
+                    </div>`;
+                    const tfbsModelNameLabel = 'Model';
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="tfbs" class="track-mouseover-menu-table-item-label">${tfbsModelNameLabel}</label>
+                      <div name="tfbs" class="track-mouseover-menu-table-item-value">${tfbsModelName}</div>
+                    </div>`;
+                  }
+
+                  else if (this.options.indexDHS) {
+                    const readNameLabel = 'Index DHS';
+                    const readNameValue = `${read.readName} | ${this.options.name}`;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readName" class="track-mouseover-menu-table-item-label">${readNameLabel}</label>
+                      <div name="readName" class="track-mouseover-menu-table-item-value">${readNameValue}</div>
+                    </div>`;
+                  }
+
+                  else {
+                    const readNameLabel = 'Name';
+                    const readNameValue = read.readName;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readName" class="track-mouseover-menu-table-item-label">${readNameLabel}</label>
+                      <div name="readName" class="track-mouseover-menu-table-item-value">${readNameValue}</div>
+                    </div>`;
+                  }
+
+                  const readIntervalLabel = (this.options.methylation) ? 'Interval' : (this.options.indexDHS) ? 'Range' : 'Interval';
+                  let readIntervalValue = `${read.chrName}:${read.from - read.chrOffset}-${read.to - read.chrOffset - 1}`;
+                  readIntervalValue += (this.options.methylation || this.options.ftFire || this.options.tfbs) ? ` (${read.strand})` : '';
+                  output += `<div class="track-mouseover-menu-table-item">
+                    <label for="readInterval" class="track-mouseover-menu-table-item-label">${readIntervalLabel}</label>
+                    <div name="readInterval" class="track-mouseover-menu-table-item-value">${readIntervalValue}</div>
+                  </div>`;
+
+                  if (this.options.methylation) {
+                    const readLength = `${read.to - read.from}`;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readLength" class="track-mouseover-menu-table-item-label">Length</label>
+                      <div name="readLength" class="track-mouseover-menu-table-item-value">${readLength}</div>
+                    </div>`;
+                  }
+
+                  else if (this.options.tfbs) {
+                    const tfbsScore = read.metadata.score;
+                    if (tfbsScore) {
+                      output += `<div class="track-mouseover-menu-table-item">
+                        <label for="tfbsScore" class="track-mouseover-menu-table-item-label">Score</label>
+                        <div name="tfbsScore" class="track-mouseover-menu-table-item-value">${tfbsScore}</div>
+                      </div>`;
+                    }
+                    const tfbsSequence = read.seq;
+                    if (position) {
+                      const tfbsSequencePositionToHighlight = position - (read.from - read.chrOffset) + 1;
+                      if (tfbsSequence && tfbsSequencePositionToHighlight >= 1 && tfbsSequencePositionToHighlight <= tfbsSequence.length) {
+                        let tfbsSequencePieces = '';
+                        if (tfbsSequencePositionToHighlight === 1) {
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(0, 1)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(1, tfbsSequence.length)}</span>`;
+                        }
+                        else if (tfbsSequencePositionToHighlight === tfbsSequence.length) {
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(0, tfbsSequence.length - 1)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(tfbsSequence.length - 1, tfbsSequence.length)}</span>`;
+                        }
+                        else {
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(0, tfbsSequencePositionToHighlight - 1)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence-highlight">${tfbsSequence.substring(tfbsSequencePositionToHighlight - 1, tfbsSequencePositionToHighlight)}</span>`;
+                          tfbsSequencePieces += `<span class="track-mouseover-menu-table-item-value-sequence">${tfbsSequence.substring(tfbsSequencePositionToHighlight, tfbsSequence.length)}</span>`;
+                        }
+                        output += `<div class="track-mouseover-menu-table-item">
+                          <label for="tfbsSequence" class="track-mouseover-menu-table-item-label">Sequence</label>
+                          <div name="tfbsSequence" class="track-mouseover-menu-table-item-value">${tfbsSequencePieces}</div>
+                        </div>`;
+                      }
+                    }
+                    else {
+                      if (tfbsSequence) {
+                        output += `<div class="track-mouseover-menu-table-item">
+                          <label for="tfbsSequence" class="track-mouseover-menu-table-item-label">Sequence</label>
+                          <div name="tfbsSequence" class="track-mouseover-menu-table-item-value track-mouseover-menu-table-item-value-sequence">${tfbsSequence}</div>
+                        </div>`;
+                      }
+                    }
+                  }
+
+                  else if (this.options.indexDHS) {
+                    const metadata = read.metadata;
+                    // const realId = metadata.dhs.id;
+                    const elementSummit = `${read.chrName}:${parseInt(metadata.summit.start + (metadata.summit.end - metadata.summit.start)/2)}`;
+                    const elementScorePrecision = 4;
+                    const elementScore = Number.parseFloat(metadata.dhs.score).toPrecision(elementScorePrecision);
+                    const elementBiosampleCount = Number.parseInt(metadata.dhs.n);
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readSummit" class="track-mouseover-menu-table-item-label">Summit</label>
+                      <div name="readSummit" class="track-mouseover-menu-table-item-value">${elementSummit}</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readScore" class="track-mouseover-menu-table-item-label">Score</label>
+                      <div name="readScore" class="track-mouseover-menu-table-item-value">${elementScore}</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readCategory" class="track-mouseover-menu-table-item-label">Category</label>
+                      <div name="readCategory" class="track-mouseover-menu-table-item-value">${this.indexDHSElementCategory(this.options.indexDHS.itemRGBMap, metadata.rgb)}</div>
+                    </div>`;
+
+                    const indexDHSStart = read.from - read.chrOffset;
+                    const indexDHSEnd = read.to - read.chrOffset - 1;
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readStructure" class="track-mouseover-menu-table-item-label">Structure</label>
+                      <div name="readStructure" class="track-mouseover-menu-table-item-value track-mouseover-menu-table-item-value-svg">${this.indexDHSElementCartoon(indexDHSStart, indexDHSEnd, metadata.rgb, read.substitutions, metadata.summit.start, metadata.summit.end, metadata.dhs.id)}</div>
+                    </div>`;
+
+                    output += `<div class="track-mouseover-menu-table-item">
+                      <label for="readSamples" class="track-mouseover-menu-table-item-label">Samples</label>
+                      <div name="readSamples" class="track-mouseover-menu-table-item-value">Found in <span style="font-weight: 900; padding-left:5px; padding-right:5px;">${elementBiosampleCount}</span> / ${this.options.indexDHS.biosampleCount} biosamples</div>
+                    </div>`;
+                  }
+
+                  output += `</div>`;
+
+                  return output;
                 }
               }
             }
           }
         }
 
-        // var val = self.yScale.domain()[index];
         if (
           this.options.showCoverage &&
           bandCoverageStart <= trackY &&
@@ -861,8 +2013,8 @@ varying vec4 vColor;
       return insertSizeHtml;
     }
 
-    outlineMate(read, yScaleBand) {
-      read.mate_ids.forEach((mate_id) => {
+    outlineMate(read, yScaleBand){
+      for (const mate_id of read.mate_ids) {
         if (!this.readsById[mate_id]) {
           return;
         }
@@ -885,7 +2037,7 @@ varying vec4 vColor;
           mate_width,
           mate_height,
         );
-      });
+      }
       this.animate();
     }
 
@@ -932,13 +2084,22 @@ varying vec4 vColor;
             `Zoom in to see details.\n` +
             `Current tile span ${tileWidth}. Max span: ${currentMaxTileWidth}`;
 
-          this.setError(errorText, 'PileupTrack.tileWidth');
-          this.updateLoadingText();
+          this.errorTextText = (this.dataFetcher.dataConfig.options && this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage) ? this.dataFetcher.dataConfig.options.maxTileWidthReachedMessage : "Zoom in to load data";
           this.drawError();
           this.animate();
           this.maxTileWidthReached = true;
+
+          const msg = {state: 'update_end', msg: 'Completed (calculateVisibleTiles)',  uid: this.id};
+          try {
+            this.bc.postMessage(msg);
+          } catch (e) {}
+
           return;
         } else {
+          this.errorTextText = null;
+          this.pBorder.clear();
+          this.drawError();
+          this.animate();
           this.maxTileWidthReached = false;
           this.setError('', 'PileupTrack.tileWidth');
 
@@ -956,9 +2117,6 @@ varying vec4 vColor;
         this.drawError();
         this.animate();
       }
-      // const { tileX, tileWidth } = getTilePosAndDimensions(
-      //   this.calculateZoomLevel(),
-      // )
 
       this.setVisibleTiles(tiles);
     }
@@ -1027,12 +2185,20 @@ varying vec4 vColor;
       let track = null;
       let base = null;
 
+      this.clearMouseOver();
+
       if (super.exportSVG) {
         [base, track] = super.exportSVG();
       } else {
         base = document.createElement('g');
         track = base;
       }
+
+      this.mouseOverGraphics.clear();
+      this.animate();
+
+      // base = document.createElement('g');
+      // track = base;
 
       const output = document.createElement('g');
       track.appendChild(output);
@@ -1069,41 +2235,19 @@ varying vec4 vColor;
           'xlink:href',
           b64string,
         );
+        image.setAttribute(
+          'width',
+          window.innerWidth,
+        );
+        image.setAttribute(
+          'height',
+          this.pMain.height,
+        );
         gImage.appendChild(image);
         gSegment.appendChild(gImage);
 
         // gSegment.appendChild(image);
       }
-      // if (this.positions) {
-      //   // short for colorIndex
-      //   let ci = 0;
-
-      //   for (let i = 0; i < this.positions.length; i += 12) {
-      //     const rect = document.createElement('rect');
-
-      //     rect.setAttribute('x', this.positions[i]);
-      //     rect.setAttribute('y', this.positions[i + 1]);
-
-      //     rect.setAttribute(
-      //       'width',
-      //       this.positions[i + 10] - this.positions[i]
-      //     );
-
-      //     rect.setAttribute(
-      //       'height',
-      //       this.positions[i + 11] - this.positions[i + 1]
-      //     );
-
-      //     const red = Math.ceil(255 * this.colors[ci]);
-      //     const green = Math.ceil(255 * this.colors[ci + 1]);
-      //     const blue = Math.ceil(255 * this.colors[ci + 2]);
-      //     const alpha = this.colors[ci + 3];
-
-      //     rect.setAttribute('fill', `rgba(${red},${green},${blue},${alpha})`);
-      //     gSegment.appendChild(rect);
-      //     ci += 24;
-      //   }
-      // }
 
       return [base, base];
     }
@@ -1148,8 +2292,8 @@ PileupTrack.config = {
     'highlightReadsBy',
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
-    'viewAsPairs',
-    // 'minZoom'
+    // 'minZoom',
+    'showLoadingText',
   ],
   defaultOptions: {
     // minZoom: null,
@@ -1174,7 +2318,7 @@ PileupTrack.config = {
     minMappingQuality: 0,
     highlightReadsBy: [],
     largeInsertSizeThreshold: 1000,
-    viewAsPairs: false,
+    showLoadingText: false,
   },
   optionsInfo: {
     outlineReadOnHover: {
