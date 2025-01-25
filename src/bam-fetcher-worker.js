@@ -564,6 +564,10 @@ const tilesetInfo = (uid) => {
     }
 
     chromInfos[chromSizesUrl] = chromInfo;
+    const chromsizes = chromInfo.cumPositions.map((x) => [
+      x.chr,
+      chromInfo.chromLengths[x.chr],
+    ]);
 
     const retVal = {
       tile_size: TILE_SIZE,
@@ -574,6 +578,7 @@ const tilesetInfo = (uid) => {
       max_width: chromInfo.totalLength,
       min_pos: [0],
       max_pos: [chromInfo.totalLength],
+      chromsizes,
     };
 
     tilesetInfos[uid] = retVal;
