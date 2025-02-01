@@ -1027,12 +1027,21 @@ varying vec4 vColor;
       let track = null;
       let base = null;
 
-      if (super.exportSVG) {
-        [base, track] = super.exportSVG();
-      } else {
-        base = document.createElement('g');
-        track = base;
-      }
+      // The following section is commented out because the base class
+      // will export things like the track label.
+      // This is fine for normal tracks that only add to that but this
+      // pileup track's export function actually takes a screenshot of the
+      // canvas and exports that.
+      // This means elements rendered by the superclass are duplicated in this
+      // track and cause artifacts if they don't overlap perfectly.
+      // For that reason, we'll just treat this track as if it has no ancestors
+      // and create the entire image from the canvas.
+      // if (super.exportSVG) {
+      //   [base, track] = super.exportSVG();
+      // } else {
+      base = document.createElement('g');
+      track = base;
+      // }
 
       const output = document.createElement('g');
       track.appendChild(output);
