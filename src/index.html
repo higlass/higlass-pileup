@@ -67,8 +67,8 @@ const testViewConfig = {
   "views": [
     {
       "initialXDomain": [
-        133316.84212529,
-        134172.6944366717
+        0,
+        100
       ],
       "initialYDomain": [
         -41978532.357771374,
@@ -76,69 +76,8 @@ const testViewConfig = {
       ],
       "tracks": {
         "top": [
-          {
-            "uid": "AdlJsUYFRzuJRZyYeKDX2A",
-            "type": "chromosome-labels",
-            "width": 904,
-            "height": 30,
-            "server": "http://higlass.io/api/v1",
-            "options": {
-              "color": "#808080",
-              "stroke": "#ffffff",
-              "fontSize": 12,
-              "fontIsLeftAligned": false,
-              "showMousePosition": false,
-              "mousePositionColor": "#000000",
-              "reverseOrientation": false
-            },
-            "filetype": "chromsizes-tsv",
-            "tilesetUid": "NyITQvZsS_mOFNlz5C2LJg"
-          },
-          {
-            "uid": "fastaex",
-            "data": {
-              "type": "fasta",
-              "faiUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.fa.fai",
-              "fastaUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.fa",
-              "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
-            },
-            "type": "horizontal-sequence",
-            "width": 904,
-            "height": 25,
-            "options": {
-              "name": "hg38",
-              "barBorder": true,
-              "colorScale": [
-                "#08519c",
-                "#6baed6",
-                "#993404",
-                "#fe9929",
-                "#808080",
-                "#DCDCDC"
-              ],
-              "labelColor": "black",
-              "valueScaling": "linear",
-              "labelPosition": "topLeft",
-              "barBorderColor": "white",
-              "backgroundColor": "white",
-              "labelTextOpacity": 0.4,
-              "sortLargestOnTop": true,
-              "trackBorderColor": "white",
-              "trackBorderWidth": 0,
-              "extendedPreloading": false,
-              "colorAggregationMode": "none",
-              "notificationText": "Zoom in to see nucleotides...",
-              "fontSize": 16,
-              "fontFamily": "Arial",
-              "fontColor": "white",
-              "textOption": {
-                "fontSize": "32px",
-                "fontFamily": "Arial",
-                "fill": 16777215,
-                "fontWeight": "bold"
-              }
-            }
-          },
+ 
+
           {
             "type": "pileup",
             "options": {
@@ -158,7 +97,6 @@ const testViewConfig = {
               ],
               "showMousePosition": false,
               "outlineMateOnHover": false,
-              "showCoverage": true,
               "coverageHeight": 100,
               "maxTileWidth": 200000,
               "collapseWhenMaxTileWidthReached": false,
@@ -169,11 +107,24 @@ const testViewConfig = {
             },
             "height": 335,
             "uid": "pu1",
-            "data": {
-              "type": "bam",
-              "bamUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_higlass.bam",
-              "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_higlass.bam.bai",
-              "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
+            data: {
+              type: 'local-tiles',
+              tilesetInfo: {
+                'min_pos': [0],
+                'max_pos': [14],
+                'max_width': 64,
+                'tile_size': 1024,
+                'chromsizes': [['a', 14]],
+                'max_zoom': 0,
+                'max_tile_width': 100000,
+                'format': 'subs'
+              },
+              tiles: {
+                'OHJakQICQD6gTD7skx4EWA.0.0': [{'pos': 2, 'type': 'D', 'length': 2},
+                  {'pos': 6, 'type': 'X', 'length': 1, 'base': 'A', 'variant': 'T'},
+                  {'pos': 9, 'type': 'D', 'length': 2}
+                ]
+              }
             },
             "width": 904
           }
@@ -216,3 +167,4 @@ window.hglib.viewer(
 );
 </script>
 </html>
+
