@@ -76,8 +76,9 @@ const testViewConfig = {
       ],
       "tracks": {
         "top": [
- 
-
+          {
+            type: 'top-axis'
+          },
           {
             "type": "pileup",
             "options": {
@@ -120,9 +121,28 @@ const testViewConfig = {
                 'format': 'subs'
               },
               tiles: {
-                'OHJakQICQD6gTD7skx4EWA.0.0': [{'pos': 2, 'type': 'D', 'length': 2},
-                  {'pos': 6, 'type': 'X', 'length': 1, 'base': 'A', 'variant': 'T'},
-                  {'pos': 9, 'type': 'D', 'length': 2}
+                '0.0': [{
+                  "id": "r1",
+                  "from": 0,
+                  "to": 100,
+                  "substitutions": [
+                    {'pos': 2, 'type': 'D', 'length': 2},
+                    {'pos': 6, 'type': 'X', 'length': 1, 'base': 'A', 'variant': 'T'},
+                    {'pos': 9, 'type': 'D', 'length': 2}
+                  ],
+                  "color": 0
+                },
+                {
+                  "id": "r2",
+                  "from": 0,
+                  "to": 100,
+                  "substitutions": [
+                    {'pos': 2, 'type': 'D', 'length': 2},
+                    {'pos': 6, 'type': 'X', 'length': 1, 'base': 'A', 'variant': 'T'},
+                    {'pos': 9, 'type': 'D', 'length': 2}
+                  ],
+                  "color": 0
+                }
                 ]
               }
             },

@@ -461,6 +461,8 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
 };
 
 const localTilesetInfo = (uid) => {
+  tilesetInfos[uid] = localDataConfs[uid].tilesetInfo;
+
   return localDataConfs[uid].tilesetInfo;
 };
 
@@ -716,7 +718,15 @@ const tilesetInfoToStartEnd = (tsInfo, z, x) => {
 };
 
 const localFetchTilesDebounced = async (uid, tileIds) => {
-  return tileIds.map((x) => localDataConfs[uid].tiles[x]);
+  const ret = {};
+
+  for (const tileId of tileIds) {
+    ret[tileId] = localDataConfs[uid].tiles[tileId];
+
+    tileValues.set(`${uid}.${tileId}`, ret[tileId]);
+  }
+
+  return ret;
 };
 
 const serverFetchTilesDebounced = async (uid, tileIds) => {
@@ -1084,8 +1094,16 @@ const renderSegments = (
   let allReadCounts = {};
   let coverageSamplingDistance;
 
+  const tsInfo = tilesetInfos[uid];
+
+  console.log('tsinfos', tilesetInfos);
+  console.log('tsInfo', tsInfo);
+
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
+
+    console.log('tileValues', tileValues);
+    console.log('tileValue', tileValue);
 
     if (tileValue.error) {
       throw new Error(tileValue.error);
@@ -1118,7 +1136,7 @@ const renderSegments = (
   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
   let tileMinPos = Number.MAX_VALUE;
   let tileMaxPos = -Number.MAX_VALUE;
-  const tsInfo = tilesetInfos[uid];
+
   tileIds.forEach((id) => {
     const z = id.split('.')[0];
     const x = id.split('.')[1];

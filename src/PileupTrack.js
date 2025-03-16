@@ -442,7 +442,8 @@ varying vec4 vColor;
         return;
       }
 
-      // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
+      // Prevent multiple renderings with the same tiles.
+      // This can happen when multiple new tiles come in at once
       if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
         return;
       }
@@ -737,10 +738,15 @@ varying vec4 vColor;
 
                     const insertSizeHtml =
                       this.getInsertSizeMouseoverHtml(read);
-                    const chimericReadHtml =
-                      read.mate_ids.length > 1
-                        ? `<span style="color:red;">Chimeric alignment</span><br>`
-                        : ``;
+
+                    let chimericReadHtml = '';
+
+                    if (read.mate_ids) {
+                      chimericReadHtml =
+                        read.mate_ids.length > 1
+                          ? `<span style="color:red;">Chimeric alignment</span><br>`
+                          : '';
+                    }
 
                     let mappingOrientationHtml = ``;
                     if (read.mappingOrientation) {
