@@ -1096,14 +1096,8 @@ const renderSegments = (
 
   const tsInfo = tilesetInfos[uid];
 
-  console.log('tsinfos', tilesetInfos);
-  console.log('tsInfo', tsInfo);
-
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
-
-    console.log('tileValues', tileValues);
-    console.log('tileValue', tileValue);
 
     if (tileValue.error) {
       throw new Error(tileValue.error);
