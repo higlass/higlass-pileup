@@ -538,16 +538,19 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     });
   }
 
-  const absToChr = chromInfos[chromSizesUrl].absToChr;
-  Object.entries(coverage).forEach(([pos, entry]) => {
-    const from = absToChr(pos);
-    let range = from[0] + ':' + format(',')(from[1]);
-    if (samplingDistance > 1) {
-      const to = absToChr(Number.parseInt(pos, 10) + samplingDistance - 1);
-      range += '-' + format(',')(to[1]);
-    }
-    entry.range = range;
-  });
+  if (dataConfs[uid]) {
+    const { chromSizesUrl, bamUrl } = dataConfs[uid];
+    const absToChr = chromInfos[chromSizesUrl].absToChr;
+    Object.entries(coverage).forEach(([pos, entry]) => {
+      const from = absToChr(pos);
+      let range = from[0] + ':' + format(',')(from[1]);
+      if (samplingDistance > 1) {
+        const to = absToChr(Number.parseInt(pos, 10) + samplingDistance - 1);
+        range += '-' + format(',')(to[1]);
+      }
+      entry.range = range;
+    });
+  }
 
   return {
     coverage: coverage,
