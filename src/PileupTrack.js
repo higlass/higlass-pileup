@@ -161,9 +161,7 @@ function all(pred, as) {
 }
 
 function isIn(as) {
-  return function (a) {
-    return as.has(a);
-  };
+  return (a) => as.has(a);
 }
 
 const PileupTrack = (HGC, ...args) => {
@@ -444,7 +442,8 @@ varying vec4 vColor;
         return;
       }
 
-      // Prevent multiple renderings with the same tiles. This can happen when multiple new tiles come in at once
+      // Prevent multiple renderings with the same tiles.
+      // This can happen when multiple new tiles come in at once
       if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
         return;
       }
@@ -507,7 +506,7 @@ varying vec4 vColor;
 
             if (this.loadMates) {
               this.readsById = {};
-              for (let key in this.prevRows) {
+              for (const key in this.prevRows) {
                 this.prevRows[key].rows.forEach((row) => {
                   row.forEach((section) => {
                     section.segments.forEach((segment) => {
@@ -555,7 +554,7 @@ varying vec4 vColor;
             this.pMain.addChild(this.mouseOverGraphics);
 
             this.yScaleBands = {};
-            for (let key in this.prevRows) {
+            for (const key in this.prevRows) {
               this.yScaleBands[key] = HGC.libraries.d3Scale
                 .scaleBand()
                 .domain(
@@ -737,21 +736,24 @@ varying vec4 vColor;
                       this.outlineMate(read, yScaleBand);
                     }
 
-                    const insertSizeHtml = this.getInsertSizeMouseoverHtml(
-                      read,
-                    );
-                    const chimericReadHtml =
-                      read.mate_ids.length > 1
-                        ? `<span style="color:red;">Chimeric alignment</span><br>`
-                        : ``;
+                    const insertSizeHtml =
+                      this.getInsertSizeMouseoverHtml(read);
+
+                    let chimericReadHtml = '';
+
+                    if (read.mate_ids) {
+                      chimericReadHtml =
+                        read.mate_ids.length > 1
+                          ? `<span style="color:red;">Chimeric alignment</span><br>`
+                          : '';
+                    }
 
                     let mappingOrientationHtml = ``;
                     if (read.mappingOrientation) {
                       let style = ``;
                       if (read.colorOverride) {
-                        const color = Object.keys(PILEUP_COLORS)[
-                          read.colorOverride
-                        ];
+                        const color =
+                          Object.keys(PILEUP_COLORS)[read.colorOverride];
                         const htmlColor = this.colorArrayToString(
                           PILEUP_COLORS[color],
                         );
@@ -811,7 +813,7 @@ varying vec4 vColor;
               )}%)<br>` +
               range;
 
-            for (let variant of Object.keys(readCount.variants)) {
+            for (const variant of Object.keys(readCount.variants)) {
               if (readCount.variants[variant] > 0) {
                 const variantPercent =
                   (readCount.variants[variant] / readCount.reads) * 100;
@@ -849,9 +851,8 @@ varying vec4 vColor;
             ('smallInsertSizeThreshold' in this.options &&
               insertSize < this.options.smallInsertSizeThreshold)
           ) {
-            const color = Object.keys(PILEUP_COLORS)[
-              read.colorOverride || read.color
-            ];
+            const color =
+              Object.keys(PILEUP_COLORS)[read.colorOverride || read.color];
             const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
             style = `style="color:${htmlColor};"`;
           }

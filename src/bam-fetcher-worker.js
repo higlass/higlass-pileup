@@ -85,10 +85,10 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
   // type at the sort by position
   const sectionGroups = {};
 
-  for (let section of sections) {
+  for (const section of sections) {
     let overlapBase = null;
 
-    for (let segment of section.segments) {
+    for (const segment of section.segments) {
       if (
         segment.chrName == sortByBase.chr &&
         segment.from - segment.chrOffset <= sortByBase.pos &&
@@ -98,7 +98,7 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
 
         // The following loop could be replaced by a binary search
         // if the substitutions were sorted
-        for (let substitution of segment.substitutions) {
+        for (const substitution of segment.substitutions) {
           if (
             substitution.variant &&
             segment.from - segment.chrOffset + substitution.pos ==
@@ -125,7 +125,7 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
   const sortedBases = Object.keys(sectionGroups).sort();
 
   let toReturn = [];
-  for (let base of sortedBases) {
+  for (const base of sortedBases) {
     toReturn = toReturn.concat(sectionGroups[base]);
   }
 
@@ -387,6 +387,10 @@ const tilesetInfos = {};
 
 // indexed by uuid
 const dataConfs = {};
+
+// Store local-tiles ids
+const localDataConfs = {};
+
 const trackOptions = {};
 
 function authFetch(url, uid) {
@@ -407,6 +411,13 @@ const serverInit = (uid, server, tilesetUid, authHeader) => {
     server,
     tilesetUid,
     authHeader,
+  };
+};
+
+const localInit = (uid, tilesetInfo, tiles) => {
+  localDataConfs[uid] = {
+    tilesetInfo,
+    tiles,
   };
 };
 
@@ -449,6 +460,12 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
   trackOptions[uid] = tOptions;
 };
 
+const localTilesetInfo = (uid) => {
+  tilesetInfos[uid] = localDataConfs[uid].tilesetInfo;
+
+  return localDataConfs[uid].tilesetInfo;
+};
+
 const serverTilesetInfo = (uid) => {
   const url = `${serverInfos[uid].server}/tileset_info/?d=${serverInfos[uid].tilesetUid}`;
 
@@ -468,15 +485,17 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
   const coverage = {};
   let maxCoverage = 0;
 
-  const { chromSizesUrl, bamUrl } = dataConfs[uid];
+  if (dataConfs[uid]) {
+    const { chromSizesUrl, bamUrl } = dataConfs[uid];
 
-  // getCoverage potentiall get calles before the chromInfos finished loading
-  // Exit the function in this case
-  if (!chromInfos[chromSizesUrl]) {
-    return {
-      coverage: coverage,
-      maxCoverage: maxCoverage,
-    };
+    // getCoverage potentiall get calles before the chromInfos finished loading
+    // Exit the function in this case
+    if (!chromInfos[chromSizesUrl]) {
+      return {
+        coverage: coverage,
+        maxCoverage: maxCoverage,
+      };
+    }
   }
 
   for (let j = 0; j < segmentList.length; j++) {
@@ -519,16 +538,19 @@ const getCoverage = (uid, segmentList, samplingDistance) => {
     });
   }
 
-  const absToChr = chromInfos[chromSizesUrl].absToChr;
-  Object.entries(coverage).forEach(([pos, entry]) => {
-    const from = absToChr(pos);
-    let range = from[0] + ':' + format(',')(from[1]);
-    if (samplingDistance > 1) {
-      const to = absToChr(parseInt(pos, 10) + samplingDistance - 1);
-      range += '-' + format(',')(to[1]);
-    }
-    entry.range = range;
-  });
+  if (dataConfs[uid]) {
+    const { chromSizesUrl, bamUrl } = dataConfs[uid];
+    const absToChr = chromInfos[chromSizesUrl].absToChr;
+    Object.entries(coverage).forEach(([pos, entry]) => {
+      const from = absToChr(pos);
+      let range = from[0] + ':' + format(',')(from[1]);
+      if (samplingDistance > 1) {
+        const to = absToChr(Number.parseInt(pos, 10) + samplingDistance - 1);
+        range += '-' + format(',')(to[1]);
+      }
+      entry.range = range;
+    });
+  }
 
   return {
     coverage: coverage,
@@ -698,6 +720,18 @@ const tilesetInfoToStartEnd = (tsInfo, z, x) => {
   return [x * tileWidth, (x + 1) * tileWidth];
 };
 
+const localFetchTilesDebounced = async (uid, tileIds) => {
+  const ret = {};
+
+  for (const tileId of tileIds) {
+    ret[tileId] = localDataConfs[uid].tiles[tileId];
+
+    tileValues.set(`${uid}.${tileId}`, ret[tileId]);
+  }
+
+  return ret;
+};
+
 const serverFetchTilesDebounced = async (uid, tileIds) => {
   const serverInfo = serverInfos[uid];
   const existingTiles = {};
@@ -785,7 +819,7 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
   return Promise.all(promises).then((values) => {
     let toRet = { ...existingTiles };
 
-    for (let value of values) {
+    for (const value of values) {
       toRet = { ...toRet, ...value };
     }
 
@@ -801,8 +835,8 @@ const fetchTilesDebounced = async (uid, tileIds) => {
 
   for (const tileId of tileIds) {
     const parts = tileId.split('.');
-    const z = parseInt(parts[0], 10);
-    const x = parseInt(parts[1], 10);
+    const z = Number.parseInt(parts[0], 10);
+    const x = Number.parseInt(parts[1], 10);
 
     if (Number.isNaN(x) || Number.isNaN(z)) {
       console.warn('Invalid tile zoom or position:', z, x);
@@ -836,8 +870,8 @@ function assignSectionToRow(
   trackOptions,
 ) {
   const viewAsPairs = trackOptions.viewAsPairs;
-  let segmentFromWithPadding = section.fromWithClipping - padding;
-  let segmentToWithPadding = section.toWithClipping + padding;
+  const segmentFromWithPadding = section.fromWithClipping - padding;
+  const segmentToWithPadding = section.toWithClipping + padding;
 
   // no row has been assigned - find a suitable row and update the occupied space
   if (section.row === null || section.row === undefined) {
@@ -910,7 +944,7 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
   // occupiedSpaceInRows[i] = {from: 100, to: 110}
   // This means that in row i, the space from 100 to 110 is occupied and reads cannot be placed there
   // This array is updated with every section that is added to the scene
-  let occupiedSpaceInRows = [];
+  const occupiedSpaceInRows = [];
   const sectionIds = new Set(sections.map((x) => x.id));
 
   // We only need those previous sections, that are in the current sections list
@@ -945,7 +979,7 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
       trackOptions.sortByBase,
     );
 
-    for (let section of sortedSections) {
+    for (const section of sortedSections) {
       assignSectionToRow(section, occupiedSpaceInRows, padding, trackOptions);
       prevSectionIds.add(section.id);
     }
@@ -1063,6 +1097,8 @@ const renderSegments = (
   let allReadCounts = {};
   let coverageSamplingDistance;
 
+  const tsInfo = tilesetInfos[uid];
+
   for (const tileId of tileIds) {
     const tileValue = tileValues.get(`${uid}.${tileId}`);
 
@@ -1097,7 +1133,7 @@ const renderSegments = (
   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
   let tileMinPos = Number.MAX_VALUE;
   let tileMaxPos = -Number.MAX_VALUE;
-  const tsInfo = tilesetInfos[uid];
+
   tileIds.forEach((id) => {
     const z = id.split('.')[0];
     const x = id.split('.')[1];
@@ -1143,7 +1179,7 @@ const renderSegments = (
   }
 
   // calculate the the rows of reads for each group
-  for (let key of Object.keys(grouped)) {
+  for (const key of Object.keys(grouped)) {
     const rows = sectionsToRows(
       grouped[key],
       {
@@ -1152,9 +1188,9 @@ const renderSegments = (
       trackOptions,
     );
 
-    for (let row of rows) {
-      for (let section of row) {
-        for (let segment of section.segments) {
+    for (const row of rows) {
+      for (const section of row) {
+        for (const segment of section.segments) {
           segment.row = section.row;
         }
       }
@@ -1303,7 +1339,7 @@ const renderSegments = (
         barHeight = allReadCounts[pos]['variants'][variant] * scalingFactor;
         yTop -= barHeight;
         // When the coverage is not exact, we don't color variants.
-        let variantColor =
+        const variantColor =
           coverageSamplingDistance === 1 ? PILEUP_COLOR_IXS[variant] : bgColor;
         addRect(xLeft, yTop, width, barHeight, variantColor);
       }
@@ -1445,8 +1481,8 @@ const renderSegments = (
             const mate1End = xScale(section.segments[i - 1].toWithClipping);
             const mate2Start = xScale(section.segments[i].fromWithClipping);
 
-            let mateConnectorStart = Math.min(mate2Start, mate1End);
-            let mateConnectorEnd = Math.max(mate2Start, mate1End);
+            const mateConnectorStart = Math.min(mate2Start, mate1End);
+            const mateConnectorEnd = Math.max(mate2Start, mate1End);
 
             addRect(
               mateConnectorStart,
@@ -1481,9 +1517,12 @@ const renderSegments = (
 
 const tileFunctions = {
   init,
+  localInit,
   serverInit,
   tilesetInfo,
+  localTilesetInfo,
   serverTilesetInfo,
+  localFetchTilesDebounced,
   serverFetchTilesDebounced,
   fetchTilesDebounced,
   tile,
