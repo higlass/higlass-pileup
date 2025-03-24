@@ -155,6 +155,47 @@ both alignments will be highlighted.
 
 **minMappingQuality** - If this is set (integer), reads with a mapping quality lower than the specified value are not displayed.
 
+## Local tiles
+
+The `higlass-pileup` track supports local tiles. Local tiles can contain either BAM formatted data or they can include raw rendering objects. The following is a snippet that goes in the `track` section of a viewconf:
+
+```
+            data: {
+              type: 'local-tiles',
+              tilesetInfo: {
+                'min_pos': [0],
+                'max_pos': [14],
+                'max_width': 64,
+                'tile_size': 1024,
+                'chromsizes': [['a', 14]],
+                'max_zoom': 0,
+                'max_tile_width': 100000,
+                'format': 'subs'
+              },
+              tiles: {
+                '0.0': [{
+                  "id": "r1",
+                  "from": 0,
+                  "to": 100,
+                  "substitutions": [
+                    {'pos': 2, 'type': 'D', 'length': 2},
+                    {'pos': 6, 'type': 'X', 'length': 1, 'base': 'A', 'variant': 'T'},
+                    {'pos': 9, 'type': 'D', 'length': 2}
+                  ],
+                  "color": 0
+                }],
+              }
+            }
+```
+
+The currently available substitution types are:
+
+- `S` - corresponding to soft clipped bases
+- `H` - corresponding to hard clipped bases
+- `X` - corresponding to a mismatch
+- `I` - corresponding to an insertion
+- `D` - corresponding to a deletion
+
 ## Support
 
 For questions, please either open an issue or ask on the HiGlass Slack channel at http://bit.ly/higlass-slack
