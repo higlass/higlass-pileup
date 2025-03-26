@@ -1,3 +1,8 @@
+v1.7.0
+
+- Support inline tiles
+- Support substitutions in tiles so that data from bespoke alignments can be visualized
+
 v1.5.0
 
 - Update dependencies
