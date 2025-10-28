@@ -1,3 +1,7 @@
+v1.7.1
+
+- Load fully expanded server pileup tiles (as opposed to the server-based BAM tiles)
+
 v1.7.0
 
 - Support inline tiles

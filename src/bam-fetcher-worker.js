@@ -801,7 +801,14 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
             let rowJsonTile = rt[fullTileId];
 
             if (!rt[fullTileId].error) {
-              rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+              if (rt[fullTileId].length) {
+                // This is an expanded server tile typically produced by
+                // pileup datasets rather than by BAM-backed datasets
+                rowJsonTile = rt[fullTileId]
+              } else {
+               rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
+
+              }
             }
 
             rowJsonTile.tilePositionId = tileId;
