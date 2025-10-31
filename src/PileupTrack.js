@@ -772,7 +772,8 @@ varying vec4 vColor;
                       `Strand: ${read.strand}<br>` +
                       insertSizeHtml +
                       chimericReadHtml +
-                      mappingOrientationHtml;
+                      mappingOrientationHtml + 
+                      (read.extra ? `Extra: ${JSON.stringify(read.extra, null, 2)}<br>`: '');
 
                     if (nearestSub && nearestSub.type) {
                       mouseOverHtml += `Nearest substitution: ${cigarTypeToText(

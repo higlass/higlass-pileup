@@ -67,87 +67,23 @@ const testViewConfig = {
   "views": [
     {
       "initialXDomain": [
-        133316.84212529,
-        134172.6944366717
+        -13.270868445090153,
+        44.00033832655538
       ],
       "initialYDomain": [
-        -41978532.357771374,
-        -41978262.53707586
+        1050568818.6168936,
+        1050568860.2178025
       ],
       "tracks": {
         "top": [
           {
-            "uid": "AdlJsUYFRzuJRZyYeKDX2A",
-            "type": "chromosome-labels",
-            "width": 904,
-            "height": 30,
-            "server": "http://higlass.io/api/v1",
-            "options": {
-              "color": "#808080",
-              "stroke": "#ffffff",
-              "fontSize": 12,
-              "fontIsLeftAligned": false,
-              "showMousePosition": false,
-              "mousePositionColor": "#000000",
-              "reverseOrientation": false
-            },
-            "filetype": "chromsizes-tsv",
-            "tilesetUid": "NyITQvZsS_mOFNlz5C2LJg"
-          },
-          {
-            "uid": "fastaex",
-            "data": {
-              "type": "fasta",
-              "faiUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.fa.fai",
-              "fastaUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.fa",
-              "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
-            },
-            "type": "horizontal-sequence",
-            "width": 904,
-            "height": 25,
-            "options": {
-              "name": "hg38",
-              "barBorder": true,
-              "colorScale": [
-                "#08519c",
-                "#6baed6",
-                "#993404",
-                "#fe9929",
-                "#808080",
-                "#DCDCDC"
-              ],
-              "labelColor": "black",
-              "valueScaling": "linear",
-              "labelPosition": "topLeft",
-              "barBorderColor": "white",
-              "backgroundColor": "white",
-              "labelTextOpacity": 0.4,
-              "sortLargestOnTop": true,
-              "trackBorderColor": "white",
-              "trackBorderWidth": 0,
-              "extendedPreloading": false,
-              "colorAggregationMode": "none",
-              "notificationText": "Zoom in to see nucleotides...",
-              "fontSize": 16,
-              "fontFamily": "Arial",
-              "fontColor": "white",
-              "textOption": {
-                "fontSize": "32px",
-                "fontFamily": "Arial",
-                "fill": 16777215,
-                "fontWeight": "bold"
-              }
-            }
-          },
-          {
             "type": "pileup",
+            "uid": "Q0dBgz2yTQS-ejSpA8MQMg",
+            "tilesetUid": "B7VxtmHhSyOkKS90h_Zp8g",
+            "server": "http://localhost:8000/api/v1",
             "options": {
               "axisPositionHorizontal": "right",
               "axisLabelFormatting": "normal",
-              "outlineReadOnHover": "yes",
-              "groupBy": "strand",
-              "minusStrandColor": "#ffd1d4",
-              "plusStrandColor": "#cfd0ff",
               "colorScale": [
                 "#08519c",
                 "#6baed6",
@@ -156,26 +92,21 @@ const testViewConfig = {
                 "#808080",
                 "#DCDCDC"
               ],
-              "showMousePosition": false,
+              "outlineReadOnHover": false,
               "outlineMateOnHover": false,
-              "showCoverage": true,
-              "coverageHeight": 100,
+              "showMousePosition": false,
+              "showCoverage": false,
+              "coverageHeight": 10,
               "maxTileWidth": 200000,
               "collapseWhenMaxTileWidthReached": false,
               "minMappingQuality": 0,
               "highlightReadsBy": [],
               "largeInsertSizeThreshold": 1000,
-              "viewAsPairs": false
+              "viewAsPairs": false,
+              "name": "seqs2"
             },
-            "height": 335,
-            "uid": "pu1",
-            "data": {
-              "type": "bam",
-              "bamUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_higlass.bam",
-              "baiUrl": "https://aveit.s3.amazonaws.com/higlass/bam/example_higlass.bam.bai",
-              "chromSizesUrl": "https://aveit.s3.amazonaws.com/higlass/data/sequence/hg38.mod.chrom.sizes"
-            },
-            "width": 904
+            "width": 569,
+            "height": 162
           }
         ],
         "left": [],
@@ -187,11 +118,11 @@ const testViewConfig = {
       },
       "layout": {
         "w": 12,
-        "h": 6,
+        "h": 12,
         "x": 0,
         "y": 0
       },
-      "uid": "WdlA7F8aTY2gXQzPGiBlwQ"
+      "uid": "HpksP7RwSAKe6VBLsRRP6w"
     }
   ],
   "zoomLocks": {
@@ -207,6 +138,8 @@ const testViewConfig = {
     "locksDict": {}
   }
 }
+
+
 window.hglib.viewer(
   document.getElementById('demo'),
   testViewConfig,
