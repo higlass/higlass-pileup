@@ -91,8 +91,11 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
     let overlapBase = null;
 
     for (const segment of section.segments) {
+      segment.chrOffset = segment.chrOffset || 0;
+
       if (
-        segment.chrName == sortByBase.chr &&
+        // If the segment has no chrName then just proceed as usual
+        (!segment.chrName || (segment.chrName == sortByBase.chr)) &&
         segment.from - segment.chrOffset <= sortByBase.pos &&
         sortByBase.pos <= segment.to - segment.chrOffset
       ) {
