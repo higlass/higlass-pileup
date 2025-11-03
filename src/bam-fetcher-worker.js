@@ -7,6 +7,8 @@ import {
   getSubstitutions,
   calculateInsertSize,
   areMatesRequired,
+  SINGLE_TO_THREE_LETTER_AA,
+  isProteinColorScale,
 } from './bam-utils';
 import LRU from 'lru-cache';
 import { PILEUP_COLOR_IXS } from './bam-utils';
@@ -1401,14 +1403,17 @@ const renderSegments = (
             const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
             xRight = xLeft + width;
 
-            if (substitution.variant === 'A') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.A);
-            } else if (substitution.variant === 'C') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.C);
-            } else if (substitution.variant === 'G') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.G);
-            } else if (substitution.variant === 'T') {
-              addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.T);
+            if (substitution.variant) {
+              const isProtein = isProteinColorScale(trackOptions.colorScale);
+              const colorKey = isProtein 
+                ? SINGLE_TO_THREE_LETTER_AA[substitution.variant] || substitution.variant
+                : substitution.variant;
+              
+              if (colorKey && PILEUP_COLOR_IXS[colorKey] !== undefined) {
+                addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS[colorKey]);
+              } else {
+                addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
+              }
             } else if (substitution.type === 'S') {
               addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.S);
             } else if (substitution.type === 'H') {

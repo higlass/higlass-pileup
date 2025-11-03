@@ -21,6 +21,28 @@ export const PILEUP_COLORS = {
   BLACK_05: [0, 0, 0, 0.5],
   PLUS_STRAND: [0.75, 0.75, 1, 1],
   MINUS_STRAND: [1, 0.75, 0.75, 1],
+  // Protein amino acids
+  ALA: [0.8, 0.8, 0.8, 1], // Alanine - light gray
+  ARG: [0, 0, 1, 1], // Arginine - blue (basic)
+  ASN: [0, 1, 1, 1], // Asparagine - cyan (polar)
+  ASP: [1, 0, 0, 1], // Aspartic acid - red (acidic)
+  CYS: [1, 1, 0, 1], // Cysteine - yellow (sulfur)
+  GLN: [0, 1, 1, 1], // Glutamine - cyan (polar)
+  GLU: [1, 0, 0, 1], // Glutamic acid - red (acidic)
+  GLY: [0.9, 0.9, 0.9, 1], // Glycine - very light gray (small)
+  HIS: [0, 0, 1, 1], // Histidine - blue (basic)
+  ILE: [0, 1, 0, 1], // Isoleucine - green (hydrophobic)
+  LEU: [0, 1, 0, 1], // Leucine - green (hydrophobic)
+  LYS: [0, 0, 1, 1], // Lysine - blue (basic)
+  MET: [0, 1, 0, 1], // Methionine - green (hydrophobic)
+  PHE: [0, 1, 0, 1], // Phenylalanine - green (hydrophobic)
+  PRO: [1, 0.5, 0, 1], // Proline - orange (special)
+  SER: [0, 1, 1, 1], // Serine - cyan (polar)
+  THR: [0, 1, 1, 1], // Threonine - cyan (polar)
+  TRP: [0, 1, 0, 1], // Tryptophan - green (hydrophobic)
+  TYR: [0, 1, 1, 1], // Tyrosine - cyan (polar)
+  VAL: [0, 1, 0, 1], // Valine - green (hydrophobic)
+  STOP: [0, 0, 0, 1], // Stop codon - black
 };
 
 export const PILEUP_COLOR_IXS = {};
@@ -29,6 +51,23 @@ Object.keys(PILEUP_COLORS).map((x, i) => {
 
   return null;
 });
+
+// Protein amino acid mappings
+export const PROTEIN_AMINO_ACIDS = [
+  'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN', 'GLU', 'GLY', 'HIS', 'ILE',
+  'LEU', 'LYS', 'MET', 'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL', 'STOP'
+];
+
+export const DNA_BASES = ['A', 'T', 'G', 'C', 'N', 'X'];
+
+// Single-letter to three-letter amino acid code mapping
+export const SINGLE_TO_THREE_LETTER_AA = {
+  'A': 'ALA', 'R': 'ARG', 'N': 'ASN', 'D': 'ASP', 'C': 'CYS',
+  'Q': 'GLN', 'E': 'GLU', 'G': 'GLY', 'H': 'HIS', 'I': 'ILE',
+  'L': 'LEU', 'K': 'LYS', 'M': 'MET', 'F': 'PHE', 'P': 'PRO',
+  'S': 'SER', 'T': 'THR', 'W': 'TRP', 'Y': 'TYR', 'V': 'VAL',
+  '*': 'STOP'
+};
 
 export const cigarTypeToText = (type) => {
   if (type === 'D') {
@@ -44,6 +83,13 @@ export const cigarTypeToText = (type) => {
   }
 
   return type;
+};
+
+/**
+ * Determines if the color scale is for proteins based on length
+ */
+export const isProteinColorScale = (colorScale) => {
+  return colorScale && (colorScale.length === 21 || colorScale.length === 26);
 };
 
 export const posToChrPos = (pos, chromsizes) => {

@@ -2,10 +2,13 @@ import BAMDataFetcher from './bam-fetcher';
 import { spawn, BlobWorker } from 'threads';
 import {
   PILEUP_COLORS,
+  PROTEIN_AMINO_ACIDS,
+  DNA_BASES,
   cigarTypeToText,
   areMatesRequired,
   calculateInsertSize,
   posToChrPos,
+  isProteinColorScale,
 } from './bam-utils';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
@@ -306,9 +309,34 @@ const PileupTrack = (HGC, ...args) => {
           colorDict.RR,
           colorDict.RL,
         ] = this.options.colorScale.map((x) => this.colorToArray(x));
+      } else if (
+        this.options &&
+        this.options.colorScale &&
+        this.options.colorScale.length == 21
+      ) {
+        // Protein color scale (21 amino acids)
+        PROTEIN_AMINO_ACIDS.forEach((aa, i) => {
+          colorDict[aa] = this.colorToArray(this.options.colorScale[i]);
+        });
+      } else if (
+        this.options &&
+        this.options.colorScale &&
+        this.options.colorScale.length == 26
+      ) {
+        // Protein color scale with highlight colors (21 + 5)
+        PROTEIN_AMINO_ACIDS.forEach((aa, i) => {
+          colorDict[aa] = this.colorToArray(this.options.colorScale[i]);
+        });
+        [
+          colorDict.LARGE_INSERT_SIZE,
+          colorDict.SMALL_INSERT_SIZE,
+          colorDict.LL,
+          colorDict.RR,
+          colorDict.RL,
+        ] = this.options.colorScale.slice(21).map((x) => this.colorToArray(x));
       } else if (this.options && this.options.colorScale) {
         console.error(
-          'colorScale must contain 6 or 11 entries. See https://github.com/higlass/higlass-pileup#options.',
+          'colorScale must contain 6, 11, 21, or 26 entries. See https://github.com/higlass/higlass-pileup#options.',
         );
       }
 
@@ -762,6 +790,22 @@ varying vec4 vColor;
                       mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
                     }
 
+                    let extra = read.extra;
+
+
+                    if (read.extra && this.options.someExtra) {
+                      extra = {}
+                      for (let he of this.options.someExtra) {
+                        extra[he] = read.extra[he]
+                      }
+                    } else if (read.extra && this.options.hideExtra) {
+                      extra = read.extra;
+
+                      for (let he of this.options.hideExtra) {
+                        delete extra[he]
+                      }
+                    }
+
                     let mouseOverHtml =
                       `ID: ${read.id}<br>` +
                       `Position: ${read.chrName}:${
@@ -773,9 +817,9 @@ varying vec4 vColor;
                       insertSizeHtml +
                       chimericReadHtml +
                       mappingOrientationHtml + 
-                      (read.extra ? `Extra: ${JSON.stringify(read.extra, null, 2)}<br>`: '');
+                      (extra ? `Extra: ${JSON.stringify(extra, null, 2)}<br>`: '');
 
-                    if (nearestSub && nearestSub.type) {
+                    if (nearestSub && nearestSub.type && nearestSub.type != 'X') {
                       mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
                         nearestSub.type,
                       )} (${nearestSub.length})`;
@@ -1360,6 +1404,24 @@ PileupTrack.config = {
             '#DCDCDC',
           ],
           name: 'Blues / Beiges (CB friendly, default)',
+        },
+        proteinDefault: {
+          value: [
+            // ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL STOP
+            '#CCCCCC', '#0000FF', '#00FFFF', '#FF0000', '#FFFF00', '#00FFFF', '#FF0000', '#E6E6E6',
+            '#0000FF', '#00FF00', '#00FF00', '#0000FF', '#00FF00', '#00FF00', '#FF8000', '#00FFFF',
+            '#00FFFF', '#00FF00', '#00FFFF', '#00FF00', '#000000'
+          ],
+          name: 'Protein (by chemical properties)',
+        },
+        proteinHydrophobic: {
+          value: [
+            // ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL STOP
+            '#FFA500', '#4169E1', '#32CD32', '#DC143C', '#FFD700', '#32CD32', '#DC143C', '#D3D3D3',
+            '#4169E1', '#228B22', '#228B22', '#4169E1', '#228B22', '#228B22', '#FF4500', '#32CD32',
+            '#32CD32', '#228B22', '#32CD32', '#228B22', '#000000'
+          ],
+          name: 'Protein (hydrophobicity)',
         },
       },
     },

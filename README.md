@@ -122,8 +122,13 @@ viewing low coverage BAM files.
 
 ### Track options
 
-**colorScale** - Array that controls the color of substitutions and highlighted reads. It can take 6 or 11 values. 11 values are required if you want to control highlighted read colors (see the `highlightReadsBy` option). Example:
+**colorScale** - Array that controls the color of substitutions and highlighted reads. It can take 6, 11, 21, or 26 values:
+- 6 values: DNA bases (A, T, G, C, N, other)
+- 11 values: DNA bases + highlighted read colors (see `highlightReadsBy` option)
+- 21 values: Protein amino acids (ALA, ARG, ASN, ASP, CYS, GLN, GLU, GLY, HIS, ILE, LEU, LYS, MET, PHE, PRO, SER, THR, TRP, TYR, VAL, STOP)
+- 26 values: Protein amino acids + highlighted read colors
 
+DNA example:
 ```
 "colorScale": [
   "#2c7bb6", //color of A substitutions
@@ -134,9 +139,36 @@ viewing low coverage BAM files.
   "#DCDCDC", //color of other substitutions
   "#FF0000", //color of reads with large insert size
   "#0000D1", //color of reads with small insert size
-  "#00D1D1", //color of reads with LL orientation (see https://software.broadinstitute.org/software/igv/interpreting_pair_orientations)
+  "#00D1D1", //color of reads with LL orientation
   "#555CFA", //color of reads with RR orientation
   "#02A221", //color of reads with RL orientation
+]
+```
+
+Protein example:
+```
+"colorScale": [
+  "#CCCCCC", //ALA - Alanine
+  "#0000FF", //ARG - Arginine (basic)
+  "#00FFFF", //ASN - Asparagine (polar)
+  "#FF0000", //ASP - Aspartic acid (acidic)
+  "#FFFF00", //CYS - Cysteine (sulfur)
+  "#00FFFF", //GLN - Glutamine (polar)
+  "#FF0000", //GLU - Glutamic acid (acidic)
+  "#E6E6E6", //GLY - Glycine (small)
+  "#0000FF", //HIS - Histidine (basic)
+  "#00FF00", //ILE - Isoleucine (hydrophobic)
+  "#00FF00", //LEU - Leucine (hydrophobic)
+  "#0000FF", //LYS - Lysine (basic)
+  "#00FF00", //MET - Methionine (hydrophobic)
+  "#00FF00", //PHE - Phenylalanine (hydrophobic)
+  "#FF8000", //PRO - Proline (special)
+  "#00FFFF", //SER - Serine (polar)
+  "#00FFFF", //THR - Threonine (polar)
+  "#00FF00", //TRP - Tryptophan (hydrophobic)
+  "#00FFFF", //TYR - Tyrosine (polar)
+  "#00FF00", //VAL - Valine (hydrophobic)
+  "#000000"  //STOP - Stop codon
 ]
 ```
 
@@ -195,6 +227,18 @@ The currently available substitution types are:
 - `X` - corresponding to a mismatch
 - `I` - corresponding to an insertion
 - `D` - corresponding to a deletion
+
+## Protein Support
+
+The pileup track now supports protein sequences with a 21-color amino acid color scale. The colors are mapped to amino acids based on their chemical properties:
+
+- **Basic amino acids** (ARG, HIS, LYS): Blue
+- **Acidic amino acids** (ASP, GLU): Red  
+- **Polar amino acids** (ASN, GLN, SER, THR, TYR): Cyan
+- **Hydrophobic amino acids** (ILE, LEU, MET, PHE, TRP, VAL): Green
+- **Special amino acids** (CYS, PRO): Yellow/Orange
+- **Small amino acids** (ALA, GLY): Gray
+- **Stop codons**: Black
 
 ## Support
 
