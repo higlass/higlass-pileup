@@ -1397,10 +1397,14 @@ const renderSegments = (
             segment.colorOverride || segment.color,
           );
 
+          // Place the insertions up front because they may be rendered
+          // on top of substitutions
+          segment.substitutions.sort((a, b) => a.type == 'I' ? 1 : -1)
+
           for (const substitution of segment.substitutions) {
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));
-            const insertionWidth = Math.max(1, xScale(0.1) - xScale(0));
+            const insertionWidth = Math.max(1, xScale(0.2) - xScale(0));
             xRight = xLeft + width;
 
             if (substitution.variant) {
@@ -1421,7 +1425,7 @@ const renderSegments = (
             } else if (substitution.type === 'X') {
               addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.X);
             } else if (substitution.type === 'I') {
-              addRect(xLeft, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
+              addRect(xLeft - insertionWidth / 2, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
             } else if (substitution.type === 'D') {
               addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.D);
 

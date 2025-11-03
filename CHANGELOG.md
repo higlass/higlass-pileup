@@ -1,3 +1,8 @@
+v1.7.2
+
+- Added protein color scheme options
+- Place insertions halfway between bases and render on top of substitutions
+
 v1.7.1
 
 - Load fully expanded server pileup tiles (as opposed to the server-based BAM tiles)
