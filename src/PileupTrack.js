@@ -806,11 +806,19 @@ varying vec4 vColor;
                       }
                     }
 
+                    let positionTxt;
+
+                    if (read.chrName) {
+                      positionTxt = `${read.chrName}:${
+                        read.from - read.chrOffset
+                      }`
+                    } else {
+                      positionTxt = `${read.from}`
+                    }
+
                     let mouseOverHtml =
                       `ID: ${read.id}<br>` +
-                      `Position: ${read.chrName}:${
-                        read.from - read.chrOffset
-                      }<br>` +
+                      `Position: ${positionTxt}<br>` +
                       `Read length: ${read.to - read.from}<br>` +
                       `MAPQ: ${read.mapq}<br>` +
                       `Strand: ${read.strand}<br>` +
