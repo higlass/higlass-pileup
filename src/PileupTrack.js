@@ -667,9 +667,15 @@ varying vec4 vColor;
     contextMenuItems(trackX, trackY) {
       /* Get a list of context menu items to display and the actions
          to take */
+      if (Number.isNaN(trackX)) {
+        return []
+      }
+      
       const currPos = Math.floor(this._xScale.invert(trackX));
       const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
       
+
+
       // This should return items like this:
       let menuItems = [
         {
