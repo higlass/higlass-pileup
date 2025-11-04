@@ -1,7 +1,8 @@
-v1.7.2
+v1.8.0
 
 - Added protein color scheme options
 - Place insertions halfway between bases and render on top of substitutions
+- Option to sort reads by column
 
 v1.7.1
 
