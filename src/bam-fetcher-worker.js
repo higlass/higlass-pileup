@@ -76,6 +76,22 @@ function natcmp(xRow, yRow) {
   return 0;
 }
 
+const getBaseSortGroup = (segment, sortByBase) => {
+    // The following loop could be replaced by a binary search
+    // if the substitutions were sorted
+    for (const substitution of segment.substitutions) {
+      if (
+        substitution.variant &&
+        segment.from - segment.chrOffset + substitution.pos ==
+          sortByBase.pos
+      ) {
+        return substitution.variant;
+      }
+    }
+
+    return null;
+}
+
 const groupSectionsBySortedBase = (sections, sortByBase) => {
   // This function will take a set of sections and partition them
   // into groups of sections and return them in some order
@@ -88,7 +104,6 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
   const sectionGroups = {};
 
   for (const section of sections) {
-    let overlapBase = null;
 
     for (const segment of section.segments) {
       segment.chrOffset = segment.chrOffset || 0;
@@ -100,24 +115,19 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
         sortByBase.pos <= segment.to - segment.chrOffset
       ) {
         // The read overlaps the sortByBase position
+        let sortGroup = null;
 
-        // The following loop could be replaced by a binary search
-        // if the substitutions were sorted
-        for (const substitution of segment.substitutions) {
-          if (
-            substitution.variant &&
-            segment.from - segment.chrOffset + substitution.pos ==
-              sortByBase.pos
-          ) {
-            overlapBase = substitution.variant;
-            break;
-          }
+        if (sortByBase.column) {
+          // we're sorting by a column
+          sortGroup = segment.extra[sortByBase.column]
+        } else {
+          sortGroup = getBaseSortGroup(segment, sortByBase)
         }
 
-        if (sectionGroups[overlapBase]) {
-          sectionGroups[overlapBase].push(section);
+        if (sectionGroups[sortGroup]) {
+          sectionGroups[sortGroup].push(section);
         } else {
-          sectionGroups[overlapBase] = [section];
+          sectionGroups[sortGroup] = [section];
         }
       }
     }

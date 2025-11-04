@@ -667,9 +667,11 @@ varying vec4 vColor;
     contextMenuItems(trackX, trackY) {
       /* Get a list of context menu items to display and the actions
          to take */
-
+      const currPos = Math.floor(this._xScale.invert(trackX));
+      const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
+      
       // This should return items like this:
-      return [
+      let menuItems = [
         {
           label: 'Sort by base',
           onClick: (evt, onTrackOptionsChanged) => {
@@ -678,8 +680,7 @@ varying vec4 vColor;
             // The only thing that needs to be passed is the new option being
             // passed
 
-            const currPos = Math.floor(this._xScale.invert(trackX));
-            const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
+
             onTrackOptionsChanged({
               sortByBase: {
                 chr: chrPos[0],
@@ -689,6 +690,30 @@ varying vec4 vColor;
           },
         },
       ];
+
+      if (this.tilesetInfo.columns) {
+        this.tilesetInfo.columns.forEach(x => {
+          menuItems.push({
+            label: `Sort by column [${x}]`,
+            onClick: (evt, onTrackOptionsChanged) => {
+              // The onTrackOptionsChanged handler will handle any changes
+              // to the track's options that are triggered in this event.
+              // The only thing that needs to be passed is the new option being
+              // passed
+
+              onTrackOptionsChanged({
+                sortByBase: {
+                  chr: chrPos[0],
+                  pos: chrPos[1],
+                  column: x
+                },
+              });
+            },
+          })
+        }) 
+      }
+
+      return menuItems;
     }
 
     getMouseOverHtml(trackX, trackYIn) {
