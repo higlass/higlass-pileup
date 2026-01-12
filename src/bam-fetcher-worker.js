@@ -147,6 +147,33 @@ const groupSectionsBySortedBase = (sections, sortByBase) => {
   return toReturn;
 };
 
+const addClippingAdjustments = (segment) => {
+  /** When we display segments with clipping we want to include the
+   * clipping section on the same row and not have it overlap with other segments.
+   * 
+   * If we just used the from and to positions, then the clipping portion
+   * would not be counted and it would overlap with other segments
+   */
+  let fromClippingAdjustment = 0;
+  let toClippingAdjustment = 0;
+
+  // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
+  segment.substitutions.forEach((sub) => {
+    // left soft clipped region
+    // make sure to change this in tabularJsonToRowJson
+    if ((sub.type === 'S' || sub.type === 'H') && sub.pos < 0) {
+      fromClippingAdjustment = -sub.length;
+    } else if ((sub.type === 'S' || sub.type === 'H') && sub.pos > 0) {
+      toClippingAdjustment = sub.length;
+    }
+  });
+
+  segment.fromWithClipping = segment.from + fromClippingAdjustment;
+  segment.toWithClipping = segment.to + toClippingAdjustment;
+
+  return segment;
+}
+
 const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
   const seq = bamRecord.get('seq');
   const from = +bamRecord.get('start') + 1 + chrOffset;
@@ -182,22 +209,7 @@ const bamRecordToJson = (bamRecord, chrName, chrOffset, trackOptions) => {
 
   segment.substitutions = getSubstitutions(segment, seq);
 
-  let fromClippingAdjustment = 0;
-  let toClippingAdjustment = 0;
-
-  // We are doing this for row calculation, so that there is no overlap of clipped regions with regular ones
-  segment.substitutions.forEach((sub) => {
-    // left soft clipped region
-    // make sure to change this in tabularJsonToRowJson
-    if ((sub.type === 'S' || sub.type === 'H') && sub.pos < 0) {
-      fromClippingAdjustment = -sub.length;
-    } else if ((sub.type === 'S' || sub.type === 'H') && sub.pos > 0) {
-      toClippingAdjustment = sub.length;
-    }
-  });
-
-  segment.fromWithClipping += fromClippingAdjustment;
-  segment.toWithClipping += toClippingAdjustment;
+  addClippingAdjustments(segment);
 
   return segment;
 };
@@ -819,10 +831,9 @@ const serverFetchTilesDebounced = async (uid, tileIds) => {
               if (rt[fullTileId].length) {
                 // This is an expanded server tile typically produced by
                 // pileup datasets rather than by BAM-backed datasets
-                rowJsonTile = rt[fullTileId]
+                rowJsonTile = rt[fullTileId].map(x => addClippingAdjustments(x))
               } else {
                rowJsonTile = tabularJsonToRowJson(rt[fullTileId]);
-
               }
             }
 
@@ -1199,7 +1210,6 @@ const renderSegments = (
   } else {
     grouped = { null: sections };
   }
-
   // calculate the the rows of reads for each group
   for (const key of Object.keys(grouped)) {
     const rows = sectionsToRows(
