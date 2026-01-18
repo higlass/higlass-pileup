@@ -461,7 +461,7 @@ varying vec4 vColor;
       this.prevOptions = Object.assign({}, options);
     }
 
-    updateExistingGraphics() {
+    updateExistingGraphics(force) {
       this.loadingText.text = 'Rendering...';
 
       const fetchedTileIds = new Set(Object.keys(this.fetchedTiles));
@@ -472,7 +472,7 @@ varying vec4 vColor;
 
       // Prevent multiple renderings with the same tiles.
       // This can happen when multiple new tiles come in at once
-      if (eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
+      if (!force && eqSet(this.previousTileIdsUsedForRendering, fetchedTileIds)) {
         return;
       }
       this.previousTileIdsUsedForRendering = fetchedTileIds;
@@ -655,6 +655,13 @@ varying vec4 vColor;
     }
 
     draw() {
+      const tileK =
+        (this.drawnAtScale.domain()[1] - this.drawnAtScale.domain()[0]) /
+        (this._xScale.domain()[1] - this._xScale.domain()[0]);
+
+      if (tileK > 3) {
+        this.updateExistingGraphics(true);
+      }
       // const valueScale = HGC.libraries.d3Scale
       //   .scaleLinear()
       //   .domain([0, this.prevRows.length])
