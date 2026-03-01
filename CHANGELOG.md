@@ -1,3 +1,7 @@
+v1.8.1
+
+- Make expected local tile format consistent with higlass's
+
 v1.8.0
 
 - Added protein color scheme options

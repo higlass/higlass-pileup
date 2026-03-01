@@ -488,9 +488,10 @@ const init = (uid, bamUrl, baiUrl, chromSizesUrl, options, tOptions) => {
 };
 
 const localTilesetInfo = (uid) => {
-  tilesetInfos[uid] = localDataConfs[uid].tilesetInfo;
+  const tilesetInfo = Object.values(localDataConfs[uid].tilesetInfo)[0];
+  tilesetInfos[uid] = tilesetInfo;
 
-  return localDataConfs[uid].tilesetInfo;
+  return tilesetInfo;
 };
 
 const serverTilesetInfo = (uid) => {
@@ -750,9 +751,16 @@ const tilesetInfoToStartEnd = (tsInfo, z, x) => {
 const localFetchTilesDebounced = async (uid, tileIds) => {
   const ret = {};
 
-  for (const tileId of tileIds) {
-    ret[tileId] = localDataConfs[uid].tiles[tileId];
+  // Strip the tilesetUid prefix from stored tile keys (e.g. "x.0.0" → "0.0"),
+  // matching the behavior of HiGlass's LocalTileDataFetcher.
+  const tilesData = {};
+  for (const key of Object.keys(localDataConfs[uid].tiles)) {
+    const newKey = key.split('.').slice(1).join('.');
+    tilesData[newKey] = localDataConfs[uid].tiles[key];
+  }
 
+  for (const tileId of tileIds) {
+    ret[tileId] = tilesData[tileId];
     tileValues.set(`${uid}.${tileId}`, ret[tileId]);
   }
 

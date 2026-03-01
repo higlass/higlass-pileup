@@ -61,6 +61,7 @@ class BAMDataFetcher {
 
   tilesetInfo(callback) {
     this.worker.then((tileFunctions) => {
+      
       if (this.fetcherType === 'server') {
         tileFunctions.serverTilesetInfo(this.uid).then(callback);
       } else if (this.fetcherType === 'bam') {
