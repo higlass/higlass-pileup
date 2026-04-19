@@ -564,6 +564,7 @@ varying vec4 vColor;
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
             this.rowsMeta = toRender.rowsMeta;
+            this._hoverReadCache = null; // invalidate after every render
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
@@ -753,11 +754,15 @@ varying vec4 vColor;
     }
 
     getMouseOverHtml(trackX, trackYIn) {
-      // const trackY = this.valueScaleTransform.invert(track)
       this.mouseOverGraphics.clear();
       // Prevents 'stuck' read outlines when hovering quickly
       requestAnimationFrame(this.animate);
-      const trackY = invY(trackYIn, this.valueScaleTransform);
+      // heightScaleK scales the segment mesh when the track is resized between
+      // full re-renders. Divide trackYIn by it to bring the mouse position back
+      // into the coordinate space used by yScaleBands (which are always in the
+      // pre-heightScaleK pixel space).
+      const heightScaleK = this.heightScaleK || 1;
+      const trackY = invY(trackYIn / heightScaleK, this.valueScaleTransform);
 
       const bandCoverageStart = 0;
       let bandCoverageEnd = Number.MAX_SAFE_INTEGER;
@@ -773,142 +778,36 @@ varying vec4 vColor;
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
             const index = Math.floor((trackY - start) / eachBand);
-            // Segment data is cached in the worker; hover detail requires a
-            // worker-side lookup which is not yet implemented.
-            const rows = this.rowsMeta[key] && this.rowsMeta[key].rows;
-            if (!rows) continue;
+            const rowCount = this.rowsMeta[key] && this.rowsMeta[key].rowCount;
+            if (rowCount == null) continue;
 
-            if (index >= 0 && index < rows.length) {
-              const row = rows[index];
+            if (index >= 0 && index < rowCount) {
+              const genomicPos = this._xScale.invert(trackX);
 
-              for (const section of row) {
-                for (const read of section.segments) {
-                  const readTrackFrom = this._xScale(read.from);
-                  const readTrackTo = this._xScale(read.to);
-
-                  if (readTrackFrom <= trackX && trackX <= readTrackTo) {
-                    const xPos = this._xScale(read.from);
-                    const yPos = transformY(
-                      yScaleBand(index),
-                      this.valueScaleTransform,
-                    );
-
-                    const MAX_DIST = 10;
-                    const nearestDistance =
-                      this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
-
-                    const mousePos = this._xScale.invert(trackX);
-                    // find the nearest substitution (or indel)
-                    const nearestSub = findNearestSub(
-                      mousePos,
-                      read,
-                      nearestDistance,
-                    );
-
-                    if (this.options.outlineReadOnHover) {
-                      const width =
-                        this._xScale(read.to) - this._xScale(read.from);
-                      const height =
-                        yScaleBand.bandwidth() * this.valueScaleTransform.k;
-
-                      this.mouseOverGraphics.lineStyle({
-                        width: 1,
-                        color: 0,
-                      });
-                      this.mouseOverGraphics.drawRect(
-                        xPos,
-                        yPos,
-                        width,
-                        height,
-                      );
-                      this.animate();
-                    }
-
-                    if (this.options.outlineMateOnHover) {
-                      this.outlineMate(read, yScaleBand);
-                    }
-
-                    const insertSizeHtml =
-                      this.getInsertSizeMouseoverHtml(read);
-
-                    let chimericReadHtml = '';
-
-                    if (read.mate_ids) {
-                      chimericReadHtml =
-                        read.mate_ids.length > 1
-                          ? `<span style="color:red;">Chimeric alignment</span><br>`
-                          : '';
-                    }
-
-                    let mappingOrientationHtml = ``;
-                    if (read.mappingOrientation) {
-                      let style = ``;
-                      if (read.colorOverride) {
-                        const color =
-                          Object.keys(PILEUP_COLORS)[read.colorOverride];
-                        const htmlColor = this.colorArrayToString(
-                          PILEUP_COLORS[color],
-                        );
-                        style = `style="color:${htmlColor};"`;
-                      }
-                      mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
-                    }
-
-                    let extra = read.extra;
-
-
-                    if (read.extra && this.options.someExtra) {
-                      extra = {}
-                      for (let he of this.options.someExtra) {
-                        extra[he] = read.extra[he]
-                      }
-                    } else if (read.extra && this.options.hideExtra) {
-                      extra = read.extra;
-
-                      for (let he of this.options.hideExtra) {
-                        delete extra[he]
-                      }
-                    }
-
-                    let positionTxt;
-
-                    if (read.chrName) {
-                      positionTxt = `${read.chrName}:${
-                        read.from - read.chrOffset
-                      }`
-                    } else {
-                      positionTxt = `${read.from}`
-                    }
-
-                    let mouseOverHtml =
-                      `ID: ${read.id}<br>` +
-                      `Position: ${positionTxt}<br>` +
-                      `Read length: ${read.to - read.from}<br>` +
-                      `MAPQ: ${read.mapq}<br>` +
-                      `Strand: ${read.strand}<br>` +
-                      insertSizeHtml +
-                      chimericReadHtml +
-                      mappingOrientationHtml + 
-                      (extra ? `Extra: ${JSON.stringify(extra, null, 2)}<br>`: '');
-
-                    if (nearestSub && nearestSub.type && nearestSub.type != 'X') {
-                      mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
-                        nearestSub.type,
-                      )} (${nearestSub.length})`;
-                    } else if (nearestSub && nearestSub.variant) {
-                      mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
-                    }
-
-                    return mouseOverHtml;
-                    // + `CIGAR: ${read.cigar || ''} MD: ${read.md || ''}`);
-                  }
+              // Check whether the last async lookup result covers this position.
+              const cache = this._hoverReadCache;
+              if (
+                cache &&
+                cache.key === key &&
+                cache.rowIndex === index &&
+                Math.abs(cache.genomicPos - genomicPos) < 0.5
+              ) {
+                // Re-draw outlines every call so they follow scale transforms.
+                if (cache.read) {
+                  this._drawHoverOutlines(cache.read, index, yScaleBand);
                 }
+                return cache.html;
               }
+
+              // Cache miss: fire off a worker hit-test. Return the previous
+              // cached tooltip while the new result is in-flight so the
+              // tooltip doesn't flicker to empty between nearby reads.
+              this._lookupHoverRead(key, index, genomicPos, trackX);
+              return cache ? cache.html : '';
             }
           }
         }
 
-        // var val = self.yScale.domain()[index];
         if (
           this.options.showCoverage &&
           bandCoverageStart <= trackY &&
@@ -948,6 +847,130 @@ varying vec4 vColor;
       return '';
     }
 
+    /**
+     * Fire an async worker hit-test for the read at (groupKey, rowIndex,
+     * genomicPos). When the result arrives the hover cache is updated and the
+     * canvas re-rendered so the tooltip and outlines appear on the next
+     * mousemove event (typically within one rAF).
+     */
+    _lookupHoverRead(key, rowIndex, genomicPos, trackX) {
+      const serial = (this._hoverLookupSerial =
+        (this._hoverLookupSerial || 0) + 1);
+
+      this.dataFetcher.getReadAtPosition(key, rowIndex, genomicPos).then(
+        (read) => {
+          if (this._hoverLookupSerial !== serial) return; // stale
+
+          const html = read ? this._buildHoverHtml(read, trackX) : '';
+          this._hoverReadCache = {
+            key,
+            rowIndex,
+            genomicPos,
+            read: read || null,
+            html,
+          };
+
+          if (read) {
+            const yScaleBand = this.yScaleBands && this.yScaleBands[key];
+            if (yScaleBand) {
+              this._drawHoverOutlines(read, rowIndex, yScaleBand);
+            }
+            this.animate();
+          }
+        },
+      );
+    }
+
+    /** Draw the read (and optionally mate) outline box on mouseOverGraphics. */
+    _drawHoverOutlines(read, rowIndex, yScaleBand) {
+      const heightScaleK = this.heightScaleK || 1;
+      if (this.options.outlineReadOnHover) {
+        const xPos = this._xScale(read.from);
+        const yPos =
+          heightScaleK * transformY(yScaleBand(rowIndex), this.valueScaleTransform);
+        const width = this._xScale(read.to) - this._xScale(read.from);
+        const height =
+          yScaleBand.bandwidth() * this.valueScaleTransform.k * heightScaleK;
+        this.mouseOverGraphics.lineStyle({ width: 1, color: 0 });
+        this.mouseOverGraphics.drawRect(xPos, yPos, width, height);
+      }
+
+      if (this.options.outlineMateOnHover) {
+        this.outlineMate(read, yScaleBand);
+      }
+    }
+
+    /** Build the tooltip HTML string for a read returned by the worker. */
+    _buildHoverHtml(read, trackX) {
+      const MAX_DIST = 10;
+      const nearestDistance =
+        this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
+      const mousePos = this._xScale.invert(trackX);
+      const nearestSub = findNearestSub(mousePos, read, nearestDistance);
+
+      const insertSizeHtml = this.getInsertSizeMouseoverHtml(read);
+
+      let chimericReadHtml = '';
+      if (read.mate_ids) {
+        chimericReadHtml =
+          read.mate_ids.length > 1
+            ? `<span style="color:red;">Chimeric alignment</span><br>`
+            : '';
+      }
+
+      let mappingOrientationHtml = ``;
+      if (read.mappingOrientation) {
+        let style = ``;
+        if (read.colorOverride) {
+          const color = Object.keys(PILEUP_COLORS)[read.colorOverride];
+          const htmlColor = this.colorArrayToString(PILEUP_COLORS[color]);
+          style = `style="color:${htmlColor};"`;
+        }
+        mappingOrientationHtml = `<span ${style}> Mapping orientation: ${read.mappingOrientation}</span><br>`;
+      }
+
+      let extra = read.extra;
+      if (read.extra && this.options.someExtra) {
+        extra = {};
+        for (let he of this.options.someExtra) {
+          extra[he] = read.extra[he];
+        }
+      } else if (read.extra && this.options.hideExtra) {
+        extra = read.extra;
+        for (let he of this.options.hideExtra) {
+          delete extra[he];
+        }
+      }
+
+      let positionTxt;
+      if (read.chrName) {
+        positionTxt = `${read.chrName}:${read.from - read.chrOffset}`;
+      } else {
+        positionTxt = `${read.from}`;
+      }
+
+      let mouseOverHtml =
+        `ID: ${read.id}<br>` +
+        `Position: ${positionTxt}<br>` +
+        `Read length: ${read.to - read.from}<br>` +
+        `MAPQ: ${read.mapq}<br>` +
+        `Strand: ${read.strand}<br>` +
+        insertSizeHtml +
+        chimericReadHtml +
+        mappingOrientationHtml +
+        (extra ? `Extra: ${JSON.stringify(extra, null, 2)}<br>` : '');
+
+      if (nearestSub && nearestSub.type && nearestSub.type != 'X') {
+        mouseOverHtml += `Nearest substitution: ${cigarTypeToText(
+          nearestSub.type,
+        )} (${nearestSub.length})`;
+      } else if (nearestSub && nearestSub.variant) {
+        mouseOverHtml += `Nearest substitution: ${nearestSub.base} &rarr; ${nearestSub.variant}`;
+      }
+
+      return mouseOverHtml;
+    }
+
     getInsertSizeMouseoverHtml(read) {
       let insertSizeHtml = ``;
       if (
@@ -985,14 +1008,18 @@ varying vec4 vColor;
           return;
         }
         const mate = this.readsById[mate_id];
+        const heightScaleK = this.heightScaleK || 1;
         // We assume the mate height is the same, but width might be different
         const mate_width = this._xScale(mate.to) - this._xScale(mate.from);
-        const mate_height = yScaleBand.bandwidth() * this.valueScaleTransform.k;
+        const mate_height =
+          yScaleBand.bandwidth() * this.valueScaleTransform.k * heightScaleK;
         const mate_xPos = this._xScale(mate.from);
-        const mate_yPos = transformY(
-          this.yScaleBands[mate.groupKey](mate.row),
-          this.valueScaleTransform,
-        );
+        const mate_yPos =
+          heightScaleK *
+          transformY(
+            this.yScaleBands[mate.groupKey](mate.row),
+            this.valueScaleTransform,
+          );
         this.mouseOverGraphics.lineStyle({
           width: 1,
           color: 0,

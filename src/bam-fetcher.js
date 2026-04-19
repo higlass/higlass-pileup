@@ -109,6 +109,12 @@ class BAMDataFetcher {
     }, DEBOUNCE_TIME);
   }
 
+  getReadAtPosition(groupKey, rowIndex, genomicPos) {
+    return this.worker.then((tileFunctions) =>
+      tileFunctions.getReadAtPosition(this.uid, groupKey, rowIndex, genomicPos),
+    );
+  }
+
   sendFetch(receivedTiles, tileIds) {
     this.track.updateLoadingText();
 

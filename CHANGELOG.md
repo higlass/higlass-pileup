@@ -1,3 +1,8 @@
+v1.9.1
+
+- Fix mouseover regression
+- Fix sort by base regression for http-tiles data
+
 v1.9.0
 
 - Much faster rendering
@@ -16,7 +21,6 @@ v1.8.0
 - Render insertions before substitutions
 - Add clipping adjustment to pileup tiles
 - Rerender the tiles when zoomed in too far
-
 
 v1.7.1
 

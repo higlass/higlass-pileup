@@ -1122,6 +1122,14 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
   const prevSectionIds = new Set(prevSections.map((x) => x.id));
   let filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
 
+  // Clear any pre-assigned row values carried from server tiles (http-tiles).
+  // createSection() now propagates segment.row so that assignSectionToRow can
+  // use the O(1) fast path when re-using prevRows, but new sections must have
+  // their rows computed fresh — otherwise sort-by-base has no visual effect.
+  for (const section of filteredSections) {
+    section.row = null;
+  }
+
   let sortedSections = [];
   if (trackOptions.sortByBase) {
     // We need to assign the sections to the rows that intersect the
@@ -1694,6 +1702,28 @@ const resetPrevRows = (uid) => {
   delete prevRowsByUid[uid];
 };
 
+/**
+ * Lightweight hit-test that returns the segment (read) at a given genomic
+ * position within a specific row, or null if no read covers that position.
+ * All data lives in prevRowsByUid so no serialization of the full tile data
+ * is needed; only the matched segment object is transferred.
+ */
+const getReadAtPosition = (uid, groupKey, rowIndex, genomicPos) => {
+  const grouped = prevRowsByUid[uid];
+  if (!grouped || !grouped[groupKey]) return null;
+  const rows = grouped[groupKey].rows;
+  if (rowIndex < 0 || rowIndex >= rows.length) return null;
+  const row = rows[rowIndex];
+  for (const section of row) {
+    for (const segment of section.segments) {
+      if (segment.from <= genomicPos && genomicPos <= segment.to) {
+        return segment;
+      }
+    }
+  }
+  return null;
+};
+
 const tileFunctions = {
   init,
   localInit,
@@ -1710,6 +1740,7 @@ const tileFunctions = {
   tile,
   renderSegments,
   resetPrevRows,
+  getReadAtPosition,
 };
 
 expose(tileFunctions);
