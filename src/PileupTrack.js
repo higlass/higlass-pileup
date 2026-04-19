@@ -493,7 +493,6 @@ varying vec4 vColor;
             this._xScale.range(),
             this.position,
             this.dimensions,
-            this.prevRows,
             this.options,
           )
           .then((toRender) => {

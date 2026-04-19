@@ -421,6 +421,10 @@ const localDataConfs = {};
 // Store http-tiles ids
 const httpDataConfs = {};
 
+// Cache previous row assignments per uid so they never need to be serialized
+// through the main thread — avoids structured-clone of 50K+ segment objects.
+const prevRowsByUid = {};
+
 const trackOptions = {};
 
 function authFetch(url, uid) {
@@ -1250,9 +1254,9 @@ const renderSegments = (
   scaleRange,
   position,
   dimensions,
-  prevRows,
   trackOptions,
 ) => {
+  const prevRows = prevRowsByUid[uid] || {};
   const _t0 = performance.now();
   const allSegments = {};
   let allReadCounts = {};
@@ -1503,6 +1507,10 @@ const renderSegments = (
     }
   }
 
+  // Hoist per-render constants out of the inner loops.
+  const isProtein = isProteinColorScale(trackOptions.colorScale);
+  const insertionWidth = Math.max(1, xScale(0.2) - xScale(0));
+
   for (const group of Object.values(grouped)) {
     const { rows } = group;
 
@@ -1516,13 +1524,16 @@ const renderSegments = (
     let yTop;
     let yBottom;
 
-    rows.map((row, i) => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       yTop = yScale(i);
       const height = yScale.bandwidth();
       yBottom = yTop + height;
 
-      row.map((section, j) => {
-        section.segments.map((segment) => {
+      for (let j = 0; j < row.length; j++) {
+        const section = row[j];
+        for (let k = 0; k < section.segments.length; k++) {
+          const segment = section.segments[k];
           const from = xScale(segment.from);
           const to = xScale(segment.to);
 
@@ -1542,14 +1553,12 @@ const renderSegments = (
           for (const substitution of segment.substitutions) {
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));
-            const insertionWidth = Math.max(1, xScale(0.2) - xScale(0));
             xRight = xLeft + width;
 
             if (substitution.type === 'I') {
               addRect(xLeft - insertionWidth / 2, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
             } else if (substitution.variant) {
-              const isProtein = isProteinColorScale(trackOptions.colorScale);
-              const colorKey = isProtein 
+              const colorKey = isProtein
                 ? SINGLE_TO_THREE_LETTER_AA[substitution.variant] || substitution.variant
                 : substitution.variant;
               
@@ -1627,7 +1636,7 @@ const renderSegments = (
               addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
             }
           }
-        });
+        }
 
         if (trackOptions.viewAsPairs) {
           for (let i = 1; i < section.segments.length; i++) {
@@ -1647,8 +1656,8 @@ const renderSegments = (
             );
           }
         }
-      });
-    });
+      }
+    }
   }
 
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
@@ -1658,8 +1667,34 @@ const renderSegments = (
   console.log(`[render] buffer fill: ${(_t5-_t4).toFixed(0)}ms, total renderSegments: ${(_t5-_t0).toFixed(0)}ms`);
   console.log(`[render] buffer sizes: positions=${(positionsBuffer.byteLength/1e6).toFixed(1)}MB, colors=${(colorsBuffer.byteLength/1e6).toFixed(1)}MB, indexes=${(ixBuffer.byteLength/1e6).toFixed(1)}MB`);
 
+  // Cache the full grouped object in the worker so the next renderSegments call
+  // can use it as prevRows without any main-thread round-trip.
+  prevRowsByUid[uid] = grouped;
+
+  // Build a stripped-down rows object for the main thread.
+  // The main thread only needs per-section positional metadata (for scale bands
+  // and hover hit-testing); it does NOT need the full segments array.
+  // Excluding segments eliminates ~38 MB of structured-clone serialization that
+  // was previously blocking the main thread for ~500 ms on every render.
+  const rowsForMainThread = {};
+  for (const [key, group] of Object.entries(grouped)) {
+    rowsForMainThread[key] = {
+      rows: group.rows.map((row) =>
+        row.map((section) => ({
+          fromWithClipping: section.fromWithClipping,
+          toWithClipping: section.toWithClipping,
+          id: section.id,
+          row: section.row,
+          segments: [],
+        })),
+      ),
+      start: group.start,
+      end: group.end,
+    };
+  }
+
   const objData = {
-    rows: grouped,
+    rows: rowsForMainThread,
     coverage: allReadCounts,
     coverageSamplingDistance,
     positionsBuffer,
