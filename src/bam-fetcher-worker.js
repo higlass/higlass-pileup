@@ -975,6 +975,28 @@ function assignSectionToRow(
 
   // no row has been assigned - find a suitable row and update the occupied space
   if (section.row === null || section.row === undefined) {
+    // Fast path: if the new segment overlaps with every existing row there is
+    // no point scanning — a new row is the only option.
+    //
+    // A row can fit the segment only if:
+    //   (a) segmentToWithPadding  < row.from  (segment ends before row starts), OR
+    //   (b) segmentFromWithPadding > row.to   (segment starts after row ends)
+    //
+    // Neither can be true for ANY row when:
+    //   segmentToWithPadding  >= max(row.from) [_maxFrom] — rules out (a) for all rows
+    //   segmentFromWithPadding <= min(row.to)  [_minTo]   — rules out (b) for all rows
+    if (
+      occupiedSpaceInRows.length > 0 &&
+      segmentToWithPadding >= occupiedSpaceInRows._maxFrom &&
+      segmentFromWithPadding <= occupiedSpaceInRows._minTo
+    ) {
+      section.row = occupiedSpaceInRows.length;
+      occupiedSpaceInRows.push({ from: segmentFromWithPadding, to: segmentToWithPadding });
+      occupiedSpaceInRows._maxFrom = Math.max(occupiedSpaceInRows._maxFrom, segmentFromWithPadding);
+      occupiedSpaceInRows._minTo = Math.min(occupiedSpaceInRows._minTo, segmentToWithPadding);
+      return;
+    }
+
     // Go through each row and look if there is space for the segment
     for (let i = 0; i < occupiedSpaceInRows.length; i++) {
       if (!occupiedSpaceInRows[i]) {
@@ -1013,6 +1035,8 @@ function assignSectionToRow(
       from: segmentFromWithPadding,
       to: segmentToWithPadding,
     });
+    occupiedSpaceInRows._maxFrom = Math.max(occupiedSpaceInRows._maxFrom, segmentFromWithPadding);
+    occupiedSpaceInRows._minTo = Math.min(occupiedSpaceInRows._minTo, segmentToWithPadding);
   }
   // segment already has a row - just update the occupied space
   else {
@@ -1045,6 +1069,13 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
   // This means that in row i, the space from 100 to 110 is occupied and reads cannot be placed there
   // This array is updated with every section that is added to the scene
   const occupiedSpaceInRows = [];
+  // _maxFrom / _minTo track the max row.from and min row.to across all rows.
+  // They are only updated when a new row is pushed (never when an existing row
+  // is updated), which keeps them conservatively correct: they may over-report
+  // _maxFrom or under-report _minTo, but never in a direction that could make
+  // the fast path in assignSectionToRow produce an incorrect result.
+  occupiedSpaceInRows._maxFrom = -Infinity;
+  occupiedSpaceInRows._minTo = Infinity;
   const sectionIds = new Set(sections.map((x) => x.id));
 
   // We only need those previous sections, that are in the current sections list
@@ -1138,11 +1169,16 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
     );
   }
 
-  const outputRows = [];
-  for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-    outputRows[i] = newSections
-      .filter((x) => x.row === i)
-      .concat(sortedSections.filter((x) => x.row === i));
+  // Build outputRows by bucketing sections into their assigned row.
+  // The previous approach did a .filter() over all sections for each row,
+  // which is O(n²) — catastrophic for dense pileups where every read gets
+  // its own row. A single forward pass over both arrays is O(n).
+  const outputRows = Array.from({ length: occupiedSpaceInRows.length }, () => []);
+  for (const section of newSections) {
+    if (section.row != null) outputRows[section.row].push(section);
+  }
+  for (const section of sortedSections) {
+    if (section.row != null) outputRows[section.row].push(section);
   }
 
   return outputRows;
