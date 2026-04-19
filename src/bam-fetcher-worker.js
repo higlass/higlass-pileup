@@ -501,15 +501,24 @@ const localTilesetInfo = (uid) => {
 // Handles manual decompression when the server does not set Content-Encoding: gzip
 // (e.g. S3 objects stored as .json.gz with Content-Type: application/json).
 const fetchJson = async (url) => {
+  const t0 = performance.now();
   const response = await fetch(url);
+  const t1 = performance.now();
   if (url.includes('.gz')) {
     const blob = await response.blob();
+    const t2 = performance.now();
     const ds = new DecompressionStream('gzip');
     const stream = blob.stream().pipeThrough(ds);
     const text = await new Response(stream).text();
-    return JSON.parse(text);
+    const t3 = performance.now();
+    const result = JSON.parse(text);
+    const t4 = performance.now();
+    console.log(`[fetchJson] network: ${(t1-t0).toFixed(0)}ms, blob: ${(t2-t1).toFixed(0)}ms, decompress: ${(t3-t2).toFixed(0)}ms, JSON.parse(${(text.length/1e6).toFixed(1)}MB): ${(t4-t3).toFixed(0)}ms, total: ${(t4-t0).toFixed(0)}ms`);
+    return result;
   }
-  return response.json();
+  const result = await response.json();
+  console.log(`[fetchJson] network+parse: ${(performance.now()-t0).toFixed(0)}ms`);
+  return result;
 };
 
 const httpInit = (uid, tilesetInfo, tilesUrls) => {
@@ -531,6 +540,7 @@ const httpTilesetInfo = (uid) => {
 };
 
 const httpFetchTilesDebounced = async (uid, tileIds) => {
+  const t0 = performance.now();
   const { tilesUrls } = httpDataConfs[uid];
   const ret = {};
 
@@ -543,13 +553,22 @@ const httpFetchTilesDebounced = async (uid, tileIds) => {
         return;
       }
       const tileData = await fetchJson(url);
-      const rowJsonTile = tileData.map((x) => addClippingAdjustments(x));
+      const t1 = performance.now();
+      const rowJsonTile = tileData.map((x) => {
+        const seg = addClippingAdjustments(x);
+        // Sort substitutions once here so insertions render on top during every render call.
+        seg.substitutions.sort((a, _b) => a.type === 'I' ? 1 : -1);
+        return seg;
+      });
+      const t2 = performance.now();
+      console.log(`[httpFetch] addClippingAdjustments+sort x${tileData.length}: ${(t2-t1).toFixed(0)}ms`);
       rowJsonTile.tilePositionId = tileId;
       ret[tileId] = rowJsonTile;
       tileValues.set(`${uid}.${tileId}`, rowJsonTile);
     }),
   );
 
+  console.log(`[httpFetch] total: ${(performance.now()-t0).toFixed(0)}ms`);
   return ret;
 };
 
@@ -1234,6 +1253,7 @@ const renderSegments = (
   prevRows,
   trackOptions,
 ) => {
+  const _t0 = performance.now();
   const allSegments = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
@@ -1253,6 +1273,8 @@ const renderSegments = (
   }
 
   let segmentList = Object.values(allSegments);
+  const _t1 = performance.now();
+  console.log(`[render] build allSegments (${segmentList.length}): ${(_t1-_t0).toFixed(0)}ms`);
 
   if (trackOptions.minMappingQuality > 0) {
     segmentList = segmentList.filter(
@@ -1269,6 +1291,8 @@ const renderSegments = (
   } else {
     sections = segmentList.map((x) => createSection([x]));
   }
+  const _t2 = performance.now();
+  console.log(`[render] createSection x${sections.length}: ${(_t2-_t1).toFixed(0)}ms`);
 
   // At this point reads are colored correctly, but we only want to align those reads that
   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
@@ -1340,6 +1364,8 @@ const renderSegments = (
     grouped[key] = {};
     grouped[key].rows = rows;
   }
+  const _t3 = performance.now();
+  console.log(`[render] sectionsToRows: ${(_t3-_t2).toFixed(0)}ms`);
 
   // calculate the height of each group
   const totalRows = Object.values(grouped)
@@ -1352,67 +1378,50 @@ const renderSegments = (
     .domain(range(0, totalRows + currStart))
     .range([0, dimensions[1]])
     .paddingInner(0.2);
+  const _t4 = performance.now();
+  console.log(`[render] scaleBand (${totalRows} rows): ${(_t4-_t3).toFixed(0)}ms`);
 
   let currPosition = 0;
   let currColor = 0;
   let currIdx = 0;
 
-  const addPosition = (x1, y1) => {
-    if (currPosition > allPositionsLength - 2) {
-      allPositionsLength *= 2;
-      const prevAllPositions = allPositions;
-
-      allPositions = new Float32Array(allPositionsLength);
-      allPositions.set(prevAllPositions);
-    }
-    allPositions[currPosition++] = x1;
-    allPositions[currPosition++] = y1;
-
-    return currPosition / 2 - 1;
-  };
-
-  const addColor = (colorIdx, n) => {
-    if (currColor >= allColorsLength - n) {
-      allColorsLength *= 2;
-      const prevAllColors = allColors;
-
-      allColors = new Float32Array(allColorsLength);
-      allColors.set(prevAllColors);
-    }
-
-    for (let k = 0; k < n; k++) {
-      allColors[currColor++] = colorIdx;
-    }
-  };
-
-  const addTriangleIxs = (ix1, ix2, ix3) => {
-    if (currIdx >= allIndexesLength - 3) {
-      allIndexesLength *= 2;
-      const prevAllIndexes = allIndexes;
-
-      allIndexes = new Int32Array(allIndexesLength);
-      allIndexes.set(prevAllIndexes);
-    }
-
-    allIndexes[currIdx++] = ix1;
-    allIndexes[currIdx++] = ix2;
-    allIndexes[currIdx++] = ix3;
-  };
-
+  // Inlined addRect: writes positions, colors, and triangle indices directly
+  // without intermediate function calls. This is the hot path (1.6M calls per render).
   const addRect = (x, y, width, height, colorIdx) => {
-    const xLeft = x;
-    const xRight = xLeft + width;
-    const yTop = y;
+    const xRight = x + width;
     const yBottom = y + height;
+    const ix0 = currPosition >> 1; // base vertex index for this rect's 4 vertices
 
-    const ulIx = addPosition(xLeft, yTop);
-    const urIx = addPosition(xRight, yTop);
-    const llIx = addPosition(xLeft, yBottom);
-    const lrIx = addPosition(xRight, yBottom);
-    addColor(colorIdx, 4);
+    if (currPosition + 8 > allPositionsLength) {
+      allPositionsLength *= 2;
+      const prev = allPositions;
+      allPositions = new Float32Array(allPositionsLength);
+      allPositions.set(prev);
+    }
+    allPositions[currPosition++] = x;      allPositions[currPosition++] = y;
+    allPositions[currPosition++] = xRight; allPositions[currPosition++] = y;
+    allPositions[currPosition++] = x;      allPositions[currPosition++] = yBottom;
+    allPositions[currPosition++] = xRight; allPositions[currPosition++] = yBottom;
 
-    addTriangleIxs(ulIx, urIx, llIx);
-    addTriangleIxs(llIx, lrIx, urIx);
+    if (currColor + 4 > allColorsLength) {
+      allColorsLength *= 2;
+      const prev = allColors;
+      allColors = new Float32Array(allColorsLength);
+      allColors.set(prev);
+    }
+    allColors[currColor++] = colorIdx;
+    allColors[currColor++] = colorIdx;
+    allColors[currColor++] = colorIdx;
+    allColors[currColor++] = colorIdx;
+
+    if (currIdx + 6 > allIndexesLength) {
+      allIndexesLength *= 2;
+      const prev = allIndexes;
+      allIndexes = new Int32Array(allIndexesLength);
+      allIndexes.set(prev);
+    }
+    allIndexes[currIdx++] = ix0;     allIndexes[currIdx++] = ix0 + 1; allIndexes[currIdx++] = ix0 + 2;
+    allIndexes[currIdx++] = ix0 + 2; allIndexes[currIdx++] = ix0 + 3; allIndexes[currIdx++] = ix0 + 1;
   };
 
   const xScale = scaleLinear().domain(domain).range(scaleRange);
@@ -1528,9 +1537,8 @@ const renderSegments = (
             segment.colorOverride || segment.color,
           );
 
-          // Place the insertions up front because they may be rendered
-          // on top of substitutions
-          segment.substitutions.sort((a, b) => a.type == 'I' ? 1 : -1)
+          // Insertions are sorted to the end during fetch (addClippingAdjustments stage)
+          // so they render on top of substitutions.
           for (const substitution of segment.substitutions) {
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));
@@ -1646,6 +1654,9 @@ const renderSegments = (
   const positionsBuffer = allPositions.slice(0, currPosition).buffer;
   const colorsBuffer = allColors.slice(0, currColor).buffer;
   const ixBuffer = allIndexes.slice(0, currIdx).buffer;
+  const _t5 = performance.now();
+  console.log(`[render] buffer fill: ${(_t5-_t4).toFixed(0)}ms, total renderSegments: ${(_t5-_t0).toFixed(0)}ms`);
+  console.log(`[render] buffer sizes: positions=${(positionsBuffer.byteLength/1e6).toFixed(1)}MB, colors=${(colorsBuffer.byteLength/1e6).toFixed(1)}MB, indexes=${(ixBuffer.byteLength/1e6).toFixed(1)}MB`);
 
   const objData = {
     rows: grouped,
