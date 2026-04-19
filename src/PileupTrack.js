@@ -167,6 +167,10 @@ function isIn(as) {
   return (a) => as.has(a);
 }
 
+// When height changes by more than this factor from the last full render,
+// trigger a new render instead of continuing to scale the existing mesh.
+const HEIGHT_SCALE_THRESHOLD = 2.0;
+
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
     throw new Error(
@@ -225,6 +229,8 @@ const PileupTrack = (HGC, ...args) => {
       // this.drawnAtScale keeps track of the scale at which
       // we last rendered everything
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
+      this.drawnAtHeight = null;
+      this.heightScaleK = 1.0;
       this.rowsMeta = {};
       this.coverage = {};
       this.yScaleBands = {};
@@ -418,8 +424,8 @@ varying vec4 vColor;
       }
 
       this.setUpShaderAndTextures();
-      // Reset the following, so the graphic actually updates
-      this.previousTileIdsUsedForRendering = {};
+      // Snapshot prevOptions before any block below may mutate it (via externalInit).
+      const prevOpts = this.prevOptions;
 
       // Reset everything and overwrite the datafetcher if the data needs to be loaded differently,
       // we need to realign or we need to recolor. Expensive, but only happens if options change.
@@ -463,7 +469,31 @@ varying vec4 vColor;
         );
       }
 
-      this.updateExistingGraphics();
+      // Only force a full re-render when track options changed or the track
+      // has never been rendered. Pure width-only resizes are handled by
+      // zoomed() via scaleScalableGraphics() before rerender() is called.
+      // Height changes are handled by scaling the existing mesh until the
+      // ratio from the last full render exceeds HEIGHT_SCALE_THRESHOLD, at
+      // which point a new render is triggered (same pattern as x-axis zoom).
+      const optionsChanged =
+        JSON.stringify(options) !== JSON.stringify(prevOpts);
+
+      if (optionsChanged || !this.segmentGraphics || !this.drawnAtHeight) {
+        this.previousTileIdsUsedForRendering = {};
+        this.updateExistingGraphics();
+      } else if (this.dimensions[1] !== this.drawnAtHeight) {
+        const heightK = this.dimensions[1] / this.drawnAtHeight;
+        if (heightK > HEIGHT_SCALE_THRESHOLD || heightK < 1 / HEIGHT_SCALE_THRESHOLD) {
+          this.previousTileIdsUsedForRendering = {};
+          this.updateExistingGraphics();
+        } else {
+          this.heightScaleK = heightK;
+          this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
+          this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
+          this.animate();
+        }
+      }
+
       this.prevOptions = Object.assign({}, options);
     }
 
@@ -590,6 +620,8 @@ varying vec4 vColor;
               .scaleLinear()
               .domain(toRender.xScaleDomain)
               .range(toRender.xScaleRange);
+            this.drawnAtHeight = this.dimensions[1];
+            this.heightScaleK = 1.0;
 
             scaleScalableGraphics(
               this.segmentGraphics,
@@ -599,7 +631,7 @@ varying vec4 vColor;
 
             // if somebody zoomed vertically, we want to readjust so that
             // they're still zoomed in vertically
-            this.segmentGraphics.scale.y = this.valueScaleTransform.k;
+            this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
             this.segmentGraphics.position.y = this.valueScaleTransform.y;
 
             this.draw();
@@ -1060,11 +1092,13 @@ varying vec4 vColor;
 
     movedY(dY) {
       const vst = this.valueScaleTransform;
-      const height = this.dimensions[1];
+      // valueScaleTransform is stored in the drawn coordinate space, so clamp
+      // bounds must use the drawn height, not the current (possibly rescaled) height.
+      const virtualHeight = this.dimensions[1] / this.heightScaleK;
 
       // clamp at the bottom and top
       if (
-        vst.y + dY / vst.k > -(vst.k - 1) * height &&
+        vst.y + dY / vst.k > -(vst.k - 1) * virtualHeight &&
         vst.y + dY / vst.k < 0
       ) {
         this.valueScaleTransform = vst.translate(0, dY / vst.k);
@@ -1073,23 +1107,28 @@ varying vec4 vColor;
       // this.segmentGraphics may not have been initialized if the user
       // was zoomed out too far
       if (this.segmentGraphics) {
-        this.segmentGraphics.position.y = this.valueScaleTransform.y;
+        this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
       }
 
       this.animate();
     }
 
     zoomedY(yPos, kMultiplier) {
+      // valueScaleTransform is stored in the drawn coordinate space ([0, drawnAtHeight]).
+      // Convert yPos and height into that space so the zoom anchor and clamp bounds
+      // are computed correctly when heightScaleK != 1.
+      const virtualYPos = yPos / this.heightScaleK;
+      const virtualHeight = this.dimensions[1] / this.heightScaleK;
       const newTransform = HGC.utils.trackUtils.zoomedY(
-        yPos,
+        virtualYPos,
         kMultiplier,
         this.valueScaleTransform,
-        this.dimensions[1],
+        virtualHeight,
       );
 
       this.valueScaleTransform = newTransform;
-      this.segmentGraphics.scale.y = newTransform.k;
-      this.segmentGraphics.position.y = newTransform.y;
+      this.segmentGraphics.scale.y = this.heightScaleK * newTransform.k;
+      this.segmentGraphics.position.y = newTransform.y * this.heightScaleK;
 
       this.mouseOverGraphics.clear();
       this.animate();
