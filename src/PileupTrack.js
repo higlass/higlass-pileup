@@ -167,6 +167,10 @@ function isIn(as) {
   return (a) => as.has(a);
 }
 
+// When height changes by more than this factor from the last full render,
+// trigger a new render instead of continuing to scale the existing mesh.
+const HEIGHT_SCALE_THRESHOLD = 2.0;
+
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
     throw new Error(
@@ -225,7 +229,9 @@ const PileupTrack = (HGC, ...args) => {
       // this.drawnAtScale keeps track of the scale at which
       // we last rendered everything
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
-      this.prevRows = [];
+      this.drawnAtHeight = null;
+      this.heightScaleK = 1.0;
+      this.rowsMeta = {};
       this.coverage = {};
       this.yScaleBands = {};
 
@@ -418,8 +424,8 @@ varying vec4 vColor;
       }
 
       this.setUpShaderAndTextures();
-      // Reset the following, so the graphic actually updates
-      this.previousTileIdsUsedForRendering = {};
+      // Snapshot prevOptions before any block below may mutate it (via externalInit).
+      const prevOpts = this.prevOptions;
 
       // Reset everything and overwrite the datafetcher if the data needs to be loaded differently,
       // we need to realign or we need to recolor. Expensive, but only happens if options change.
@@ -441,7 +447,9 @@ varying vec4 vColor;
         );
         this.dataFetcher.track = this;
 
-        this.prevRows = [];
+        this.rowsMeta = {};
+        // New uid was created above, so prevRowsByUid in the worker has no
+        // stale entry for it — no explicit reset needed.
         this.removeTiles(Object.keys(this.fetchedTiles));
         this.fetching.clear();
         this.refreshTiles();
@@ -453,11 +461,39 @@ varying vec4 vColor;
         JSON.stringify(this.prevOptions.sortByBase) !==
         JSON.stringify(this.options.sortByBase)
       ) {
-        // Base sorting has changed so we need to recalculate the rows
-        this.prevRows = {};
+        // Base sorting has changed — clear the worker-side prevRows cache so
+        // the next render starts fresh without stale row assignments.
+        this.rowsMeta = {};
+        this.worker.then((tileFunctions) =>
+          tileFunctions.resetPrevRows(this.dataFetcher.uid),
+        );
       }
 
-      this.updateExistingGraphics();
+      // Only force a full re-render when track options changed or the track
+      // has never been rendered. Pure width-only resizes are handled by
+      // zoomed() via scaleScalableGraphics() before rerender() is called.
+      // Height changes are handled by scaling the existing mesh until the
+      // ratio from the last full render exceeds HEIGHT_SCALE_THRESHOLD, at
+      // which point a new render is triggered (same pattern as x-axis zoom).
+      const optionsChanged =
+        JSON.stringify(options) !== JSON.stringify(prevOpts);
+
+      if (optionsChanged || !this.segmentGraphics || !this.drawnAtHeight) {
+        this.previousTileIdsUsedForRendering = {};
+        this.updateExistingGraphics();
+      } else if (this.dimensions[1] !== this.drawnAtHeight) {
+        const heightK = this.dimensions[1] / this.drawnAtHeight;
+        if (heightK > HEIGHT_SCALE_THRESHOLD || heightK < 1 / HEIGHT_SCALE_THRESHOLD) {
+          this.previousTileIdsUsedForRendering = {};
+          this.updateExistingGraphics();
+        } else {
+          this.heightScaleK = heightK;
+          this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
+          this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
+          this.animate();
+        }
+      }
+
       this.prevOptions = Object.assign({}, options);
     }
 
@@ -493,7 +529,6 @@ varying vec4 vColor;
             this._xScale.range(),
             this.position,
             this.dimensions,
-            this.prevRows,
             this.options,
           )
           .then((toRender) => {
@@ -528,25 +563,15 @@ varying vec4 vColor;
 
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
-            this.prevRows = toRender.rows;
+            this.rowsMeta = toRender.rowsMeta;
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
             if (this.loadMates) {
+              // Segment detail data is cached in the worker; readsById is
+              // populated by the worker-side prevRowsByUid cache. Mate hover
+              // requires a future lazy worker lookup.
               this.readsById = {};
-              for (const key in this.prevRows) {
-                this.prevRows[key].rows.forEach((row) => {
-                  row.forEach((section) => {
-                    section.segments.forEach((segment) => {
-                      if (segment.id in this.readsById) return;
-
-                      this.readsById[segment.id] = segment;
-                      // Will be needed later in the mouseover to determine the correct yPos for the mate
-                      this.readsById[segment.id]['groupKey'] = key;
-                    });
-                  });
-                });
-              }
             }
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
@@ -582,16 +607,12 @@ varying vec4 vColor;
             this.pMain.addChild(this.mouseOverGraphics);
 
             this.yScaleBands = {};
-            for (const key in this.prevRows) {
+            for (const key in this.rowsMeta) {
+              const { rowCount, start, end } = this.rowsMeta[key];
               this.yScaleBands[key] = HGC.libraries.d3Scale
                 .scaleBand()
-                .domain(
-                  HGC.libraries.d3Array.range(
-                    0,
-                    this.prevRows[key].rows.length,
-                  ),
-                )
-                .range([this.prevRows[key].start, this.prevRows[key].end])
+                .domain(HGC.libraries.d3Array.range(0, rowCount))
+                .range([start, end])
                 .paddingInner(0.2);
             }
 
@@ -599,6 +620,8 @@ varying vec4 vColor;
               .scaleLinear()
               .domain(toRender.xScaleDomain)
               .range(toRender.xScaleRange);
+            this.drawnAtHeight = this.dimensions[1];
+            this.heightScaleK = 1.0;
 
             scaleScalableGraphics(
               this.segmentGraphics,
@@ -608,7 +631,7 @@ varying vec4 vColor;
 
             // if somebody zoomed vertically, we want to readjust so that
             // they're still zoomed in vertically
-            this.segmentGraphics.scale.y = this.valueScaleTransform.k;
+            this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
             this.segmentGraphics.position.y = this.valueScaleTransform.y;
 
             this.draw();
@@ -750,7 +773,10 @@ varying vec4 vColor;
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
             const index = Math.floor((trackY - start) / eachBand);
-            const { rows } = this.prevRows[key];
+            // Segment data is cached in the worker; hover detail requires a
+            // worker-side lookup which is not yet implemented.
+            const rows = this.rowsMeta[key] && this.rowsMeta[key].rows;
+            if (!rows) continue;
 
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
@@ -1066,11 +1092,13 @@ varying vec4 vColor;
 
     movedY(dY) {
       const vst = this.valueScaleTransform;
-      const height = this.dimensions[1];
+      // valueScaleTransform is stored in the drawn coordinate space, so clamp
+      // bounds must use the drawn height, not the current (possibly rescaled) height.
+      const virtualHeight = this.dimensions[1] / this.heightScaleK;
 
       // clamp at the bottom and top
       if (
-        vst.y + dY / vst.k > -(vst.k - 1) * height &&
+        vst.y + dY / vst.k > -(vst.k - 1) * virtualHeight &&
         vst.y + dY / vst.k < 0
       ) {
         this.valueScaleTransform = vst.translate(0, dY / vst.k);
@@ -1079,23 +1107,28 @@ varying vec4 vColor;
       // this.segmentGraphics may not have been initialized if the user
       // was zoomed out too far
       if (this.segmentGraphics) {
-        this.segmentGraphics.position.y = this.valueScaleTransform.y;
+        this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
       }
 
       this.animate();
     }
 
     zoomedY(yPos, kMultiplier) {
+      // valueScaleTransform is stored in the drawn coordinate space ([0, drawnAtHeight]).
+      // Convert yPos and height into that space so the zoom anchor and clamp bounds
+      // are computed correctly when heightScaleK != 1.
+      const virtualYPos = yPos / this.heightScaleK;
+      const virtualHeight = this.dimensions[1] / this.heightScaleK;
       const newTransform = HGC.utils.trackUtils.zoomedY(
-        yPos,
+        virtualYPos,
         kMultiplier,
         this.valueScaleTransform,
-        this.dimensions[1],
+        virtualHeight,
       );
 
       this.valueScaleTransform = newTransform;
-      this.segmentGraphics.scale.y = newTransform.k;
-      this.segmentGraphics.position.y = newTransform.y;
+      this.segmentGraphics.scale.y = this.heightScaleK * newTransform.k;
+      this.segmentGraphics.position.y = newTransform.y * this.heightScaleK;
 
       this.mouseOverGraphics.clear();
       this.animate();

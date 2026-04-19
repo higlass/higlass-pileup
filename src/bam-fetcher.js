@@ -9,6 +9,8 @@ class BAMDataFetcher {
 
     if (dataConfig.type === 'local-tiles') {
       this.fetcherType = 'local-tiles';
+    } else if (dataConfig.type === 'http-tiles') {
+      this.fetcherType = 'http-tiles';
     } else if (dataConfig.type === 'bam') {
       this.fetcherType = 'bam';
     } else {
@@ -36,6 +38,12 @@ class BAMDataFetcher {
         // If we have a local tile fetcher, we need to register that with the worker
         return tileFunctions
           .localInit(this.uid, dataConfig.tilesetInfo, dataConfig.tiles)
+          .then(() => this.worker);
+      }
+
+      if (this.fetcherType === 'http-tiles') {
+        return tileFunctions
+          .httpInit(this.uid, dataConfig.tilesetInfo, dataConfig.tiles)
           .then(() => this.worker);
       }
 
@@ -68,6 +76,8 @@ class BAMDataFetcher {
         tileFunctions.tilesetInfo(this.uid).then(callback);
       } else if (this.fetcherType === 'local-tiles') {
         tileFunctions.localTilesetInfo(this.uid).then(callback);
+      } else if (this.fetcherType === 'http-tiles') {
+        tileFunctions.httpTilesetInfo(this.uid).then(callback);
       }
     });
   }
@@ -110,6 +120,10 @@ class BAMDataFetcher {
       } else if (this.fetcherType === 'local-tiles') {
         tileFunctions
           .localFetchTilesDebounced(this.uid, tileIds)
+          .then(receivedTiles);
+      } else if (this.fetcherType === 'http-tiles') {
+        tileFunctions
+          .httpFetchTilesDebounced(this.uid, tileIds)
           .then(receivedTiles);
       } else {
         tileFunctions

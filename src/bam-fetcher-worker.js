@@ -418,6 +418,25 @@ const dataConfs = {};
 // Store local-tiles ids
 const localDataConfs = {};
 
+// Store http-tiles ids
+const httpDataConfs = {};
+
+// Cache previous row assignments per uid so they never need to be serialized
+// through the main thread — avoids structured-clone of 50K+ segment objects.
+const prevRowsByUid = {};
+
+// Persistent geometry buffers, module-level so they are allocated once and
+// reused across renders. Reusing the same memory avoids repeated large-alloc/
+// free cycles that cause V8 heap fragmentation and OOM even when total free
+// memory is sufficient. addRect grows them if needed (they never shrink).
+// renderSegments slices the valid portion for zero-waste transfer.
+let allPositions = new Float32Array(8000000);     // 1M rects = 32 MB
+let allColors    = new Float32Array(4000000);     // 16 MB
+let allIndexes   = new Int32Array(6000000);       // 24 MB
+let allPositionsLength = 8000000;
+let allColorsLength    = 4000000;
+let allIndexesLength   = 6000000;
+
 const trackOptions = {};
 
 function authFetch(url, uid) {
@@ -492,6 +511,67 @@ const localTilesetInfo = (uid) => {
   tilesetInfos[uid] = tilesetInfo;
 
   return tilesetInfo;
+};
+
+// Fetch potentially gzip-compressed JSON from a URL.
+// Handles manual decompression when the server does not set Content-Encoding: gzip
+// (e.g. S3 objects stored as .json.gz with Content-Type: application/json).
+const fetchJson = async (url) => {
+  const response = await fetch(url);
+  if (url.includes('.gz')) {
+    const blob = await response.blob();
+    const ds = new DecompressionStream('gzip');
+    const stream = blob.stream().pipeThrough(ds);
+    const text = await new Response(stream).text();
+    return JSON.parse(text);
+  }
+  return response.json();
+};
+
+const httpInit = (uid, tilesetInfo, tilesUrls) => {
+  httpDataConfs[uid] = {
+    tilesetInfo,
+    tilesUrls,
+  };
+};
+
+const httpTilesetInfo = (uid) => {
+  return fetchJson(httpDataConfs[uid].tilesetInfo).then((info) => {
+    // Normalize: server tileset info uses max_width; http tiles may use max_pos instead
+    if (!info.max_width && info.max_pos) {
+      info.max_width = info.max_pos[0];
+    }
+    tilesetInfos[uid] = info;
+    return info;
+  });
+};
+
+const httpFetchTilesDebounced = async (uid, tileIds) => {
+  const { tilesUrls } = httpDataConfs[uid];
+  const ret = {};
+
+  await Promise.all(
+    tileIds.map(async (tileId) => {
+      const url = tilesUrls[tileId];
+      if (!url) {
+        ret[tileId] = [];
+        tileValues.set(`${uid}.${tileId}`, []);
+        return;
+      }
+      const tileData = await fetchJson(url);
+      const rowJsonTile = tileData.map((x) => {
+        const seg = addClippingAdjustments(x);
+        // Sort substitutions once here so insertions render on top during every render call.
+        seg.substitutions.sort((a, _b) => a.type === 'I' ? 1 : -1);
+        return seg;
+      });
+      rowJsonTile.tilePositionId = tileId;
+      ret[tileId] = rowJsonTile;
+      tileValues.set(`${uid}.${tileId}`, rowJsonTile);
+    }),
+  );
+
+  return ret;
 };
 
 const serverTilesetInfo = (uid) => {
@@ -916,6 +996,28 @@ function assignSectionToRow(
 
   // no row has been assigned - find a suitable row and update the occupied space
   if (section.row === null || section.row === undefined) {
+    // Fast path: if the new segment overlaps with every existing row there is
+    // no point scanning — a new row is the only option.
+    //
+    // A row can fit the segment only if:
+    //   (a) segmentToWithPadding  < row.from  (segment ends before row starts), OR
+    //   (b) segmentFromWithPadding > row.to   (segment starts after row ends)
+    //
+    // Neither can be true for ANY row when:
+    //   segmentToWithPadding  >= max(row.from) [_maxFrom] — rules out (a) for all rows
+    //   segmentFromWithPadding <= min(row.to)  [_minTo]   — rules out (b) for all rows
+    if (
+      occupiedSpaceInRows.length > 0 &&
+      segmentToWithPadding >= occupiedSpaceInRows._maxFrom &&
+      segmentFromWithPadding <= occupiedSpaceInRows._minTo
+    ) {
+      section.row = occupiedSpaceInRows.length;
+      occupiedSpaceInRows.push({ from: segmentFromWithPadding, to: segmentToWithPadding });
+      occupiedSpaceInRows._maxFrom = Math.max(occupiedSpaceInRows._maxFrom, segmentFromWithPadding);
+      occupiedSpaceInRows._minTo = Math.min(occupiedSpaceInRows._minTo, segmentToWithPadding);
+      return;
+    }
+
     // Go through each row and look if there is space for the segment
     for (let i = 0; i < occupiedSpaceInRows.length; i++) {
       if (!occupiedSpaceInRows[i]) {
@@ -954,6 +1056,8 @@ function assignSectionToRow(
       from: segmentFromWithPadding,
       to: segmentToWithPadding,
     });
+    occupiedSpaceInRows._maxFrom = Math.max(occupiedSpaceInRows._maxFrom, segmentFromWithPadding);
+    occupiedSpaceInRows._minTo = Math.min(occupiedSpaceInRows._minTo, segmentToWithPadding);
   }
   // segment already has a row - just update the occupied space
   else {
@@ -986,6 +1090,13 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
   // This means that in row i, the space from 100 to 110 is occupied and reads cannot be placed there
   // This array is updated with every section that is added to the scene
   const occupiedSpaceInRows = [];
+  // _maxFrom / _minTo track the max row.from and min row.to across all rows.
+  // They are only updated when a new row is pushed (never when an existing row
+  // is updated), which keeps them conservatively correct: they may over-report
+  // _maxFrom or under-report _minTo, but never in a direction that could make
+  // the fast path in assignSectionToRow produce an incorrect result.
+  occupiedSpaceInRows._maxFrom = -Infinity;
+  occupiedSpaceInRows._minTo = Infinity;
   const sectionIds = new Set(sections.map((x) => x.id));
 
   // We only need those previous sections, that are in the current sections list
@@ -1079,27 +1190,21 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
     );
   }
 
-  const outputRows = [];
-  for (let i = 0; i < occupiedSpaceInRows.length; i++) {
-    outputRows[i] = newSections
-      .filter((x) => x.row === i)
-      .concat(sortedSections.filter((x) => x.row === i));
+  // Build outputRows by bucketing sections into their assigned row.
+  // The previous approach did a .filter() over all sections for each row,
+  // which is O(n²) — catastrophic for dense pileups where every read gets
+  // its own row. A single forward pass over both arrays is O(n).
+  const outputRows = Array.from({ length: occupiedSpaceInRows.length }, () => []);
+  for (const section of newSections) {
+    if (section.row != null) outputRows[section.row].push(section);
+  }
+  for (const section of sortedSections) {
+    if (section.row != null) outputRows[section.row].push(section);
   }
 
   return outputRows;
 }
 
-const STARTING_POSITIONS_ARRAY_LENGTH = 2 ** 20;
-const STARTING_COLORS_ARRAY_LENGTH = 2 ** 21;
-const STARTING_INDEXES_LENGTH = 2 ** 21;
-
-let allPositionsLength = STARTING_POSITIONS_ARRAY_LENGTH;
-let allColorsLength = STARTING_COLORS_ARRAY_LENGTH;
-let allIndexesLength = STARTING_INDEXES_LENGTH;
-
-let allPositions = new Float32Array(allPositionsLength);
-let allColors = new Float32Array(allColorsLength);
-let allIndexes = new Int32Array(allIndexesLength);
 
 // how we sort segments
 const segmentsSort = (a, b) => a.fromWithClipping - b.fromWithClipping;
@@ -1120,6 +1225,11 @@ const createSection = (segments) => {
     toWithClipping: Math.max(...segments.map((x) => x.toWithClipping)),
     id: segments.map((x) => x.id.toString()).join('.'),
     segments: segments.sort(segmentsSort),
+    // If the tile data already contains a pre-assigned row, carry it through so
+    // that assignSectionToRow can skip its O(n) linear scan and use the O(1)
+    // fast path instead. This turns overall row-assignment from O(n²) to O(n)
+    // for pre-computed tile data (e.g. http-tiles).
+    row: segments[0].row != null ? segments[0].row : null,
     // strand: segments[0].strand,
   };
 };
@@ -1131,9 +1241,9 @@ const renderSegments = (
   scaleRange,
   position,
   dimensions,
-  prevRows,
   trackOptions,
 ) => {
+  const prevRows = prevRowsByUid[uid] || {};
   const allSegments = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
@@ -1253,66 +1363,52 @@ const renderSegments = (
     .range([0, dimensions[1]])
     .paddingInner(0.2);
 
+  // Reset fill counters. The module-level allPositions/allColors/allIndexes
+  // buffers are reused from the previous render (growing if needed, never freed).
   let currPosition = 0;
   let currColor = 0;
   let currIdx = 0;
 
-  const addPosition = (x1, y1) => {
-    if (currPosition > allPositionsLength - 2) {
-      allPositionsLength *= 2;
-      const prevAllPositions = allPositions;
-
-      allPositions = new Float32Array(allPositionsLength);
-      allPositions.set(prevAllPositions);
-    }
-    allPositions[currPosition++] = x1;
-    allPositions[currPosition++] = y1;
-
-    return currPosition / 2 - 1;
-  };
-
-  const addColor = (colorIdx, n) => {
-    if (currColor >= allColorsLength - n) {
-      allColorsLength *= 2;
-      const prevAllColors = allColors;
-
-      allColors = new Float32Array(allColorsLength);
-      allColors.set(prevAllColors);
-    }
-
-    for (let k = 0; k < n; k++) {
-      allColors[currColor++] = colorIdx;
-    }
-  };
-
-  const addTriangleIxs = (ix1, ix2, ix3) => {
-    if (currIdx >= allIndexesLength - 3) {
-      allIndexesLength *= 2;
-      const prevAllIndexes = allIndexes;
-
-      allIndexes = new Int32Array(allIndexesLength);
-      allIndexes.set(prevAllIndexes);
-    }
-
-    allIndexes[currIdx++] = ix1;
-    allIndexes[currIdx++] = ix2;
-    allIndexes[currIdx++] = ix3;
-  };
-
+  // Inlined addRect: writes positions, colors, and triangle indices directly
+  // without intermediate function calls. This is the hot path (1.6M calls per render).
   const addRect = (x, y, width, height, colorIdx) => {
-    const xLeft = x;
-    const xRight = xLeft + width;
-    const yTop = y;
+    const xRight = x + width;
     const yBottom = y + height;
+    const ix0 = currPosition >> 1; // base vertex index for this rect's 4 vertices
 
-    const ulIx = addPosition(xLeft, yTop);
-    const urIx = addPosition(xRight, yTop);
-    const llIx = addPosition(xLeft, yBottom);
-    const lrIx = addPosition(xRight, yBottom);
-    addColor(colorIdx, 4);
+    if (currPosition + 8 > allPositionsLength) {
+      allPositionsLength *= 2;
+      console.log(`[addRect] positions realloc → ${(allPositionsLength * 4 / 1e6).toFixed(0)}MB (${currPosition >> 3} rects so far)`);
+      const prev = allPositions;
+      allPositions = new Float32Array(allPositionsLength);
+      allPositions.set(prev);
+    }
+    allPositions[currPosition++] = x;      allPositions[currPosition++] = y;
+    allPositions[currPosition++] = xRight; allPositions[currPosition++] = y;
+    allPositions[currPosition++] = x;      allPositions[currPosition++] = yBottom;
+    allPositions[currPosition++] = xRight; allPositions[currPosition++] = yBottom;
 
-    addTriangleIxs(ulIx, urIx, llIx);
-    addTriangleIxs(llIx, lrIx, urIx);
+    if (currColor + 4 > allColorsLength) {
+      allColorsLength *= 2;
+      console.log(`[addRect] colors realloc → ${(allColorsLength * 4 / 1e6).toFixed(0)}MB`);
+      const prev = allColors;
+      allColors = new Float32Array(allColorsLength);
+      allColors.set(prev);
+    }
+    allColors[currColor++] = colorIdx;
+    allColors[currColor++] = colorIdx;
+    allColors[currColor++] = colorIdx;
+    allColors[currColor++] = colorIdx;
+
+    if (currIdx + 6 > allIndexesLength) {
+      allIndexesLength *= 2;
+      console.log(`[addRect] indexes realloc → ${(allIndexesLength * 4 / 1e6).toFixed(0)}MB`);
+      const prev = allIndexes;
+      allIndexes = new Int32Array(allIndexesLength);
+      allIndexes.set(prev);
+    }
+    allIndexes[currIdx++] = ix0;     allIndexes[currIdx++] = ix0 + 1; allIndexes[currIdx++] = ix0 + 2;
+    allIndexes[currIdx++] = ix0 + 2; allIndexes[currIdx++] = ix0 + 3; allIndexes[currIdx++] = ix0 + 1;
   };
 
   const xScale = scaleLinear().domain(domain).range(scaleRange);
@@ -1394,6 +1490,10 @@ const renderSegments = (
     }
   }
 
+  // Hoist per-render constants out of the inner loops.
+  const isProtein = isProteinColorScale(trackOptions.colorScale);
+  const insertionWidth = Math.max(1, xScale(0.2) - xScale(0));
+
   for (const group of Object.values(grouped)) {
     const { rows } = group;
 
@@ -1407,13 +1507,16 @@ const renderSegments = (
     let yTop;
     let yBottom;
 
-    rows.map((row, i) => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       yTop = yScale(i);
       const height = yScale.bandwidth();
       yBottom = yTop + height;
 
-      row.map((section, j) => {
-        section.segments.map((segment) => {
+      for (let j = 0; j < row.length; j++) {
+        const section = row[j];
+        for (let k = 0; k < section.segments.length; k++) {
+          const segment = section.segments[k];
           const from = xScale(segment.from);
           const to = xScale(segment.to);
 
@@ -1428,20 +1531,17 @@ const renderSegments = (
             segment.colorOverride || segment.color,
           );
 
-          // Place the insertions up front because they may be rendered
-          // on top of substitutions
-          segment.substitutions.sort((a, b) => a.type == 'I' ? 1 : -1)
+          // Insertions are sorted to the end during fetch (addClippingAdjustments stage)
+          // so they render on top of substitutions.
           for (const substitution of segment.substitutions) {
             xLeft = xScale(segment.from + substitution.pos);
             const width = Math.max(1, xScale(substitution.length) - xScale(0));
-            const insertionWidth = Math.max(1, xScale(0.2) - xScale(0));
             xRight = xLeft + width;
 
             if (substitution.type === 'I') {
               addRect(xLeft - insertionWidth / 2, yTop, insertionWidth, height, PILEUP_COLOR_IXS.I);
             } else if (substitution.variant) {
-              const isProtein = isProteinColorScale(trackOptions.colorScale);
-              const colorKey = isProtein 
+              const colorKey = isProtein
                 ? SINGLE_TO_THREE_LETTER_AA[substitution.variant] || substitution.variant
                 : substitution.variant;
               
@@ -1496,11 +1596,19 @@ const renderSegments = (
                 PILEUP_COLOR_IXS.N,
               );
 
-              let currPos = xLeft;
               const DASH_LENGTH = 6;
               const DASH_SPACE = 4;
+              const MAX_DASHES = 30;
 
-              // draw dashes
+              // draw dashes, capped to MAX_DASHES so long introns at high zoom
+              // don't generate thousands of rects per read
+              const naturalStep = DASH_LENGTH + DASH_SPACE;
+              const regionWidth = xRight - xLeft;
+              const step = regionWidth / MAX_DASHES > naturalStep
+                ? regionWidth / MAX_DASHES
+                : naturalStep;
+
+              let currPos = xLeft;
               while (currPos <= xRight) {
                 // make sure the last dash doesn't overrun
                 const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
@@ -1512,14 +1620,14 @@ const renderSegments = (
                   delWidth,
                   PILEUP_COLOR_IXS.N,
                 );
-                currPos += DASH_LENGTH + DASH_SPACE;
+                currPos += step;
               }
               // allready handled above
             } else {
               addRect(xLeft, yTop, width, height, PILEUP_COLOR_IXS.BLACK);
             }
           }
-        });
+        }
 
         if (trackOptions.viewAsPairs) {
           for (let i = 1; i < section.segments.length; i++) {
@@ -1539,16 +1647,37 @@ const renderSegments = (
             );
           }
         }
-      });
-    });
+      }
+    }
   }
 
-  const positionsBuffer = allPositions.slice(0, currPosition).buffer;
-  const colorsBuffer = allColors.slice(0, currColor).buffer;
-  const ixBuffer = allIndexes.slice(0, currIdx).buffer;
+  // Slice to exact size for transfer. The module-level buffers are retained
+  // (they are NOT transferred) so the next render can reuse them without
+  // reallocating. The slice cost is proportional to actual data size only.
+  const positionsBuffer = allPositions.buffer.slice(0, currPosition * 4);
+  const colorsBuffer    = allColors.buffer.slice(0, currColor * 4);
+  const ixBuffer        = allIndexes.buffer.slice(0, currIdx * 4);
+
+  // Cache the full grouped object in the worker so the next renderSegments call
+  // can use it as prevRows without any main-thread round-trip.
+  prevRowsByUid[uid] = grouped;
+
+  // Send only the minimum the main thread needs for y-scale bands.
+  // JS objects cannot be transferred zero-copy (only ArrayBuffers can), so we
+  // keep this payload as small as possible — just {rowCount, start, end} per
+  // group, which is a handful of numbers regardless of how many reads there are.
+  // The full grouped data stays in prevRowsByUid[uid] inside the worker.
+  const rowsMeta = {};
+  for (const [key, group] of Object.entries(grouped)) {
+    rowsMeta[key] = {
+      rowCount: group.rows.length,
+      start: group.start,
+      end: group.end,
+    };
+  }
 
   const objData = {
-    rows: grouped,
+    rowsMeta,
     coverage: allReadCounts,
     coverageSamplingDistance,
     positionsBuffer,
@@ -1561,18 +1690,26 @@ const renderSegments = (
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
 };
 
+const resetPrevRows = (uid) => {
+  delete prevRowsByUid[uid];
+};
+
 const tileFunctions = {
   init,
   localInit,
+  httpInit,
   serverInit,
   tilesetInfo,
   localTilesetInfo,
+  httpTilesetInfo,
   serverTilesetInfo,
   localFetchTilesDebounced,
+  httpFetchTilesDebounced,
   serverFetchTilesDebounced,
   fetchTilesDebounced,
   tile,
   renderSegments,
+  resetPrevRows,
 };
 
 expose(tileFunctions);

@@ -64,23 +64,27 @@ const testViewConfig = {
     "http://higlass.io/api/v1"
   ],
   "exportViewUrl": "/api/v1/viewconfs",
-  "views": [
-    {
+  "views": [{
       "initialXDomain": [
-        0.02131177948101793,
-        5.979866752103185
+        0,
+        250
       ],
       "initialYDomain": [
-        1499999997.6477432,
-        1500000002.3072767
+        0,
+        250
       ],
       "tracks": {
         "top": [
           {
             "type": "pileup",
-            "uid": "IFcjbUn4SmmwxmmSoOY6ug",
-            "tilesetUid": "C8Duv5wOT8aUyXAr0mPzuw",
-            "server": "http://localhost:8000/api/v1",
+            "uid": "http-tiles-pileup",
+            "data": {
+              "type": "http-tiles",
+              "tilesetInfo": "https://petespocket.s3.amazonaws.com/tiles/pileup_parasail_tileset_info.json.gz?AWSAccessKeyId=AKIAJMVXTRA4WEHLPIOQ&Signature=Fs5SPCnc2B1ZMsDZraeJiaRQi2c%3D&Expires=1776601720",
+              "tiles": {
+                "0.0": "https://petespocket.s3.amazonaws.com/tiles/pileup_parasail_tile_x_0_0.json.gz?AWSAccessKeyId=AKIAJMVXTRA4WEHLPIOQ&Signature=pVWq0djp1d4Rm41Beyyh%2BLZOg8Q%3D&Expires=1776601722"
+              }
+            },
             "options": {
               "axisPositionHorizontal": "right",
               "axisLabelFormatting": "normal",
@@ -103,7 +107,7 @@ const testViewConfig = {
               "highlightReadsBy": [],
               "largeInsertSizeThreshold": 1000,
               "viewAsPairs": false,
-              "name": "seqs4"
+              "name": "parasail-http"
             },
             "width": 422,
             "height": 278
@@ -120,9 +124,9 @@ const testViewConfig = {
         "w": 12,
         "h": 12,
         "x": 0,
-        "y": 0
+        "y": 12
       },
-      "uid": "HLLtv6pFRYe24xWdMjhz2Q"
+      "uid": "http-tiles-view"
     }
   ],
   "zoomLocks": {
