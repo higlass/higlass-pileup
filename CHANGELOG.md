@@ -2,6 +2,7 @@ v1.9.1
 
 - Fix mouseover regression
 - Fix sort by base regression for http-tiles data
+- Fix draw() queuing excessive renders while one is already in-flight, which caused sort by base to be delayed by seconds after zooming
 
 v1.9.0
 

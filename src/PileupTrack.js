@@ -683,7 +683,7 @@ varying vec4 vColor;
         (this.drawnAtScale.domain()[1] - this.drawnAtScale.domain()[0]) /
         (this._xScale.domain()[1] - this._xScale.domain()[0]);
 
-      if (tileK > 3) {
+      if (tileK > 3 && !this.rendering.size) {
         this.updateExistingGraphics(true);
       }
       // const valueScale = HGC.libraries.d3Scale
