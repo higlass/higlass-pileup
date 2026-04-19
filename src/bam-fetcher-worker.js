@@ -1207,17 +1207,6 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
   return outputRows;
 }
 
-const STARTING_POSITIONS_ARRAY_LENGTH = 2 ** 20;
-const STARTING_COLORS_ARRAY_LENGTH = 2 ** 21;
-const STARTING_INDEXES_LENGTH = 2 ** 21;
-
-let allPositionsLength = STARTING_POSITIONS_ARRAY_LENGTH;
-let allColorsLength = STARTING_COLORS_ARRAY_LENGTH;
-let allIndexesLength = STARTING_INDEXES_LENGTH;
-
-let allPositions = new Float32Array(allPositionsLength);
-let allColors = new Float32Array(allColorsLength);
-let allIndexes = new Int32Array(allIndexesLength);
 
 // how we sort segments
 const segmentsSort = (a, b) => a.fromWithClipping - b.fromWithClipping;
@@ -1388,6 +1377,18 @@ const renderSegments = (
   let currPosition = 0;
   let currColor = 0;
   let currIdx = 0;
+
+  // Start with a fixed buffer sized for ~1M rects (32 MB positions, 16 MB colors,
+  // 24 MB indexes). addRect will double any buffer that overflows — safe because
+  // we transfer the full buffer at the end and the main thread uses a bounded
+  // view, so no .slice() copy is ever needed.
+  const INITIAL_RECTS = 1000000;
+  let allPositions     = new Float32Array(INITIAL_RECTS * 8);
+  let allColors        = new Float32Array(INITIAL_RECTS * 4);
+  let allIndexes       = new Int32Array(INITIAL_RECTS * 6);
+  let allPositionsLength = INITIAL_RECTS * 8;
+  let allColorsLength    = INITIAL_RECTS * 4;
+  let allIndexesLength   = INITIAL_RECTS * 6;
 
   // Inlined addRect: writes positions, colors, and triangle indices directly
   // without intermediate function calls. This is the hot path (1.6M calls per render).
@@ -1660,9 +1661,12 @@ const renderSegments = (
     }
   }
 
-  const positionsBuffer = allPositions.slice(0, currPosition).buffer;
-  const colorsBuffer = allColors.slice(0, currColor).buffer;
-  const ixBuffer = allIndexes.slice(0, currIdx).buffer;
+  // Always transfer the full pre-allocated buffers — no copy ever needed.
+  // The main thread uses positionsLength/colorsLength/ixLength to construct
+  // bounded TypedArray views that cover only the valid (filled) portion.
+  const positionsBuffer = allPositions.buffer;
+  const colorsBuffer = allColors.buffer;
+  const ixBuffer = allIndexes.buffer;
   const _t5 = performance.now();
   console.log(`[render] buffer fill: ${(_t5-_t4).toFixed(0)}ms, total renderSegments: ${(_t5-_t0).toFixed(0)}ms`);
   console.log(`[render] buffer sizes: positions=${(positionsBuffer.byteLength/1e6).toFixed(1)}MB, colors=${(colorsBuffer.byteLength/1e6).toFixed(1)}MB, indexes=${(ixBuffer.byteLength/1e6).toFixed(1)}MB`);
@@ -1671,40 +1675,39 @@ const renderSegments = (
   // can use it as prevRows without any main-thread round-trip.
   prevRowsByUid[uid] = grouped;
 
-  // Build a stripped-down rows object for the main thread.
-  // The main thread only needs per-section positional metadata (for scale bands
-  // and hover hit-testing); it does NOT need the full segments array.
-  // Excluding segments eliminates ~38 MB of structured-clone serialization that
-  // was previously blocking the main thread for ~500 ms on every render.
-  const rowsForMainThread = {};
+  // Send only the minimum the main thread needs for y-scale bands.
+  // JS objects cannot be transferred zero-copy (only ArrayBuffers can), so we
+  // keep this payload as small as possible — just {rowCount, start, end} per
+  // group, which is a handful of numbers regardless of how many reads there are.
+  // The full grouped data stays in prevRowsByUid[uid] inside the worker.
+  const rowsMeta = {};
   for (const [key, group] of Object.entries(grouped)) {
-    rowsForMainThread[key] = {
-      rows: group.rows.map((row) =>
-        row.map((section) => ({
-          fromWithClipping: section.fromWithClipping,
-          toWithClipping: section.toWithClipping,
-          id: section.id,
-          row: section.row,
-          segments: [],
-        })),
-      ),
+    rowsMeta[key] = {
+      rowCount: group.rows.length,
       start: group.start,
       end: group.end,
     };
   }
 
   const objData = {
-    rows: rowsForMainThread,
+    rowsMeta,
     coverage: allReadCounts,
     coverageSamplingDistance,
     positionsBuffer,
     colorsBuffer,
     ixBuffer,
+    positionsLength: currPosition,
+    colorsLength: currColor,
+    ixLength: currIdx,
     xScaleDomain: domain,
     xScaleRange: scaleRange,
   };
 
   return Transfer(objData, [objData.positionsBuffer, colorsBuffer, ixBuffer]);
+};
+
+const resetPrevRows = (uid) => {
+  delete prevRowsByUid[uid];
 };
 
 const tileFunctions = {
@@ -1722,6 +1725,7 @@ const tileFunctions = {
   fetchTilesDebounced,
   tile,
   renderSegments,
+  resetPrevRows,
 };
 
 expose(tileFunctions);

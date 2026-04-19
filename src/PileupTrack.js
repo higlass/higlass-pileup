@@ -225,7 +225,7 @@ const PileupTrack = (HGC, ...args) => {
       // this.drawnAtScale keeps track of the scale at which
       // we last rendered everything
       this.drawnAtScale = HGC.libraries.d3Scale.scaleLinear();
-      this.prevRows = [];
+      this.rowsMeta = {};
       this.coverage = {};
       this.yScaleBands = {};
 
@@ -441,7 +441,9 @@ varying vec4 vColor;
         );
         this.dataFetcher.track = this;
 
-        this.prevRows = [];
+        this.rowsMeta = {};
+        // New uid was created above, so prevRowsByUid in the worker has no
+        // stale entry for it — no explicit reset needed.
         this.removeTiles(Object.keys(this.fetchedTiles));
         this.fetching.clear();
         this.refreshTiles();
@@ -453,8 +455,12 @@ varying vec4 vColor;
         JSON.stringify(this.prevOptions.sortByBase) !==
         JSON.stringify(this.options.sortByBase)
       ) {
-        // Base sorting has changed so we need to recalculate the rows
-        this.prevRows = {};
+        // Base sorting has changed — clear the worker-side prevRows cache so
+        // the next render starts fresh without stale row assignments.
+        this.rowsMeta = {};
+        this.worker.then((tileFunctions) =>
+          tileFunctions.resetPrevRows(this.dataFetcher.uid),
+        );
       }
 
       this.updateExistingGraphics();
@@ -521,31 +527,21 @@ varying vec4 vColor;
             this.drawError();
             this.animate();
 
-            this.positions = new Float32Array(toRender.positionsBuffer);
-            this.colors = new Float32Array(toRender.colorsBuffer);
-            this.ixs = new Int32Array(toRender.ixBuffer);
+            this.positions = new Float32Array(toRender.positionsBuffer, 0, toRender.positionsLength);
+            this.colors = new Float32Array(toRender.colorsBuffer, 0, toRender.colorsLength);
+            this.ixs = new Int32Array(toRender.ixBuffer, 0, toRender.ixLength);
 
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 
-            this.prevRows = toRender.rows;
+            this.rowsMeta = toRender.rowsMeta;
             this.coverage = toRender.coverage;
             this.coverageSamplingDistance = toRender.coverageSamplingDistance;
 
             if (this.loadMates) {
+              // Segment detail data is cached in the worker; readsById is
+              // populated by the worker-side prevRowsByUid cache. Mate hover
+              // requires a future lazy worker lookup.
               this.readsById = {};
-              for (const key in this.prevRows) {
-                this.prevRows[key].rows.forEach((row) => {
-                  row.forEach((section) => {
-                    section.segments.forEach((segment) => {
-                      if (segment.id in this.readsById) return;
-
-                      this.readsById[segment.id] = segment;
-                      // Will be needed later in the mouseover to determine the correct yPos for the mate
-                      this.readsById[segment.id]['groupKey'] = key;
-                    });
-                  });
-                });
-              }
             }
 
             const geometry = new HGC.libraries.PIXI.Geometry().addAttribute(
@@ -581,16 +577,12 @@ varying vec4 vColor;
             this.pMain.addChild(this.mouseOverGraphics);
 
             this.yScaleBands = {};
-            for (const key in this.prevRows) {
+            for (const key in this.rowsMeta) {
+              const { rowCount, start, end } = this.rowsMeta[key];
               this.yScaleBands[key] = HGC.libraries.d3Scale
                 .scaleBand()
-                .domain(
-                  HGC.libraries.d3Array.range(
-                    0,
-                    this.prevRows[key].rows.length,
-                  ),
-                )
-                .range([this.prevRows[key].start, this.prevRows[key].end])
+                .domain(HGC.libraries.d3Array.range(0, rowCount))
+                .range([start, end])
                 .paddingInner(0.2);
             }
 
@@ -749,7 +741,10 @@ varying vec4 vColor;
           if (start <= trackY && trackY <= end) {
             const eachBand = yScaleBand.step();
             const index = Math.floor((trackY - start) / eachBand);
-            const { rows } = this.prevRows[key];
+            // Segment data is cached in the worker; hover detail requires a
+            // worker-side lookup which is not yet implemented.
+            const rows = this.rowsMeta[key] && this.rowsMeta[key].rows;
+            if (!rows) continue;
 
             if (index >= 0 && index < rows.length) {
               const row = rows[index];
