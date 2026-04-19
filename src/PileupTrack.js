@@ -483,7 +483,14 @@ varying vec4 vColor;
         this.updateExistingGraphics();
       } else if (this.dimensions[1] !== this.drawnAtHeight) {
         const heightK = this.dimensions[1] / this.drawnAtHeight;
-        if (heightK > HEIGHT_SCALE_THRESHOLD || heightK < 1 / HEIGHT_SCALE_THRESHOLD) {
+        if (
+          (heightK > HEIGHT_SCALE_THRESHOLD || heightK < 1 / HEIGHT_SCALE_THRESHOLD) &&
+          !this.rendering.size
+        ) {
+          // Threshold exceeded and no render in flight: trigger a full re-render.
+          // Guard on rendering.size so that if a render is already running we
+          // fall through to the scaling branch below instead of triggering
+          // another re-render (which would cause the old mesh to briefly shrink).
           this.previousTileIdsUsedForRendering = {};
           this.updateExistingGraphics();
         } else {
@@ -519,6 +526,10 @@ varying vec4 vColor;
         this.rendering.add(x);
       });
       this.updateLoadingText();
+
+      // Capture dimensions at dispatch time so the callback can detect any
+      // height change that occurred while the worker was running.
+      const renderedHeight = this.dimensions[1];
 
       this.worker.then((tileFunctions) => {
         tileFunctions
@@ -621,8 +632,11 @@ varying vec4 vColor;
               .scaleLinear()
               .domain(toRender.xScaleDomain)
               .range(toRender.xScaleRange);
-            this.drawnAtHeight = this.dimensions[1];
-            this.heightScaleK = 1.0;
+            // Use the height the worker actually rendered at, not the current
+            // (potentially different) height. If the track was resized while
+            // the worker was running, scale the mesh to fill current height.
+            this.drawnAtHeight = renderedHeight;
+            this.heightScaleK = this.dimensions[1] / renderedHeight;
 
             scaleScalableGraphics(
               this.segmentGraphics,
@@ -633,7 +647,7 @@ varying vec4 vColor;
             // if somebody zoomed vertically, we want to readjust so that
             // they're still zoomed in vertically
             this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
-            this.segmentGraphics.position.y = this.valueScaleTransform.y;
+            this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
 
             this.draw();
             this.animate();
