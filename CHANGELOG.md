@@ -1,3 +1,8 @@
+v1.9.0
+
+- Much faster rendering
+- Add support for http-tiles data in track config
+
 v1.8.1
 
 - Make expected local tile format consistent with higlass's
