@@ -26,11 +26,14 @@
     "es"
   ],
   "devDependencies": {
-    "babel-core": "^6.26.3",
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
     "babel-cli": "^6.26.0",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-core": "^6.26.3",
     "babel-eslint": "^10.0.1",
+    "babel-jest": "^23.6.0",
     "babel-loader": "^7.1.4",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "before-build-webpack": "^0.2.11",
     "eslint": "^8.7.0",
@@ -41,6 +44,7 @@
     "file-loader": "^1.1.11",
     "html-loader": "^0.5.5",
     "html-webpack-plugin": "^4.5.2",
+    "jest": "^23.6.0",
     "prettier": "^2.1.2",
     "string-replace-loader": "^2.2.0",
     "style-loader": "^0.20.3",
@@ -53,6 +57,7 @@
     "webpack-plugin-replace": "^1.2.0"
   },
   "scripts": {
+    "test": "jest",
     "build-es": "rm -rf ./es/* && npx babel ./src/ --out-dir ./es/ --env-name esm",
     "build": "npm run build-es && webpack --mode production",
     "start": "webpack serve --mode development --port 8087 -c webpack.config.js",

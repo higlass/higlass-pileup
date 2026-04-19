@@ -4,5 +4,10 @@
       "modules": false
     }]
   ],
+  "env": {
+    "test": {
+      "presets": [["env", { "modules": "commonjs" }]]
+    }
+  },
   "plugins": ["transform-object-rest-spread"]
 }
