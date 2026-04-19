@@ -418,6 +418,9 @@ const dataConfs = {};
 // Store local-tiles ids
 const localDataConfs = {};
 
+// Store http-tiles ids
+const httpDataConfs = {};
+
 const trackOptions = {};
 
 function authFetch(url, uid) {
@@ -492,6 +495,62 @@ const localTilesetInfo = (uid) => {
   tilesetInfos[uid] = tilesetInfo;
 
   return tilesetInfo;
+};
+
+// Fetch potentially gzip-compressed JSON from a URL.
+// Handles manual decompression when the server does not set Content-Encoding: gzip
+// (e.g. S3 objects stored as .json.gz with Content-Type: application/json).
+const fetchJson = async (url) => {
+  const response = await fetch(url);
+  if (url.includes('.gz')) {
+    const blob = await response.blob();
+    const ds = new DecompressionStream('gzip');
+    const stream = blob.stream().pipeThrough(ds);
+    const text = await new Response(stream).text();
+    return JSON.parse(text);
+  }
+  return response.json();
+};
+
+const httpInit = (uid, tilesetInfo, tilesUrls) => {
+  httpDataConfs[uid] = {
+    tilesetInfo,
+    tilesUrls,
+  };
+};
+
+const httpTilesetInfo = (uid) => {
+  return fetchJson(httpDataConfs[uid].tilesetInfo).then((info) => {
+    // Normalize: server tileset info uses max_width; http tiles may use max_pos instead
+    if (!info.max_width && info.max_pos) {
+      info.max_width = info.max_pos[0];
+    }
+    tilesetInfos[uid] = info;
+    return info;
+  });
+};
+
+const httpFetchTilesDebounced = async (uid, tileIds) => {
+  const { tilesUrls } = httpDataConfs[uid];
+  const ret = {};
+
+  await Promise.all(
+    tileIds.map(async (tileId) => {
+      const url = tilesUrls[tileId];
+      if (!url) {
+        ret[tileId] = [];
+        tileValues.set(`${uid}.${tileId}`, []);
+        return;
+      }
+      const tileData = await fetchJson(url);
+      const rowJsonTile = tileData.map((x) => addClippingAdjustments(x));
+      rowJsonTile.tilePositionId = tileId;
+      ret[tileId] = rowJsonTile;
+      tileValues.set(`${uid}.${tileId}`, rowJsonTile);
+    }),
+  );
+
+  return ret;
 };
 
 const serverTilesetInfo = (uid) => {
@@ -1120,6 +1179,11 @@ const createSection = (segments) => {
     toWithClipping: Math.max(...segments.map((x) => x.toWithClipping)),
     id: segments.map((x) => x.id.toString()).join('.'),
     segments: segments.sort(segmentsSort),
+    // If the tile data already contains a pre-assigned row, carry it through so
+    // that assignSectionToRow can skip its O(n) linear scan and use the O(1)
+    // fast path instead. This turns overall row-assignment from O(n²) to O(n)
+    // for pre-computed tile data (e.g. http-tiles).
+    row: segments[0].row != null ? segments[0].row : null,
     // strand: segments[0].strand,
   };
 };
@@ -1564,11 +1628,14 @@ const renderSegments = (
 const tileFunctions = {
   init,
   localInit,
+  httpInit,
   serverInit,
   tilesetInfo,
   localTilesetInfo,
+  httpTilesetInfo,
   serverTilesetInfo,
   localFetchTilesDebounced,
+  httpFetchTilesDebounced,
   serverFetchTilesDebounced,
   fetchTilesDebounced,
   tile,

@@ -64,23 +64,27 @@ const testViewConfig = {
     "http://higlass.io/api/v1"
   ],
   "exportViewUrl": "/api/v1/viewconfs",
-  "views": [
-    {
+  "views": [{
       "initialXDomain": [
-        0.02131177948101793,
-        5.979866752103185
+        0,
+        250
       ],
       "initialYDomain": [
-        1499999997.6477432,
-        1500000002.3072767
+        0,
+        250
       ],
       "tracks": {
         "top": [
           {
             "type": "pileup",
-            "uid": "IFcjbUn4SmmwxmmSoOY6ug",
-            "tilesetUid": "C8Duv5wOT8aUyXAr0mPzuw",
-            "server": "http://localhost:8000/api/v1",
+            "uid": "http-tiles-pileup",
+            "data": {
+              "type": "http-tiles",
+              "tilesetInfo": "https://petespocket.s3.us-east-1.amazonaws.com/tiles/pileup_parasail_tileset_info.json.gz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJMVXTRA4WEHLPIOQ%2F20260419%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260419T000510Z&X-Amz-Expires=43200&X-Amz-SignedHeaders=host&X-Amz-Signature=20ab0c79c44911f31c306b3c22dc18e64e590647bb05aafb608617b3dd65d126",
+              "tiles": {
+                "0.0": "https://petespocket.s3.us-east-1.amazonaws.com/tiles/pileup_parasail_tile_x_0_0.json.gz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJMVXTRA4WEHLPIOQ%2F20260419%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260419T000511Z&X-Amz-Expires=43200&X-Amz-SignedHeaders=host&X-Amz-Signature=d4e21c653e62c2df86a97e805baa892726ec33f64cc723d8a4eeae0be408cbd4"
+              }
+            },
             "options": {
               "axisPositionHorizontal": "right",
               "axisLabelFormatting": "normal",
@@ -103,7 +107,7 @@ const testViewConfig = {
               "highlightReadsBy": [],
               "largeInsertSizeThreshold": 1000,
               "viewAsPairs": false,
-              "name": "seqs4"
+              "name": "parasail-http"
             },
             "width": 422,
             "height": 278
@@ -120,9 +124,9 @@ const testViewConfig = {
         "w": 12,
         "h": 12,
         "x": 0,
-        "y": 0
+        "y": 12
       },
-      "uid": "HLLtv6pFRYe24xWdMjhz2Q"
+      "uid": "http-tiles-view"
     }
   ],
   "zoomLocks": {
