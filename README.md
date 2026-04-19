@@ -228,6 +228,47 @@ The currently available substitution types are:
 - `I` - corresponding to an insertion
 - `D` - corresponding to a deletion
 
+## HTTP tiles
+
+The `higlass-pileup` track supports pre-rendered tiles served over HTTP. This allows tiles to be pre-computed and hosted as static files (e.g. on S3), avoiding the need for a running HiGlass server.
+
+```
+data: {
+  type: 'http-tiles',
+  tilesetInfo: 'https://example.com/tiles/tileset_info.json',
+  tiles: {
+    '0.0': 'https://example.com/tiles/tile_0_0.json',
+    '1.0': 'https://example.com/tiles/tile_1_0.json',
+    '1.1': 'https://example.com/tiles/tile_1_1.json'
+  }
+}
+```
+
+- **`tilesetInfo`** - URL to a JSON file describing the tileset. The standard HiGlass tileset info fields are supported (`max_width`, `tile_size`, `max_zoom`, `chromsizes`, etc.). If the server returns `max_pos` instead of `max_width`, it will be normalized automatically.
+- **`tiles`** - Object mapping tile IDs (e.g. `"0.0"`, `"1.3"`) to URLs. Each URL should point to a JSON file containing an array of read objects in the same format used by [local tiles](#local-tiles).
+
+Both `tilesetInfo` and tile URLs support gzip-compressed JSON (files ending in `.gz`).
+
+The tile data format is the same as for local tiles — an array of read objects:
+
+```json
+[
+  {
+    "id": "read1",
+    "from": 1000,
+    "to": 1150,
+    "row": 0,
+    "substitutions": [
+      { "pos": 10, "type": "X", "length": 1, "base": "A", "variant": "T" },
+      { "pos": 40, "type": "D", "length": 3 }
+    ],
+    "color": 0
+  }
+]
+```
+
+Including a `row` field in each read allows the track to skip row assignment on the main thread, which significantly improves rendering performance for large datasets.
+
 ## Protein Support
 
 The pileup track now supports protein sequences with a 21-color amino acid color scale. The colors are mapped to amino acids based on their chemical properties:
