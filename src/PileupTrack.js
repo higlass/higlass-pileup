@@ -527,9 +527,9 @@ varying vec4 vColor;
             this.drawError();
             this.animate();
 
-            this.positions = new Float32Array(toRender.positionsBuffer, 0, toRender.positionsLength);
-            this.colors = new Float32Array(toRender.colorsBuffer, 0, toRender.colorsLength);
-            this.ixs = new Int32Array(toRender.ixBuffer, 0, toRender.ixLength);
+            this.positions = new Float32Array(toRender.positionsBuffer);
+            this.colors = new Float32Array(toRender.colorsBuffer);
+            this.ixs = new Int32Array(toRender.ixBuffer);
 
             const newGraphics = new HGC.libraries.PIXI.Graphics();
 

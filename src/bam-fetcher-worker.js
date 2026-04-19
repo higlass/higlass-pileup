@@ -425,6 +425,18 @@ const httpDataConfs = {};
 // through the main thread — avoids structured-clone of 50K+ segment objects.
 const prevRowsByUid = {};
 
+// Persistent geometry buffers, module-level so they are allocated once and
+// reused across renders. Reusing the same memory avoids repeated large-alloc/
+// free cycles that cause V8 heap fragmentation and OOM even when total free
+// memory is sufficient. addRect grows them if needed (they never shrink).
+// renderSegments slices the valid portion for zero-waste transfer.
+let allPositions = new Float32Array(8000000);     // 1M rects = 32 MB
+let allColors    = new Float32Array(4000000);     // 16 MB
+let allIndexes   = new Int32Array(6000000);       // 24 MB
+let allPositionsLength = 8000000;
+let allColorsLength    = 4000000;
+let allIndexesLength   = 6000000;
+
 const trackOptions = {};
 
 function authFetch(url, uid) {
@@ -505,24 +517,15 @@ const localTilesetInfo = (uid) => {
 // Handles manual decompression when the server does not set Content-Encoding: gzip
 // (e.g. S3 objects stored as .json.gz with Content-Type: application/json).
 const fetchJson = async (url) => {
-  const t0 = performance.now();
   const response = await fetch(url);
-  const t1 = performance.now();
   if (url.includes('.gz')) {
     const blob = await response.blob();
-    const t2 = performance.now();
     const ds = new DecompressionStream('gzip');
     const stream = blob.stream().pipeThrough(ds);
     const text = await new Response(stream).text();
-    const t3 = performance.now();
-    const result = JSON.parse(text);
-    const t4 = performance.now();
-    console.log(`[fetchJson] network: ${(t1-t0).toFixed(0)}ms, blob: ${(t2-t1).toFixed(0)}ms, decompress: ${(t3-t2).toFixed(0)}ms, JSON.parse(${(text.length/1e6).toFixed(1)}MB): ${(t4-t3).toFixed(0)}ms, total: ${(t4-t0).toFixed(0)}ms`);
-    return result;
+    return JSON.parse(text);
   }
-  const result = await response.json();
-  console.log(`[fetchJson] network+parse: ${(performance.now()-t0).toFixed(0)}ms`);
-  return result;
+  return response.json();
 };
 
 const httpInit = (uid, tilesetInfo, tilesUrls) => {
@@ -544,7 +547,6 @@ const httpTilesetInfo = (uid) => {
 };
 
 const httpFetchTilesDebounced = async (uid, tileIds) => {
-  const t0 = performance.now();
   const { tilesUrls } = httpDataConfs[uid];
   const ret = {};
 
@@ -557,22 +559,18 @@ const httpFetchTilesDebounced = async (uid, tileIds) => {
         return;
       }
       const tileData = await fetchJson(url);
-      const t1 = performance.now();
       const rowJsonTile = tileData.map((x) => {
         const seg = addClippingAdjustments(x);
         // Sort substitutions once here so insertions render on top during every render call.
         seg.substitutions.sort((a, _b) => a.type === 'I' ? 1 : -1);
         return seg;
       });
-      const t2 = performance.now();
-      console.log(`[httpFetch] addClippingAdjustments+sort x${tileData.length}: ${(t2-t1).toFixed(0)}ms`);
       rowJsonTile.tilePositionId = tileId;
       ret[tileId] = rowJsonTile;
       tileValues.set(`${uid}.${tileId}`, rowJsonTile);
     }),
   );
 
-  console.log(`[httpFetch] total: ${(performance.now()-t0).toFixed(0)}ms`);
   return ret;
 };
 
@@ -1246,7 +1244,6 @@ const renderSegments = (
   trackOptions,
 ) => {
   const prevRows = prevRowsByUid[uid] || {};
-  const _t0 = performance.now();
   const allSegments = {};
   let allReadCounts = {};
   let coverageSamplingDistance;
@@ -1266,8 +1263,6 @@ const renderSegments = (
   }
 
   let segmentList = Object.values(allSegments);
-  const _t1 = performance.now();
-  console.log(`[render] build allSegments (${segmentList.length}): ${(_t1-_t0).toFixed(0)}ms`);
 
   if (trackOptions.minMappingQuality > 0) {
     segmentList = segmentList.filter(
@@ -1284,8 +1279,6 @@ const renderSegments = (
   } else {
     sections = segmentList.map((x) => createSection([x]));
   }
-  const _t2 = performance.now();
-  console.log(`[render] createSection x${sections.length}: ${(_t2-_t1).toFixed(0)}ms`);
 
   // At this point reads are colored correctly, but we only want to align those reads that
   // are within the visible tiles - not mates that are far away, as this can mess up the alignment
@@ -1357,8 +1350,6 @@ const renderSegments = (
     grouped[key] = {};
     grouped[key].rows = rows;
   }
-  const _t3 = performance.now();
-  console.log(`[render] sectionsToRows: ${(_t3-_t2).toFixed(0)}ms`);
 
   // calculate the height of each group
   const totalRows = Object.values(grouped)
@@ -1371,24 +1362,12 @@ const renderSegments = (
     .domain(range(0, totalRows + currStart))
     .range([0, dimensions[1]])
     .paddingInner(0.2);
-  const _t4 = performance.now();
-  console.log(`[render] scaleBand (${totalRows} rows): ${(_t4-_t3).toFixed(0)}ms`);
 
+  // Reset fill counters. The module-level allPositions/allColors/allIndexes
+  // buffers are reused from the previous render (growing if needed, never freed).
   let currPosition = 0;
   let currColor = 0;
   let currIdx = 0;
-
-  // Start with a fixed buffer sized for ~1M rects (32 MB positions, 16 MB colors,
-  // 24 MB indexes). addRect will double any buffer that overflows — safe because
-  // we transfer the full buffer at the end and the main thread uses a bounded
-  // view, so no .slice() copy is ever needed.
-  const INITIAL_RECTS = 1000000;
-  let allPositions     = new Float32Array(INITIAL_RECTS * 8);
-  let allColors        = new Float32Array(INITIAL_RECTS * 4);
-  let allIndexes       = new Int32Array(INITIAL_RECTS * 6);
-  let allPositionsLength = INITIAL_RECTS * 8;
-  let allColorsLength    = INITIAL_RECTS * 4;
-  let allIndexesLength   = INITIAL_RECTS * 6;
 
   // Inlined addRect: writes positions, colors, and triangle indices directly
   // without intermediate function calls. This is the hot path (1.6M calls per render).
@@ -1399,6 +1378,7 @@ const renderSegments = (
 
     if (currPosition + 8 > allPositionsLength) {
       allPositionsLength *= 2;
+      console.log(`[addRect] positions realloc → ${(allPositionsLength * 4 / 1e6).toFixed(0)}MB (${currPosition >> 3} rects so far)`);
       const prev = allPositions;
       allPositions = new Float32Array(allPositionsLength);
       allPositions.set(prev);
@@ -1410,6 +1390,7 @@ const renderSegments = (
 
     if (currColor + 4 > allColorsLength) {
       allColorsLength *= 2;
+      console.log(`[addRect] colors realloc → ${(allColorsLength * 4 / 1e6).toFixed(0)}MB`);
       const prev = allColors;
       allColors = new Float32Array(allColorsLength);
       allColors.set(prev);
@@ -1421,6 +1402,7 @@ const renderSegments = (
 
     if (currIdx + 6 > allIndexesLength) {
       allIndexesLength *= 2;
+      console.log(`[addRect] indexes realloc → ${(allIndexesLength * 4 / 1e6).toFixed(0)}MB`);
       const prev = allIndexes;
       allIndexes = new Int32Array(allIndexesLength);
       allIndexes.set(prev);
@@ -1614,11 +1596,19 @@ const renderSegments = (
                 PILEUP_COLOR_IXS.N,
               );
 
-              let currPos = xLeft;
               const DASH_LENGTH = 6;
               const DASH_SPACE = 4;
+              const MAX_DASHES = 30;
 
-              // draw dashes
+              // draw dashes, capped to MAX_DASHES so long introns at high zoom
+              // don't generate thousands of rects per read
+              const naturalStep = DASH_LENGTH + DASH_SPACE;
+              const regionWidth = xRight - xLeft;
+              const step = regionWidth / MAX_DASHES > naturalStep
+                ? regionWidth / MAX_DASHES
+                : naturalStep;
+
+              let currPos = xLeft;
               while (currPos <= xRight) {
                 // make sure the last dash doesn't overrun
                 const dashLength = Math.min(DASH_LENGTH, xRight - currPos);
@@ -1630,7 +1620,7 @@ const renderSegments = (
                   delWidth,
                   PILEUP_COLOR_IXS.N,
                 );
-                currPos += DASH_LENGTH + DASH_SPACE;
+                currPos += step;
               }
               // allready handled above
             } else {
@@ -1661,15 +1651,12 @@ const renderSegments = (
     }
   }
 
-  // Always transfer the full pre-allocated buffers — no copy ever needed.
-  // The main thread uses positionsLength/colorsLength/ixLength to construct
-  // bounded TypedArray views that cover only the valid (filled) portion.
-  const positionsBuffer = allPositions.buffer;
-  const colorsBuffer = allColors.buffer;
-  const ixBuffer = allIndexes.buffer;
-  const _t5 = performance.now();
-  console.log(`[render] buffer fill: ${(_t5-_t4).toFixed(0)}ms, total renderSegments: ${(_t5-_t0).toFixed(0)}ms`);
-  console.log(`[render] buffer sizes: positions=${(positionsBuffer.byteLength/1e6).toFixed(1)}MB, colors=${(colorsBuffer.byteLength/1e6).toFixed(1)}MB, indexes=${(ixBuffer.byteLength/1e6).toFixed(1)}MB`);
+  // Slice to exact size for transfer. The module-level buffers are retained
+  // (they are NOT transferred) so the next render can reuse them without
+  // reallocating. The slice cost is proportional to actual data size only.
+  const positionsBuffer = allPositions.buffer.slice(0, currPosition * 4);
+  const colorsBuffer    = allColors.buffer.slice(0, currColor * 4);
+  const ixBuffer        = allIndexes.buffer.slice(0, currIdx * 4);
 
   // Cache the full grouped object in the worker so the next renderSegments call
   // can use it as prevRows without any main-thread round-trip.
@@ -1696,9 +1683,6 @@ const renderSegments = (
     positionsBuffer,
     colorsBuffer,
     ixBuffer,
-    positionsLength: currPosition,
-    colorsLength: currColor,
-    ixLength: currIdx,
     xScaleDomain: domain,
     xScaleRange: scaleRange,
   };
