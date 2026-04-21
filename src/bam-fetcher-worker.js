@@ -1363,12 +1363,17 @@ const renderSegments = (
   const totalRows = Object.values(grouped)
     .map((x) => x.rows.length)
     .reduce((a, b) => a + b, 0);
-  let currStart = trackOptions.showCoverage ? trackOptions.coverageHeight : 0;
+
+  // Reserve fixed pixel space for coverage at the top
+  const coveragePixelHeight = trackOptions.showCoverage ? trackOptions.coverageHeight : 0;
+  const readsStartPixel = coveragePixelHeight;
+
+  let currStart = 0;
 
   // const d = range(0, rows.length);
   const yGlobalScale = scaleBand()
-    .domain(range(0, totalRows + currStart))
-    .range([0, dimensions[1]])
+    .domain(range(0, totalRows))
+    .range([readsStartPixel, dimensions[1]])
     .paddingInner(0.2);
 
   // Reset fill counters. The module-level allPositions/allColors/allIndexes
@@ -1460,18 +1465,11 @@ const renderSegments = (
     allReadCounts = result.coverage;
     const maxReadCount = result.maxCoverage;
 
-    const d = range(0, trackOptions.coverageHeight);
-    const groupStart = yGlobalScale(0);
-    const groupEnd =
-      yGlobalScale(trackOptions.coverageHeight - 1) + yGlobalScale.bandwidth();
-    const r = [groupStart, groupEnd];
-
-    const yScale = scaleBand().domain(d).range(r).paddingInner(0.05);
-
+    // Coverage uses fixed pixel height at the top of the track
     let xLeft, yTop, barHeight;
     let bgColor = PILEUP_COLOR_IXS.BG_MUTED;
     const width = (xScale(1) - xScale(0)) * coverageSamplingDistance;
-    const groupHeight = yScale.bandwidth() * trackOptions.coverageHeight;
+    const groupHeight = coveragePixelHeight;
     const scalingFactor = groupHeight / maxReadCount;
 
     for (const pos of Object.keys(allReadCounts)) {
