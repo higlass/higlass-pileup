@@ -1,4 +1,4 @@
-v1.9.2
+v1.9.3
 
 - Fix coverage display not showing (coverage area was being rendered at < 1 pixel height)
 - Fix horizontal resize causing incorrect zoom level display
