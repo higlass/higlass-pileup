@@ -81,13 +81,24 @@ function findNearestSub(mousePos, read, nearestDistance) {
 }
 
 const scaleScalableGraphics = (graphics, xScale, drawnAtScale) => {
+  // tileK represents the zoom level change (genomic domain ratio)
   const tileK =
     (drawnAtScale.domain()[1] - drawnAtScale.domain()[0]) /
     (xScale.domain()[1] - xScale.domain()[0]);
+
+  // rangeK represents the pixel width change (pixel range ratio)
+  const rangeK =
+    (xScale.range()[1] - xScale.range()[0]) /
+    (drawnAtScale.range()[1] - drawnAtScale.range()[0]);
+
+  // Map the current genomic domain to pixel positions in the DRAWN coordinate space
   const newRange = xScale.domain().map(drawnAtScale);
 
-  const posOffset = newRange[0];
-  graphics.scale.x = tileK;
+  // The position offset needs to account for the range scaling
+  const posOffset = newRange[0] * rangeK;
+
+  // Scale by both the zoom change and the width change
+  graphics.scale.x = tileK * rangeK;
   graphics.position.x = -posOffset * tileK;
 };
 

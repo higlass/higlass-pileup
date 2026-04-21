@@ -1,3 +1,8 @@
+v1.9.2
+
+- Fix horizontal resize causing incorrect zoom level display
+- Fix zoom anchor position when resizing and zooming
+
 v1.9.1
 
 - Fix mouseover regression
