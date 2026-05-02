@@ -1722,6 +1722,90 @@ const getReadAtPosition = (uid, groupKey, rowIndex, genomicPos) => {
   return null;
 };
 
+/**
+ * Get reads suitable for text labeling.
+ * Returns an array of read data for all visible reads within the domain.
+ * Prioritizes previously visible reads to maintain label stability.
+ *
+ * @param {string} uid - Track UID
+ * @param {Array<number>} domain - [minPos, maxPos] genomic domain
+ * @param {number} maxReads - Maximum number of reads to return (default: 500)
+ * @param {Array<string>} priorityReadIds - Read IDs to prioritize (previously visible)
+ * @returns {Array} Array of read objects with { id, readName, from, to, row, groupKey, mapq, strand }
+ */
+const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) => {
+  const grouped = prevRowsByUid[uid];
+  if (!grouped) return [];
+
+  const [minPos, maxPos] = domain;
+  const prioritySet = new Set(priorityReadIds.map(id => String(id)));
+  const priorityReads = [];
+  const otherReads = [];
+
+  const TEST_READ = '196850524';
+  const testInPriority = prioritySet.has(TEST_READ);
+  let testReadFound = false;
+
+  // First pass: collect ALL priority reads and some other reads
+  for (const groupKey in grouped) {
+    const group = grouped[groupKey];
+    const rows = group.rows;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+      for (const section of row) {
+        for (const segment of section.segments) {
+          // Check if read overlaps the visible domain
+          if (segment.to >= minPos && segment.from <= maxPos) {
+            const readData = {
+              id: segment.id,
+              readName: segment.readName,
+              from: segment.from,
+              to: segment.to,
+              row: rowIndex,
+              groupKey: groupKey,
+              mapq: segment.mapq,
+              strand: segment.strand,
+              chrName: segment.chrName,
+              chrOffset: segment.chrOffset || 0,
+            };
+
+            if (String(segment.id) === TEST_READ) {
+              testReadFound = true;
+            }
+
+            // Separate priority reads from others
+            if (prioritySet.has(String(segment.id))) {
+              priorityReads.push(readData);
+              prioritySet.delete(String(segment.id)); // Remove to track what's found
+            } else if (otherReads.length < maxReads) {
+              // Only collect other reads up to maxReads (we'll have room after priority)
+              otherReads.push(readData);
+            }
+
+            // Only early exit if we've found ALL priority reads AND have enough other reads
+            if (prioritySet.size === 0 && otherReads.length >= maxReads) {
+              break;
+            }
+          }
+        }
+        if (prioritySet.size === 0 && otherReads.length >= maxReads) break;
+      }
+      if (prioritySet.size === 0 && otherReads.length >= maxReads) break;
+    }
+    if (prioritySet.size === 0 && otherReads.length >= maxReads) break;
+  }
+
+  if (testInPriority) {
+    console.log('[WORKER TEST] Read', TEST_READ, 'was in priority, found in tiles?', testReadFound,
+      'in result?', priorityReads.some(r => String(r.id) === TEST_READ));
+  }
+
+  // Combine: ALL priority reads first, then fill with others up to maxReads total
+  const combined = [...priorityReads, ...otherReads.slice(0, maxReads - priorityReads.length)];
+  return combined;
+};
+
 const tileFunctions = {
   init,
   localInit,
@@ -1739,6 +1823,7 @@ const tileFunctions = {
   renderSegments,
   resetPrevRows,
   getReadAtPosition,
+  getReadsForLabeling,
 };
 
 expose(tileFunctions);

@@ -10,6 +10,7 @@ import {
   posToChrPos,
   isProteinColorScale,
 } from './bam-utils';
+import TextManager from './TextManager';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -260,6 +261,16 @@ const PileupTrack = (HGC, ...args) => {
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
 
+      // Initialize TextManager for read labels
+      this.textManager = new TextManager(this, HGC.libraries.PIXI, {
+        maxTexts: options.maxReadLabels || 200,
+        fontSize: options.readLabelFontSize || 10,
+        fontFamily: options.readLabelFontFamily || 'Arial',
+        fill: options.readLabelColor !== undefined ? options.readLabelColor : 0x000000,
+        strokeThickness: options.readLabelStrokeThickness !== undefined ? options.readLabelStrokeThickness : 2,
+        stroke: options.readLabelStrokeColor !== undefined ? options.readLabelStrokeColor : 0xffffff,
+      });
+
       this.fetching = new Set();
       this.rendering = new Set();
 
@@ -432,6 +443,18 @@ varying vec4 vColor;
       if (!this.options.showMousePosition && this.hideMousePosition) {
         this.hideMousePosition();
         this.hideMousePosition = undefined;
+      }
+
+      // Update TextManager options if they changed
+      if (this.textManager) {
+        this.textManager.updateOptions({
+          maxTexts: options.maxReadLabels || 200,
+          fontSize: options.readLabelFontSize || 10,
+          fontFamily: options.readLabelFontFamily || 'Arial',
+          fill: options.readLabelColor !== undefined ? options.readLabelColor : 0x000000,
+          strokeThickness: options.readLabelStrokeThickness !== undefined ? options.readLabelStrokeThickness : 2,
+          stroke: options.readLabelStrokeColor !== undefined ? options.readLabelStrokeColor : 0xffffff,
+        });
       }
 
       this.setUpShaderAndTextures();
@@ -629,6 +652,12 @@ varying vec4 vColor;
             this.pMain.removeChild(this.mouseOverGraphics);
             this.pMain.addChild(this.mouseOverGraphics);
 
+            // Ensure text labels are on top of everything
+            if (this.textManager && this.textManager.textGraphics) {
+              this.pMain.removeChild(this.textManager.textGraphics);
+              this.pMain.addChild(this.textManager.textGraphics);
+            }
+
             this.yScaleBands = {};
             for (const key in this.rowsMeta) {
               const { rowCount, start, end } = this.rowsMeta[key];
@@ -660,6 +689,13 @@ varying vec4 vColor;
             this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
             this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
 
+            // Update read labels if enabled
+            if (this.options.showReadLabels) {
+              this.updateReadLabels();
+            } else if (this.textManager) {
+              this.textManager.clear();
+            }
+
             this.draw();
             this.animate();
           });
@@ -676,6 +712,97 @@ varying vec4 vColor;
 
         //   // console.log('this.pBorder:', this.pBorder);
         // });
+      });
+    }
+
+    updateReadLabels() {
+      if (!this.textManager || !this.yScaleBands) {
+        return;
+      }
+
+      // Get the current visible domain
+      const domain = this._xScale.domain();
+      const maxLabels = this.options.maxReadLabels || 200;
+
+      // Get currently visible read IDs to prioritize in worker
+      const visibleReadIds = Object.keys(this.textManager.texts).filter(
+        uid => this.textManager.texts[uid].visible
+      );
+
+      const TEST_READ = '196850524';
+      if (visibleReadIds.includes(TEST_READ)) {
+        console.log('[TEST] Read', TEST_READ, 'IS in priority list, domain:', domain);
+      }
+
+      // Request read data from worker
+      this.worker.then((tileFunctions) => {
+        tileFunctions.getReadsForLabeling(
+          this.dataFetcher.uid,
+          domain,
+          maxLabels,
+          visibleReadIds  // Pass visible IDs for prioritization
+        ).then((reads) => {
+          if (visibleReadIds.includes(TEST_READ)) {
+            const testReadReturned = reads.some(r => String(r.id) === TEST_READ);
+            console.log('[TEST] Read', TEST_READ, 'returned by worker?', testReadReturned, 'total reads:', reads.length);
+          }
+          // If we got 0 reads, tiles probably aren't loaded yet - keep existing labels
+          // But still apply the scaling transform so they stay in sync
+          if (reads.length === 0) {
+            if (this.textManager.textGraphics) {
+              scaleScalableGraphics(
+                this.textManager.textGraphics,
+                this._xScale,
+                this.drawnAtScale,
+              );
+            }
+            this.animate();
+            return;
+          }
+
+          const heightScaleK = this.heightScaleK || 1;
+          const textData = [];
+
+          for (const read of reads) {
+            const yScaleBand = this.yScaleBands[read.groupKey];
+            if (!yScaleBand) continue;
+
+            // Convert read ID to string for consistency
+            const readIdStr = String(read.id);
+
+            // Calculate the center position of the read
+            const xCenter = this._xScale((read.from + read.to) / 2);
+            const yPos = transformY(yScaleBand(read.row), this.valueScaleTransform);
+            const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
+
+            // Determine what label to show based on options
+            let labelText = read.readName || read.id;
+            if (this.options.readLabelField && this.options.readLabelField !== 'readName') {
+              labelText = read[this.options.readLabelField] || labelText;
+            }
+
+            textData.push({
+              uid: readIdStr,
+              text: String(labelText),
+              x: xCenter,
+              y: yCenter * heightScaleK,
+              anchor: { x: 0.5, y: 0.5 }
+            });
+          }
+
+          this.textManager.updateTexts(textData);
+
+          // Apply the same scaling transform as the segment graphics
+          if (this.textManager.textGraphics) {
+            scaleScalableGraphics(
+              this.textManager.textGraphics,
+              this._xScale,
+              this.drawnAtScale,
+            );
+          }
+
+          this.animate();
+        });
       });
     }
 
@@ -1196,6 +1323,16 @@ varying vec4 vColor;
           this.drawnAtScale,
         );
       }
+
+      // Apply the same scaling to text labels so they move smoothly with reads
+      if (this.textManager && this.textManager.textGraphics && this.options.showReadLabels) {
+        scaleScalableGraphics(
+          this.textManager.textGraphics,
+          newXScale,
+          this.drawnAtScale,
+        );
+      }
+
       this.mouseOverGraphics.clear();
       this.animate();
     }
@@ -1335,6 +1472,14 @@ PileupTrack.config = {
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
     'viewAsPairs',
+    'showReadLabels',
+    'maxReadLabels',
+    'readLabelFontSize',
+    'readLabelFontFamily',
+    'readLabelColor',
+    'readLabelStrokeColor',
+    'readLabelStrokeThickness',
+    'readLabelField',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -1361,6 +1506,14 @@ PileupTrack.config = {
     highlightReadsBy: [],
     largeInsertSizeThreshold: 1000,
     viewAsPairs: false,
+    showReadLabels: false,
+    maxReadLabels: 200,
+    readLabelFontSize: 10,
+    readLabelFontFamily: 'Arial',
+    readLabelColor: 0x000000,
+    readLabelStrokeColor: 0xffffff,
+    readLabelStrokeThickness: 2,
+    readLabelField: 'readName',
   },
   optionsInfo: {
     outlineReadOnHover: {
@@ -1466,6 +1619,32 @@ PileupTrack.config = {
         no: {
           value: false,
           name: 'No',
+        },
+      },
+    },
+    showReadLabels: {
+      name: 'Show read labels',
+      inlineOptions: {
+        yes: {
+          value: true,
+          name: 'Yes',
+        },
+        no: {
+          value: false,
+          name: 'No',
+        },
+      },
+    },
+    readLabelField: {
+      name: 'Read label field',
+      inlineOptions: {
+        readName: {
+          value: 'readName',
+          name: 'Read name',
+        },
+        id: {
+          value: 'id',
+          name: 'Read ID',
         },
       },
     },
