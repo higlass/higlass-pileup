@@ -273,7 +273,7 @@ const PileupTrack = (HGC, ...args) => {
 
       // Debounced label update for smooth y-zoom/pan
       this._debouncedUpdateReadLabels = this._debounce(() => {
-        if (this.options.showReadLabels) {
+        if (this._normalizeReadLabelsConfig()) {
           this.updateReadLabels();
         }
       }, 150);
@@ -304,6 +304,30 @@ const PileupTrack = (HGC, ...args) => {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
       };
+    }
+
+    _normalizeReadLabelsConfig() {
+      // Normalize readLabels option to a consistent format
+      const config = this.options.readLabels;
+
+      if (!config) {
+        return null;
+      }
+
+      // If it's a boolean (for backwards compatibility with showReadLabels)
+      if (config === true) {
+        return { fields: ['id', 'pos', 'strand', 'mapq'], separator: '-' };
+      }
+
+      // If it's an object, apply defaults
+      if (typeof config === 'object') {
+        return {
+          fields: config.fields || ['id', 'pos', 'strand', 'mapq'],
+          separator: config.separator !== undefined ? config.separator : '-'
+        };
+      }
+
+      return null;
     }
 
     colorToArray(color) {
@@ -709,7 +733,7 @@ varying vec4 vColor;
             this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
 
             // Update read labels if enabled
-            if (this.options.showReadLabels) {
+            if (this._normalizeReadLabelsConfig()) {
               this.updateReadLabels();
             } else if (this.textManager) {
               this.textManager.clear();
@@ -809,6 +833,7 @@ varying vec4 vColor;
 
           const heightScaleK = this.heightScaleK || 1;
           const textData = [];
+          const labelConfig = this._normalizeReadLabelsConfig();
 
           for (const read of reads) {
             const yScaleBand = this.yScaleBands[read.groupKey];
@@ -822,15 +847,45 @@ varying vec4 vColor;
             const yPos = transformY(yScaleBand(read.row), this.valueScaleTransform);
             const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
 
-            // Determine what label to show based on options
-            let labelText = read.readName || read.id;
-            if (this.options.readLabelField && this.options.readLabelField !== 'readName') {
-              labelText = read[this.options.readLabelField] || labelText;
+            // Build label from configured fields
+            const labelParts = [];
+            for (const field of labelConfig.fields) {
+              let value = '';
+              switch (field) {
+                case 'id':
+                  value = String(read.id);
+                  break;
+                case 'pos':
+                  // Format position based on chrName if available
+                  if (read.chrName) {
+                    value = `${read.chrName}:${read.from - read.chrOffset}`;
+                  } else {
+                    value = String(read.from);
+                  }
+                  break;
+                case 'strand':
+                  value = read.strand || '?';
+                  break;
+                case 'mapq':
+                  value = String(read.mapq !== undefined ? read.mapq : '?');
+                  break;
+                case 'readName':
+                  value = read.readName || String(read.id);
+                  break;
+                default:
+                  // Support any field from read object (including extra fields)
+                  value = read[field] !== undefined ? String(read[field]) : '';
+              }
+              if (value) {
+                labelParts.push(value);
+              }
             }
+
+            const labelText = labelParts.join(labelConfig.separator);
 
             textData.push({
               uid: readIdStr,
-              text: String(labelText),
+              text: labelText,
               x: xCenter,
               y: yCenter * heightScaleK,
               anchor: { x: 0.5, y: 0.5 }
@@ -1415,7 +1470,7 @@ varying vec4 vColor;
       }
 
       // Update text label positions without scaling (keeps text size constant)
-      if (this.textManager && this.options.showReadLabels && this._cachedLabelData) {
+      if (this.textManager && this._normalizeReadLabelsConfig() && this._cachedLabelData) {
         this.updateTextPositions(newXScale);
       }
 
@@ -1558,14 +1613,13 @@ PileupTrack.config = {
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
     'viewAsPairs',
-    'showReadLabels',
+    'readLabels',
     'maxReadLabels',
     'readLabelFontSize',
     'readLabelFontFamily',
     'readLabelColor',
     'readLabelStrokeColor',
     'readLabelStrokeThickness',
-    'readLabelField',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -1592,14 +1646,13 @@ PileupTrack.config = {
     highlightReadsBy: [],
     largeInsertSizeThreshold: 1000,
     viewAsPairs: false,
-    showReadLabels: false,
+    readLabels: null,
     maxReadLabels: 200,
     readLabelFontSize: 10,
     readLabelFontFamily: 'Arial',
     readLabelColor: 0x000000,
     readLabelStrokeColor: 0xffffff,
     readLabelStrokeThickness: 2,
-    readLabelField: 'readName',
   },
   optionsInfo: {
     outlineReadOnHover: {
@@ -1708,29 +1761,16 @@ PileupTrack.config = {
         },
       },
     },
-    showReadLabels: {
+    readLabels: {
       name: 'Show read labels',
       inlineOptions: {
         yes: {
-          value: true,
+          value: { fields: ['id', 'pos', 'strand', 'mapq'], separator: '-' },
           name: 'Yes',
         },
         no: {
-          value: false,
+          value: null,
           name: 'No',
-        },
-      },
-    },
-    readLabelField: {
-      name: 'Read label field',
-      inlineOptions: {
-        readName: {
-          value: 'readName',
-          name: 'Read name',
-        },
-        id: {
-          value: 'id',
-          name: 'Read ID',
         },
       },
     },
