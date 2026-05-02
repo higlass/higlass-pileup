@@ -1733,6 +1733,18 @@ const getReadAtPosition = (uid, groupKey, rowIndex, genomicPos) => {
  * @param {Array<string>} priorityReadIds - Read IDs to prioritize (previously visible)
  * @returns {Array} Array of read objects with { id, readName, from, to, row, groupKey, mapq, strand }
  */
+/**
+ * Fisher-Yates shuffle algorithm for randomizing array order
+ */
+const shuffle = (array) => {
+  const shuffled = [...array]; // Create a copy to avoid mutating original
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) => {
   const grouped = prevRowsByUid[uid];
   if (!grouped) return [];
@@ -1746,7 +1758,7 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) 
   const testInPriority = prioritySet.has(TEST_READ);
   let testReadFound = false;
 
-  // First pass: collect ALL priority reads and some other reads
+  // First pass: collect ALL priority reads and ALL other reads in visible domain
   for (const groupKey in grouped) {
     const group = grouped[groupKey];
     const rows = group.rows;
@@ -1778,22 +1790,14 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) 
             if (prioritySet.has(String(segment.id))) {
               priorityReads.push(readData);
               prioritySet.delete(String(segment.id)); // Remove to track what's found
-            } else if (otherReads.length < maxReads) {
-              // Only collect other reads up to maxReads (we'll have room after priority)
+            } else {
+              // Collect ALL other reads (we'll shuffle and slice later)
               otherReads.push(readData);
-            }
-
-            // Only early exit if we've found ALL priority reads AND have enough other reads
-            if (prioritySet.size === 0 && otherReads.length >= maxReads) {
-              break;
             }
           }
         }
-        if (prioritySet.size === 0 && otherReads.length >= maxReads) break;
       }
-      if (prioritySet.size === 0 && otherReads.length >= maxReads) break;
     }
-    if (prioritySet.size === 0 && otherReads.length >= maxReads) break;
   }
 
   if (testInPriority) {
@@ -1801,8 +1805,9 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) 
       'in result?', priorityReads.some(r => String(r.id) === TEST_READ));
   }
 
-  // Combine: ALL priority reads first, then fill with others up to maxReads total
-  const combined = [...priorityReads, ...otherReads.slice(0, maxReads - priorityReads.length)];
+  // Shuffle non-priority reads for random distribution, then select up to maxReads
+  const shuffledOthers = shuffle(otherReads);
+  const combined = [...priorityReads, ...shuffledOthers.slice(0, maxReads - priorityReads.length)];
   return combined;
 };
 
