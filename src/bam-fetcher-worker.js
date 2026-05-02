@@ -1724,13 +1724,14 @@ const getReadAtPosition = (uid, groupKey, rowIndex, genomicPos) => {
 
 /**
  * Get reads suitable for text labeling.
- * Returns an array of read data for all visible reads within the domain.
+ * Returns an array of read data for all visible reads within the domain and visible row range.
  * Prioritizes previously visible reads to maintain label stability.
  *
  * @param {string} uid - Track UID
  * @param {Array<number>} domain - [minPos, maxPos] genomic domain
  * @param {number} maxReads - Maximum number of reads to return (default: 500)
  * @param {Array<string>} priorityReadIds - Read IDs to prioritize (previously visible)
+ * @param {Object} visibleRowRanges - Map of groupKey to {min, max} visible row indices
  * @returns {Array} Array of read objects with { id, readName, from, to, row, groupKey, mapq, strand }
  */
 /**
@@ -1745,7 +1746,7 @@ const shuffle = (array) => {
   return shuffled;
 };
 
-const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) => {
+const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], visibleRowRanges = {}) => {
   const grouped = prevRowsByUid[uid];
   if (!grouped) return [];
 
@@ -1758,16 +1759,26 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = []) 
   const testInPriority = prioritySet.has(TEST_READ);
   let testReadFound = false;
 
-  // First pass: collect ALL priority reads and ALL other reads in visible domain
+  // First pass: collect ALL priority reads and ALL other reads in visible domain AND visible rows
   for (const groupKey in grouped) {
     const group = grouped[groupKey];
     const rows = group.rows;
 
+    // Determine visible row range for this group
+    const rowRange = visibleRowRanges[groupKey];
+    const minRow = rowRange ? rowRange.min : 0;
+    const maxRow = rowRange ? rowRange.max : rows.length - 1;
+
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      // Skip rows that are not visible due to y-zoom/pan
+      if (rowIndex < minRow || rowIndex > maxRow) {
+        continue;
+      }
+
       const row = rows[rowIndex];
       for (const section of row) {
         for (const segment of section.segments) {
-          // Check if read overlaps the visible domain
+          // Check if read overlaps the visible domain (x-axis)
           if (segment.to >= minPos && segment.from <= maxPos) {
             const readData = {
               id: segment.id,

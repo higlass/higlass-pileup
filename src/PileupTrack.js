@@ -271,6 +271,13 @@ const PileupTrack = (HGC, ...args) => {
         stroke: options.readLabelStrokeColor !== undefined ? options.readLabelStrokeColor : 0xffffff,
       });
 
+      // Debounced label update for smooth y-zoom/pan
+      this._debouncedUpdateReadLabels = this._debounce(() => {
+        if (this.options.showReadLabels) {
+          this.updateReadLabels();
+        }
+      }, 150);
+
       this.fetching = new Set();
       this.rendering = new Set();
 
@@ -286,6 +293,18 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     initTile() {}
+
+    _debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
 
     colorToArray(color) {
       const rgb = HGC.libraries.d3Color.rgb(color);
@@ -734,13 +753,47 @@ varying vec4 vColor;
         console.log('[TEST] Read', TEST_READ, 'IS in priority list, domain:', domain);
       }
 
+      // Calculate visible row ranges for each group based on y-zoom/pan
+      const heightScaleK = this.heightScaleK || 1;
+      const virtualHeight = this.dimensions[1] / heightScaleK;
+      const visibleRowRanges = {};
+
+      for (const [groupKey, yScaleBand] of Object.entries(this.yScaleBands)) {
+        const rowCount = (this.rowsMeta[groupKey] && this.rowsMeta[groupKey].rowCount) || 0;
+
+        // Transform the viewport bounds [0, virtualHeight] into the group's coordinate space
+        // using the inverse of valueScaleTransform
+        const viewportTop = invY(0, this.valueScaleTransform);
+        const viewportBottom = invY(virtualHeight, this.valueScaleTransform);
+
+        // Find which rows are visible in this group
+        let minVisibleRow = null;
+        let maxVisibleRow = null;
+
+        for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+          const rowTop = yScaleBand(rowIdx);
+          const rowBottom = rowTop + yScaleBand.bandwidth();
+
+          // Check if this row overlaps with the visible viewport
+          if (rowBottom >= viewportTop && rowTop <= viewportBottom) {
+            if (minVisibleRow === null) minVisibleRow = rowIdx;
+            maxVisibleRow = rowIdx;
+          }
+        }
+
+        if (minVisibleRow !== null) {
+          visibleRowRanges[groupKey] = { min: minVisibleRow, max: maxVisibleRow };
+        }
+      }
+
       // Request read data from worker
       this.worker.then((tileFunctions) => {
         tileFunctions.getReadsForLabeling(
           this.dataFetcher.uid,
           domain,
           maxLabels,
-          visibleReadIds  // Pass visible IDs for prioritization
+          visibleReadIds,  // Pass visible IDs for prioritization
+          visibleRowRanges  // Pass visible row ranges for filtering
         ).then((reads) => {
           if (visibleReadIds.includes(TEST_READ)) {
             const testReadReturned = reads.some(r => String(r.id) === TEST_READ);
@@ -1312,6 +1365,13 @@ varying vec4 vColor;
         this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
       }
 
+      // Update text label positions for vertical pan
+      if (this.textManager && this._xScale) {
+        this.updateTextPositions(this._xScale);
+        // Refetch labels since new rows may now be visible
+        this._debouncedUpdateReadLabels();
+      }
+
       this.animate();
     }
 
@@ -1331,6 +1391,13 @@ varying vec4 vColor;
       this.valueScaleTransform = newTransform;
       this.segmentGraphics.scale.y = this.heightScaleK * newTransform.k;
       this.segmentGraphics.position.y = newTransform.y * this.heightScaleK;
+
+      // Update text label positions for vertical transform
+      if (this.textManager && this._xScale) {
+        this.updateTextPositions(this._xScale);
+        // Refetch labels since new rows may now be visible
+        this._debouncedUpdateReadLabels();
+      }
 
       this.mouseOverGraphics.clear();
       this.animate();
