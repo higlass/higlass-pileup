@@ -746,10 +746,10 @@ varying vec4 vColor;
             const testReadReturned = reads.some(r => String(r.id) === TEST_READ);
             console.log('[TEST] Read', TEST_READ, 'returned by worker?', testReadReturned, 'total reads:', reads.length);
           }
-          // If we got 0 reads, tiles probably aren't loaded yet - keep existing labels
-          // Update their positions to match current scale
+
+          // If no reads returned, clear labels (tiles might not be loaded or region has no reads)
           if (reads.length === 0) {
-            this.updateTextPositions(this._xScale);
+            this.textManager.clear();
             this.animate();
             return;
           }
