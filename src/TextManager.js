@@ -234,6 +234,11 @@ export class TextManager {
         importance = 1000000000000 - td.x;
       }
 
+      // Store importance and priority on the text object for later use
+      if (!text.userData) text.userData = {};
+      text.userData.importance = importance;
+      text.userData.isPriority = isPriority;
+
       // Bounding box for overlap detection [xMin, yMin, xMax, yMax]
       const box = [
         bounds.x,
@@ -327,6 +332,51 @@ export class TextManager {
       width: this.textWidths[uid] || 0,
       height: this.textHeights[uid] || 0
     };
+  }
+
+  /**
+   * Update positions of existing texts and recalculate collisions
+   * Used during zoom to keep text size constant while repositioning
+   *
+   * @param {Object} positionMap - Map of uid -> {x, y}
+   */
+  updatePositions(positionMap) {
+    // Update positions
+    Object.entries(positionMap).forEach(([uid, pos]) => {
+      const text = this.texts[uid];
+      if (text) {
+        text.x = pos.x;
+        text.y = pos.y;
+      }
+    });
+
+    // Recalculate bounding boxes
+    this.allBoxes = [];
+    this.allTexts = [];
+
+    Object.entries(this.texts).forEach(([uid, text]) => {
+      const bounds = text.getBounds();
+      const width = bounds.width;
+      const height = bounds.height;
+
+      const box = [
+        bounds.x,
+        bounds.y,
+        bounds.x + width,
+        bounds.y + height
+      ];
+
+      this.allBoxes.push(box);
+      this.allTexts.push({
+        uid: uid,
+        text: text,
+        importance: text.userData && text.userData.importance ? text.userData.importance : this.hashCode(uid),
+        isPriority: text.userData && text.userData.isPriority ? text.userData.isPriority : false
+      });
+    });
+
+    // Re-run collision detection
+    this.hideOverlaps();
   }
 
   /**

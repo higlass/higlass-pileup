@@ -747,15 +747,9 @@ varying vec4 vColor;
             console.log('[TEST] Read', TEST_READ, 'returned by worker?', testReadReturned, 'total reads:', reads.length);
           }
           // If we got 0 reads, tiles probably aren't loaded yet - keep existing labels
-          // But still apply the scaling transform so they stay in sync
+          // Update their positions to match current scale
           if (reads.length === 0) {
-            if (this.textManager.textGraphics) {
-              scaleScalableGraphics(
-                this.textManager.textGraphics,
-                this._xScale,
-                this.drawnAtScale,
-              );
-            }
+            this.updateTextPositions(this._xScale);
             this.animate();
             return;
           }
@@ -790,20 +784,49 @@ varying vec4 vColor;
             });
           }
 
+          // Cache the original label data for repositioning during zoom
+          this._cachedLabelData = textData.map(td => ({
+            uid: td.uid,
+            genomicX: reads.find(r => String(r.id) === td.uid).from +
+                      (reads.find(r => String(r.id) === td.uid).to -
+                       reads.find(r => String(r.id) === td.uid).from) / 2,
+            rowY: td.y,
+            groupKey: reads.find(r => String(r.id) === td.uid).groupKey,
+            row: reads.find(r => String(r.id) === td.uid).row
+          }));
+
           this.textManager.updateTexts(textData);
-
-          // Apply the same scaling transform as the segment graphics
-          if (this.textManager.textGraphics) {
-            scaleScalableGraphics(
-              this.textManager.textGraphics,
-              this._xScale,
-              this.drawnAtScale,
-            );
-          }
-
           this.animate();
         });
       });
+    }
+
+    updateTextPositions(newXScale) {
+      if (!this._cachedLabelData || !this.textManager) return;
+
+      const heightScaleK = this.heightScaleK || 1;
+      const positionMap = {};
+
+      this._cachedLabelData.forEach(cached => {
+        const text = this.textManager.texts[cached.uid];
+        if (!text) return;
+
+        const yScaleBand = this.yScaleBands[cached.groupKey];
+        if (!yScaleBand) return;
+
+        // Recalculate positions based on current scale
+        const xCenter = newXScale(cached.genomicX);
+        const yPos = transformY(yScaleBand(cached.row), this.valueScaleTransform);
+        const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
+
+        positionMap[cached.uid] = {
+          x: xCenter,
+          y: yCenter * heightScaleK
+        };
+      });
+
+      // Update positions and recalculate collisions
+      this.textManager.updatePositions(positionMap);
     }
 
     updateLoadingText() {
@@ -1324,13 +1347,9 @@ varying vec4 vColor;
         );
       }
 
-      // Apply the same scaling to text labels so they move smoothly with reads
-      if (this.textManager && this.textManager.textGraphics && this.options.showReadLabels) {
-        scaleScalableGraphics(
-          this.textManager.textGraphics,
-          newXScale,
-          this.drawnAtScale,
-        );
+      // Update text label positions without scaling (keeps text size constant)
+      if (this.textManager && this.options.showReadLabels && this._cachedLabelData) {
+        this.updateTextPositions(newXScale);
       }
 
       this.mouseOverGraphics.clear();
