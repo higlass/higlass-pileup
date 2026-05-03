@@ -10,6 +10,7 @@ import {
   posToChrPos,
   isProteinColorScale,
 } from './bam-utils';
+import TextManager from './TextManager';
 
 import MyWorkerWeb from 'raw-loader!../dist/worker.js';
 
@@ -182,6 +183,19 @@ function isIn(as) {
 // trigger a new render instead of continuing to scale the existing mesh.
 const HEIGHT_SCALE_THRESHOLD = 2.0;
 
+/**
+ * FNV-1a hash function to generate stable numeric importance from a string ID
+ * Better distribution than simple hash, even for sequential IDs
+ */
+function hashStringToNumber(str) {
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return hash >>> 0; // Convert to unsigned 32-bit integer
+}
+
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
     throw new Error(
@@ -260,6 +274,23 @@ const PileupTrack = (HGC, ...args) => {
       // graphics for highliting reads under the cursor
       this.mouseOverGraphics = new HGC.libraries.PIXI.Graphics();
 
+      // Initialize TextManager for read labels
+      this.textManager = new TextManager(this, HGC.libraries.PIXI, {
+        maxTexts: options.maxReadLabels || 200,
+        fontSize: options.readLabelFontSize || 10,
+        fontFamily: options.readLabelFontFamily || 'Arial',
+        fill: options.readLabelColor !== undefined ? `#${options.readLabelColor.toString(16).padStart(6, '0')}` : '#333333',
+        strokeThickness: options.readLabelStrokeThickness !== undefined ? options.readLabelStrokeThickness : 2,
+        stroke: options.readLabelStrokeColor !== undefined ? `#${options.readLabelStrokeColor.toString(16).padStart(6, '0')}` : '#ffffff',
+      });
+
+      // Debounced label update for smooth y-zoom/pan
+      this._debouncedUpdateReadLabels = this._debounce(() => {
+        if (this._normalizeReadLabelsConfig()) {
+          this.updateReadLabels();
+        }
+      }, 150);
+
       this.fetching = new Set();
       this.rendering = new Set();
 
@@ -275,6 +306,42 @@ const PileupTrack = (HGC, ...args) => {
     }
 
     initTile() {}
+
+    _debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    _normalizeReadLabelsConfig() {
+      // Normalize readLabels option to a consistent format
+      const config = this.options.readLabels;
+
+      if (!config) {
+        return null;
+      }
+
+      // If it's a boolean (for backwards compatibility with showReadLabels)
+      if (config === true) {
+        return { fields: ['id', 'pos', 'strand', 'mapq'], separator: '-' };
+      }
+
+      // If it's an object, apply defaults
+      if (typeof config === 'object') {
+        return {
+          fields: config.fields || ['id', 'pos', 'strand', 'mapq'],
+          separator: config.separator !== undefined ? config.separator : '-'
+        };
+      }
+
+      return null;
+    }
 
     colorToArray(color) {
       const rgb = HGC.libraries.d3Color.rgb(color);
@@ -432,6 +499,18 @@ varying vec4 vColor;
       if (!this.options.showMousePosition && this.hideMousePosition) {
         this.hideMousePosition();
         this.hideMousePosition = undefined;
+      }
+
+      // Update TextManager options if they changed
+      if (this.textManager) {
+        this.textManager.updateOptions({
+          maxTexts: options.maxReadLabels || 200,
+          fontSize: options.readLabelFontSize || 10,
+          fontFamily: options.readLabelFontFamily || 'Arial',
+          fill: options.readLabelColor !== undefined ? `#${options.readLabelColor.toString(16).padStart(6, '0')}` : '#333333',
+          strokeThickness: options.readLabelStrokeThickness !== undefined ? options.readLabelStrokeThickness : 2,
+          stroke: options.readLabelStrokeColor !== undefined ? `#${options.readLabelStrokeColor.toString(16).padStart(6, '0')}` : '#ffffff',
+        });
       }
 
       this.setUpShaderAndTextures();
@@ -629,6 +708,12 @@ varying vec4 vColor;
             this.pMain.removeChild(this.mouseOverGraphics);
             this.pMain.addChild(this.mouseOverGraphics);
 
+            // Ensure text labels are on top of everything
+            if (this.textManager && this.textManager.textGraphics) {
+              this.pMain.removeChild(this.textManager.textGraphics);
+              this.pMain.addChild(this.textManager.textGraphics);
+            }
+
             this.yScaleBands = {};
             for (const key in this.rowsMeta) {
               const { rowCount, start, end } = this.rowsMeta[key];
@@ -660,6 +745,13 @@ varying vec4 vColor;
             this.segmentGraphics.scale.y = this.heightScaleK * this.valueScaleTransform.k;
             this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
 
+            // Update read labels if enabled
+            if (this._normalizeReadLabelsConfig()) {
+              this.updateReadLabels();
+            } else if (this.textManager) {
+              this.textManager.clear();
+            }
+
             this.draw();
             this.animate();
           });
@@ -677,6 +769,208 @@ varying vec4 vColor;
         //   // console.log('this.pBorder:', this.pBorder);
         // });
       });
+    }
+
+    updateReadLabels() {
+      if (!this.textManager || !this.yScaleBands) {
+        return;
+      }
+
+      // Get the current visible domain
+      const domain = this._xScale.domain();
+      const maxLabels = this.options.maxReadLabels || 5;
+
+      // Clear tracked reads that are outside the visible domain
+      // This prevents out-of-view reads from taking up slots
+      if (this._cachedLabelData) {
+        const readsToRemove = this._cachedLabelData.filter(cached => {
+          return cached.genomicX < domain[0] || cached.genomicX > domain[1];
+        }).map(cached => cached.uid);
+
+        readsToRemove.forEach(uid => {
+          if (this.textManager.texts[uid]) {
+            delete this.textManager.texts[uid];
+          }
+        });
+
+        // Update cached data to only include visible reads
+        this._cachedLabelData = this._cachedLabelData.filter(cached => {
+          return cached.genomicX >= domain[0] && cached.genomicX <= domain[1];
+        });
+      }
+
+      // Separate tracked reads into visible and hidden
+      const allTrackedIds = Object.keys(this.textManager.texts);
+      const hiddenReadIds = allTrackedIds.filter(
+        uid => !this.textManager.texts[uid].visible
+      );
+
+      // Calculate how many extra reads to fetch to compensate for hidden ones
+      const effectiveMaxLabels = maxLabels + hiddenReadIds.length;
+
+      // Calculate visible row ranges for each group based on y-zoom/pan
+      const heightScaleK = this.heightScaleK || 1;
+      const virtualHeight = this.dimensions[1] / heightScaleK;
+      const visibleRowRanges = {};
+
+      for (const [groupKey, yScaleBand] of Object.entries(this.yScaleBands)) {
+        const rowCount = (this.rowsMeta[groupKey] && this.rowsMeta[groupKey].rowCount) || 0;
+
+        // Transform the viewport bounds [0, virtualHeight] into the group's coordinate space
+        // using the inverse of valueScaleTransform
+        const viewportTop = invY(0, this.valueScaleTransform);
+        const viewportBottom = invY(virtualHeight, this.valueScaleTransform);
+
+        // Find which rows are visible in this group
+        let minVisibleRow = null;
+        let maxVisibleRow = null;
+
+        for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+          const rowTop = yScaleBand(rowIdx);
+          const rowBottom = rowTop + yScaleBand.bandwidth();
+
+          // Check if this row overlaps with the visible viewport
+          if (rowBottom >= viewportTop && rowTop <= viewportBottom) {
+            if (minVisibleRow === null) minVisibleRow = rowIdx;
+            maxVisibleRow = rowIdx;
+          }
+        }
+
+        if (minVisibleRow !== null) {
+          visibleRowRanges[groupKey] = { min: minVisibleRow, max: maxVisibleRow };
+        }
+      }
+
+      // Request read data from worker
+      this.worker.then((tileFunctions) => {
+        tileFunctions.getReadsForLabeling(
+          this.dataFetcher.uid,
+          domain,
+          effectiveMaxLabels,  // Request extra to compensate for hidden reads
+          allTrackedIds,  // Pass all tracked IDs for prioritization
+          visibleRowRanges  // Pass visible row ranges for filtering
+        ).then((reads) => {
+          // If no reads returned, clear labels (tiles might not be loaded or region has no reads)
+          if (reads.length === 0) {
+            this.textManager.clear();
+            this.animate();
+            return;
+          }
+
+          const heightScaleK = this.heightScaleK || 1;
+          const textData = [];
+          const labelConfig = this._normalizeReadLabelsConfig();
+
+          for (const read of reads) {
+            const yScaleBand = this.yScaleBands[read.groupKey];
+            if (!yScaleBand) continue;
+
+            // Convert read ID to string for consistency
+            const readIdStr = String(read.id);
+
+            // Calculate the center position of the read
+            const xCenter = this._xScale((read.from + read.to) / 2);
+            const yPos = transformY(yScaleBand(read.row), this.valueScaleTransform);
+            const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
+
+            // Build label from configured fields
+            const labelParts = [];
+            for (const field of labelConfig.fields) {
+              let value = '';
+              switch (field) {
+                case 'id':
+                  value = String(read.id);
+                  break;
+                case 'pos':
+                  // Format position based on chrName if available
+                  if (read.chrName) {
+                    value = `${read.chrName}:${read.from - read.chrOffset}`;
+                  } else {
+                    value = String(read.from);
+                  }
+                  break;
+                case 'strand':
+                  value = read.strand || '?';
+                  break;
+                case 'mapq':
+                  value = String(read.mapq !== undefined ? read.mapq : '?');
+                  break;
+                case 'readName':
+                  value = read.readName || String(read.id);
+                  break;
+                default:
+                  // Support any field from read object (including extra fields)
+                  value = read[field] !== undefined ? String(read[field]) : '';
+              }
+              if (value) {
+                labelParts.push(value);
+              }
+            }
+
+            const labelText = labelParts.join(labelConfig.separator);
+
+            // Calculate stable, global importance based on hash of read ID
+            // This ensures the same read always has the same base importance regardless of zoom
+            // and avoids positional bias
+            const importance = hashStringToNumber(readIdStr);
+
+            textData.push({
+              uid: readIdStr,
+              text: labelText,
+              x: xCenter,
+              y: yCenter * heightScaleK,
+              anchor: { x: 0.5, y: 0.5 },
+              importance: importance
+            });
+          }
+
+          // Cache the original label data for repositioning during zoom
+          this._cachedLabelData = textData.map(td => ({
+            uid: td.uid,
+            genomicX: reads.find(r => String(r.id) === td.uid).from +
+                      (reads.find(r => String(r.id) === td.uid).to -
+                       reads.find(r => String(r.id) === td.uid).from) / 2,
+            rowY: td.y,
+            groupKey: reads.find(r => String(r.id) === td.uid).groupKey,
+            row: reads.find(r => String(r.id) === td.uid).row
+          }));
+
+          this.textManager.updateTexts(textData);
+          this.animate();
+        });
+      });
+    }
+
+    updateTextPositions(newXScale) {
+      if (!this._cachedLabelData || !this.textManager) return;
+
+      const heightScaleK = this.heightScaleK || 1;
+      const positionMap = {};
+
+      this._cachedLabelData.forEach(cached => {
+        const text = this.textManager.texts[cached.uid];
+        if (!text) return;
+
+        const yScaleBand = this.yScaleBands[cached.groupKey];
+        if (!yScaleBand) return;
+
+        // Recalculate positions based on current scale
+        const xCenter = newXScale(cached.genomicX);
+        const yPos = transformY(yScaleBand(cached.row), this.valueScaleTransform);
+        const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
+
+        // Use stable importance based on hash of read ID
+        const importance = hashStringToNumber(cached.uid);
+
+        positionMap[cached.uid] = {
+          x: xCenter,
+          y: yCenter * heightScaleK,
+          importance: importance
+        };
+      });
+
+      // Update positions and recalculate collisions
+      this.textManager.updatePositions(positionMap);
     }
 
     updateLoadingText() {
@@ -1162,6 +1456,13 @@ varying vec4 vColor;
         this.segmentGraphics.position.y = this.valueScaleTransform.y * this.heightScaleK;
       }
 
+      // Update text label positions for vertical pan
+      if (this.textManager && this._xScale) {
+        this.updateTextPositions(this._xScale);
+        // Refetch labels since new rows may now be visible
+        this._debouncedUpdateReadLabels();
+      }
+
       this.animate();
     }
 
@@ -1182,6 +1483,13 @@ varying vec4 vColor;
       this.segmentGraphics.scale.y = this.heightScaleK * newTransform.k;
       this.segmentGraphics.position.y = newTransform.y * this.heightScaleK;
 
+      // Update text label positions for vertical transform
+      if (this.textManager && this._xScale) {
+        this.updateTextPositions(this._xScale);
+        // Refetch labels since new rows may now be visible
+        this._debouncedUpdateReadLabels();
+      }
+
       this.mouseOverGraphics.clear();
       this.animate();
     }
@@ -1196,6 +1504,18 @@ varying vec4 vColor;
           this.drawnAtScale,
         );
       }
+
+      // Update text label positions without scaling (keeps text size constant)
+      if (this.textManager && this._normalizeReadLabelsConfig() && this._cachedLabelData) {
+        // Immediately reposition existing labels for smooth updates
+        this.updateTextPositions(newXScale);
+
+        // Debounced refetch of labels to get new ones for the current domain
+        if (this._debouncedUpdateReadLabels) {
+          this._debouncedUpdateReadLabels();
+        }
+      }
+
       this.mouseOverGraphics.clear();
       this.animate();
     }
@@ -1335,6 +1655,13 @@ PileupTrack.config = {
     'smallInsertSizeThreshold',
     'largeInsertSizeThreshold',
     'viewAsPairs',
+    'readLabels',
+    'maxReadLabels',
+    'readLabelFontSize',
+    'readLabelFontFamily',
+    'readLabelColor',
+    'readLabelStrokeColor',
+    'readLabelStrokeThickness',
     // 'minZoom'
   ],
   defaultOptions: {
@@ -1361,6 +1688,13 @@ PileupTrack.config = {
     highlightReadsBy: [],
     largeInsertSizeThreshold: 1000,
     viewAsPairs: false,
+    readLabels: null,
+    maxReadLabels: 200,
+    readLabelFontSize: 10,
+    readLabelFontFamily: 'Arial',
+    readLabelColor: 0x333333,  // Medium grey for better readability
+    readLabelStrokeColor: 0xffffff,
+    readLabelStrokeThickness: 2,
   },
   optionsInfo: {
     outlineReadOnHover: {
@@ -1465,6 +1799,19 @@ PileupTrack.config = {
         },
         no: {
           value: false,
+          name: 'No',
+        },
+      },
+    },
+    readLabels: {
+      name: 'Show read labels',
+      inlineOptions: {
+        yes: {
+          value: { fields: ['id', 'pos', 'strand', 'mapq'], separator: ' ' },
+          name: 'Yes',
+        },
+        no: {
+          value: null,
           name: 'No',
         },
       },

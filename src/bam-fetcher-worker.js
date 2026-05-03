@@ -1722,6 +1722,110 @@ const getReadAtPosition = (uid, groupKey, rowIndex, genomicPos) => {
   return null;
 };
 
+/**
+ * Get reads suitable for text labeling.
+ * Returns an array of read data for all visible reads within the domain and visible row range.
+ * Prioritizes previously visible reads to maintain label stability.
+ *
+ * @param {string} uid - Track UID
+ * @param {Array<number>} domain - [minPos, maxPos] genomic domain
+ * @param {number} maxReads - Maximum number of reads to return (default: 500)
+ * @param {Array<string>} priorityReadIds - Read IDs to prioritize (previously visible)
+ * @param {Object} visibleRowRanges - Map of groupKey to {min, max} visible row indices
+ * @returns {Array} Array of read objects with { id, readName, from, to, row, groupKey, mapq, strand }
+ */
+/**
+ * FNV-1a hash function to generate stable numeric importance from a string ID
+ * Better distribution than simple hash, even for sequential IDs
+ * Must match the implementation in PileupTrack.js
+ */
+const hashStringToNumber = (str) => {
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return hash >>> 0; // Convert to unsigned 32-bit integer
+};
+
+const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], visibleRowRanges = {}) => {
+  const grouped = prevRowsByUid[uid];
+  if (!grouped) return [];
+
+  const [minPos, maxPos] = domain;
+  const prioritySet = new Set(priorityReadIds.map(id => String(id)));
+  const priorityReads = [];
+  const otherReads = [];
+
+  // First pass: collect ALL priority reads and ALL other reads in visible domain AND visible rows
+  for (const groupKey in grouped) {
+    const group = grouped[groupKey];
+    const rows = group.rows;
+
+    // Determine visible row range for this group
+    const rowRange = visibleRowRanges[groupKey];
+    const minRow = rowRange ? rowRange.min : 0;
+    const maxRow = rowRange ? rowRange.max : rows.length - 1;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      // Skip rows that are not visible due to y-zoom/pan
+      if (rowIndex < minRow || rowIndex > maxRow) {
+        continue;
+      }
+
+      const row = rows[rowIndex];
+      for (const section of row) {
+        for (const segment of section.segments) {
+          // Check if read's CENTER is within the visible domain
+          // This ensures we only label reads that are visually centered in the viewport
+          const readCenter = (segment.from + segment.to) / 2;
+          if (readCenter >= minPos && readCenter <= maxPos) {
+            const readData = {
+              id: segment.id,
+              readName: segment.readName,
+              from: segment.from,
+              to: segment.to,
+              row: rowIndex,
+              groupKey: groupKey,
+              mapq: segment.mapq,
+              strand: segment.strand,
+              chrName: segment.chrName,
+              chrOffset: segment.chrOffset || 0,
+            };
+
+            // Separate priority reads from others
+            if (prioritySet.has(String(segment.id))) {
+              priorityReads.push(readData);
+              prioritySet.delete(String(segment.id)); // Remove to track what's found
+            } else {
+              // Collect ALL other reads (we'll sort by importance and slice later)
+              otherReads.push(readData);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Sort non-priority reads by importance (hash-based) and select the most important
+  const withImportance = otherReads
+    .map(read => ({
+      read,
+      importance: hashStringToNumber(String(read.id)),
+      id: String(read.id),
+      pos: read.from
+    }));
+
+  const sortedOthers = withImportance
+    .sort((a, b) => b.importance - a.importance)  // Higher importance first
+    .map(item => item.read);
+
+  const selectedOthers = sortedOthers.slice(0, maxReads - priorityReads.length);
+  const combined = [...priorityReads, ...selectedOthers];
+
+  return combined;
+};
+
 const tileFunctions = {
   init,
   localInit,
@@ -1739,6 +1843,7 @@ const tileFunctions = {
   renderSegments,
   resetPrevRows,
   getReadAtPosition,
+  getReadsForLabeling,
 };
 
 expose(tileFunctions);
