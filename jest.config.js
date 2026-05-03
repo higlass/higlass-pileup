@@ -10,4 +10,5 @@ module.exports = {
     '^raw-loader!(.*)$': '<rootDir>/src/__tests__/mocks/rawLoaderMock.js',
   },
   testMatch: ['**/__tests__/**/*.test.js'],
+  testPathIgnorePatterns: ['/node_modules/', '/es/'],
 };
