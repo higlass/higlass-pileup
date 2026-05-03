@@ -28,7 +28,7 @@ export class TextManager {
     this.PIXI = PIXI;
 
     // Configuration
-    this.maxTexts = options.maxTexts || 200;
+    this.maxTexts = options.maxTexts || 50;
     this.fontSize = options.fontSize || 10;
     this.fontFamily = options.fontFamily || 'Arial';
     this.fill = options.fill !== undefined ? options.fill : 0x000000;
@@ -181,13 +181,12 @@ export class TextManager {
     // Create a set of new UIDs for quick lookup
     const newUids = new Set(textData.map(td => td.uid));
 
-    // Mark old texts that will be replaced
-    const oldTextsToRemove = [];
+    // Remove old UID mappings BEFORE getting text objects for new UIDs
+    // This ensures the pool has unused objects available
     const oldUids = Object.keys(this.texts);
-
     oldUids.forEach(uid => {
       if (!newUids.has(uid)) {
-        oldTextsToRemove.push(uid);
+        delete this.texts[uid];
       }
     });
 
@@ -200,6 +199,11 @@ export class TextManager {
       text.text = td.text;
       text.x = td.x;
       text.y = td.y;
+
+      // Debug: log text assignment
+      if (testInData && (td.uid === TEST_READ || this.textsList.indexOf(text) < 5)) {
+        console.log('[TM] Assigned text:', td.uid, '→ textObj', this.textsList.indexOf(text), '→ content:', td.text);
+      }
 
       // Set anchor (default to center)
       if (td.anchor) {
@@ -273,29 +277,11 @@ export class TextManager {
       }
     }
 
-    // Remove old texts that are no longer needed (after new ones are visible)
-    // Build a set of all text objects that are used by NEW UIDs (ones we want to keep)
-    const newUidsSet = new Set(textData.map(td => td.uid));
-    const textObjectsInNewData = new Set();
-
-    Object.entries(this.texts).forEach(([uid, textObj]) => {
-      if (newUidsSet.has(uid)) {
-        textObjectsInNewData.add(textObj);
-      }
-    });
-
-    // Only hide text objects that are NOT used by any new UID
-    oldTextsToRemove.forEach(uid => {
-      if (this.texts[uid]) {
-        const textObj = this.texts[uid];
-
-        if (!textObjectsInNewData.has(textObj)) {
-          // Safe to hide - no new UID uses this text object
-          textObj.visible = false;
-        }
-
-        // Always remove the old mapping
-        delete this.texts[uid];
+    // Hide text objects that are not currently in use
+    this.textsList.forEach(textObj => {
+      const isInUse = Object.values(this.texts).includes(textObj);
+      if (!isInUse) {
+        textObj.visible = false;
       }
     });
 
@@ -313,15 +299,107 @@ export class TextManager {
 
     if (allBoxes.length === 0) return;
 
+    // Build overlap map
+    const overlaps = new Map();
+    for (let i = 0; i < allTexts.length; i++) {
+      overlaps.set(i, new Set());
+    }
+
     boxIntersect(allBoxes, (i, j) => {
-      if (allTexts[i].importance > allTexts[j].importance) {
-        if (allTexts[i].text.visible) {
-          allTexts[j].text.visible = false;
-        }
-      } else if (allTexts[j].text.visible) {
-        allTexts[i].text.visible = false;
-      }
+      overlaps.get(i).add(j);
+      overlaps.get(j).add(i);
     });
+
+    // Sort by importance (highest first)
+    const sorted = allTexts
+      .map((t, idx) => ({ idx, importance: t.importance }))
+      .sort((a, b) => b.importance - a.importance);
+
+    // Greedy selection: pick highest importance labels that don't overlap with already selected
+    const selected = new Set();
+
+    for (const item of sorted) {
+      const idx = item.idx;
+
+      // Check if this overlaps with any already-selected label
+      let hasOverlap = false;
+      for (const selectedIdx of selected) {
+        if (overlaps.get(idx).has(selectedIdx)) {
+          hasOverlap = true;
+          break;
+        }
+      }
+
+      if (!hasOverlap) {
+        selected.add(idx);
+        allTexts[idx].text.visible = true;
+      } else {
+        allTexts[idx].text.visible = false;
+      }
+    }
+
+    // Log spatial distribution of ALL labels (visible and hidden)
+    if (allTexts.length > 0) {
+      // Find x-axis bounds of ALL labels
+      let minX = Infinity, maxX = -Infinity;
+      for (let i = 0; i < allTexts.length; i++) {
+        const box = allBoxes[i];
+        minX = Math.min(minX, box[0]);
+        maxX = Math.max(maxX, box[2]);
+      }
+
+      const binCount = 10;
+      const binWidth = (maxX - minX) / binCount;
+      const visibleBins = new Array(binCount).fill(0);
+      const hiddenBins = new Array(binCount).fill(0);
+
+      for (let i = 0; i < allTexts.length; i++) {
+        const box = allBoxes[i];
+        const centerX = (box[0] + box[2]) / 2;
+        const binIdx = Math.floor((centerX - minX) / binWidth);
+        const clampedIdx = Math.max(0, Math.min(binCount - 1, binIdx));
+
+        if (allTexts[i].text.visible) {
+          visibleBins[clampedIdx]++;
+        } else {
+          hiddenBins[clampedIdx]++;
+        }
+      }
+
+      const visibleCount = allTexts.filter(t => t.text.visible).length;
+
+      // Log actual positions of visible labels
+      const visiblePositions = [];
+      for (let i = 0; i < allTexts.length; i++) {
+        if (allTexts[i].text.visible) {
+          const box = allBoxes[i];
+          const text = allTexts[i].text;
+          const textObjIndex = this.textsList.indexOf(text);
+          visiblePositions.push({
+            uid: allTexts[i].uid,
+            textObjIndex: textObjIndex,  // Add index to see if same object is reused
+            x: Math.round((box[0] + box[2]) / 2),
+            y: Math.round((box[1] + box[3]) / 2),
+            pixiVisible: text.visible,
+            alpha: text.alpha,
+            worldVisible: text.worldVisible,
+            renderable: text.renderable,
+            textContent: text.text,
+            fill: text.style.fill,
+            fontSize: text.style.fontSize
+          });
+        }
+      }
+
+      console.log('[TM] Label distribution:',
+        '\n  Visible:', visibleBins, `(${visibleCount} total)`,
+        '\n  Hidden: ', hiddenBins, `(${allTexts.length - visibleCount} total)`,
+        '\n  X range:', Math.round(minX), '-', Math.round(maxX),
+        '\n  Positions:', visiblePositions,
+        '\n  Pool size:', this.textsList.length,
+        '\n  MaxTexts:', this.maxTexts,
+        '\n  Texts in use:', Object.keys(this.texts).length);
+    }
   }
 
   /**
@@ -338,15 +416,21 @@ export class TextManager {
    * Update positions of existing texts and recalculate collisions
    * Used during zoom to keep text size constant while repositioning
    *
-   * @param {Object} positionMap - Map of uid -> {x, y}
+   * @param {Object} positionMap - Map of uid -> {x, y} or uid -> {x, y, importance}
    */
   updatePositions(positionMap) {
-    // Update positions
+    // Update positions and optionally importance
     Object.entries(positionMap).forEach(([uid, pos]) => {
       const text = this.texts[uid];
       if (text) {
         text.x = pos.x;
         text.y = pos.y;
+
+        // Update importance if provided
+        if (pos.importance !== undefined) {
+          if (!text.userData) text.userData = {};
+          text.userData.importance = pos.importance;
+        }
       }
     });
 

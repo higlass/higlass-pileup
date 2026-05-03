@@ -1816,9 +1816,110 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
       'in result?', priorityReads.some(r => String(r.id) === TEST_READ));
   }
 
-  // Shuffle non-priority reads for random distribution, then select up to maxReads
-  const shuffledOthers = shuffle(otherReads);
-  const combined = [...priorityReads, ...shuffledOthers.slice(0, maxReads - priorityReads.length)];
+  // Spatial binning: distribute non-priority reads evenly across the domain
+  const domainWidth = maxPos - minPos;
+  const binCount = 10;
+  const binWidth = domainWidth / binCount;
+
+  // Organize non-priority reads into spatial bins
+  const spatialBins = Array.from({ length: binCount }, () => []);
+
+  for (const read of otherReads) {
+    const readCenter = (read.from + read.to) / 2;
+    const binIdx = Math.floor((readCenter - minPos) / binWidth);
+    if (binIdx >= 0 && binIdx < binCount) {
+      spatialBins[binIdx].push(read);
+    }
+  }
+
+  // Calculate how many reads to sample from each bin
+  const remainingSlots = maxReads - priorityReads.length;
+  const totalReadsInBins = otherReads.length;
+  const nonEmptyBins = spatialBins.filter(bin => bin.length > 0);
+
+  const selectedOthers = [];
+
+  // For small counts, use uniform random sampling to ensure even distribution
+  if (remainingSlots <= nonEmptyBins.length * 2) {
+    // Uniform sampling: randomly pick from non-empty bins
+    const nonEmptyBinIndices = [];
+    for (let i = 0; i < binCount; i++) {
+      if (spatialBins[i].length > 0) {
+        nonEmptyBinIndices.push(i);
+      }
+    }
+
+    // Create a shuffled list of bin indices, repeated to ensure we can sample enough
+    const maxRounds = Math.ceil(remainingSlots / nonEmptyBinIndices.length);
+    const shuffledBinSequence = [];
+    for (let round = 0; round < maxRounds; round++) {
+      shuffledBinSequence.push(...shuffle(nonEmptyBinIndices));
+    }
+
+    // Track how many reads we've taken from each bin
+    const binReadCounts = Array(binCount).fill(0);
+
+    for (let slot = 0; slot < remainingSlots && slot < shuffledBinSequence.length; slot++) {
+      const binIndex = shuffledBinSequence[slot];
+      const binReads = spatialBins[binIndex];
+      const readIndex = binReadCounts[binIndex];
+
+      if (readIndex < binReads.length) {
+        const shuffledBin = shuffle(binReads);
+        selectedOthers.push(shuffledBin[readIndex]);
+        binReadCounts[binIndex]++;
+      }
+    }
+  } else {
+    // For larger counts, use proportional allocation
+    for (let i = 0; i < binCount; i++) {
+      const binReads = spatialBins[i];
+      if (binReads.length === 0) continue;
+
+      // Calculate proportional allocation
+      const proportion = binReads.length / totalReadsInBins;
+      let targetCount = Math.round(proportion * remainingSlots);
+
+      // Ensure at least 1 read per non-empty bin if we have slots
+      if (targetCount === 0 && selectedOthers.length < remainingSlots) {
+        targetCount = 1;
+      }
+
+      // Don't exceed available reads in this bin
+      const actualCount = Math.min(targetCount, binReads.length);
+
+      // Randomly sample from this bin
+      const shuffledBin = shuffle(binReads);
+      selectedOthers.push(...shuffledBin.slice(0, actualCount));
+    }
+  }
+
+  // If we haven't filled all slots (due to rounding), randomly add more
+  if (selectedOthers.length < remainingSlots) {
+    const unselectedReads = otherReads.filter(
+      r => !selectedOthers.some(s => s.id === r.id)
+    );
+    const shuffledRemaining = shuffle(unselectedReads);
+    selectedOthers.push(...shuffledRemaining.slice(0, remainingSlots - selectedOthers.length));
+  }
+
+  const combined = [...priorityReads, ...selectedOthers];
+
+  // Debug: log spatial distribution
+  const distributionBins = new Array(binCount).fill(0);
+  for (const read of combined) {
+    const readCenter = (read.from + read.to) / 2;
+    const binIdx = Math.floor((readCenter - minPos) / binWidth);
+    if (binIdx >= 0 && binIdx < binCount) {
+      distributionBins[binIdx]++;
+    }
+  }
+
+  console.log('[WORKER] Label distribution across domain:', distributionBins,
+    'priority:', priorityReads.length,
+    'others:', selectedOthers.length,
+    'total candidates:', otherReads.length);
+
   return combined;
 };
 
