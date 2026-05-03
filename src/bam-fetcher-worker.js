@@ -1757,10 +1757,6 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
   const priorityReads = [];
   const otherReads = [];
 
-  const TEST_READ = '196850524';
-  const testInPriority = prioritySet.has(TEST_READ);
-  let testReadFound = false;
-
   // First pass: collect ALL priority reads and ALL other reads in visible domain AND visible rows
   for (const groupKey in grouped) {
     const group = grouped[groupKey];
@@ -1797,10 +1793,6 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
               chrOffset: segment.chrOffset || 0,
             };
 
-            if (String(segment.id) === TEST_READ) {
-              testReadFound = true;
-            }
-
             // Separate priority reads from others
             if (prioritySet.has(String(segment.id))) {
               priorityReads.push(readData);
@@ -1813,11 +1805,6 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
         }
       }
     }
-  }
-
-  if (testInPriority) {
-    console.log('[WORKER TEST] Read', TEST_READ, 'was in priority, found in tiles?', testReadFound,
-      'in result?', priorityReads.some(r => String(r.id) === TEST_READ));
   }
 
   // Sort non-priority reads by importance (hash-based) and select the most important
@@ -1835,20 +1822,6 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
 
   const selectedOthers = sortedOthers.slice(0, maxReads - priorityReads.length);
   const combined = [...priorityReads, ...selectedOthers];
-
-  // Debug: analyze spatial distribution of selected reads
-  if (selectedOthers.length > 0) {
-    const positions = selectedOthers.map(r => r.from);
-    const minPos = Math.min(...positions);
-    const maxPos = Math.max(...positions);
-    const avgPos = positions.reduce((sum, p) => sum + p, 0) / positions.length;
-
-    console.log('[WORKER] Selected', selectedOthers.length, 'reads:',
-      '\n  Position range:', minPos, '-', maxPos,
-      '\n  Average position:', Math.round(avgPos),
-      '\n  Domain:', domain,
-      '\n  Sample IDs:', selectedOthers.slice(0, 5).map(r => String(r.id)));
-  }
 
   return combined;
 };

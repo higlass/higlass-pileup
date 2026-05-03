@@ -159,12 +159,6 @@ export class TextManager {
    *   }
    */
   updateTexts(textData) {
-    const TEST_READ = '196850524';
-    const testInData = textData.some(td => td.uid === TEST_READ);
-    if (testInData) {
-      console.log('[TM TEST] Read', TEST_READ, 'in textData');
-    }
-
     // Track which texts were visible before this update
     const previouslyVisible = new Set();
     Object.keys(this.texts).forEach(uid => {
@@ -172,11 +166,6 @@ export class TextManager {
         previouslyVisible.add(uid);
       }
     });
-
-    const testWasPreviouslyVisible = previouslyVisible.has(TEST_READ);
-    if (testInData) {
-      console.log('[TM TEST] Read', TEST_READ, 'was previously visible?', testWasPreviouslyVisible);
-    }
 
     // Create a set of new UIDs for quick lookup
     const newUids = new Set(textData.map(td => td.uid));
@@ -199,11 +188,6 @@ export class TextManager {
       text.text = td.text;
       text.x = td.x;
       text.y = td.y;
-
-      // Debug: log text assignment
-      if (testInData && (td.uid === TEST_READ || this.textsList.indexOf(text) < 5)) {
-        console.log('[TM] Assigned text:', td.uid, '→ textObj', this.textsList.indexOf(text), '→ content:', td.text);
-      }
 
       // Set anchor (default to center)
       if (td.anchor) {
@@ -260,22 +244,8 @@ export class TextManager {
       });
     });
 
-    if (testInData) {
-      const testTextObj = this.allTexts.find(t => t.uid === TEST_READ);
-      if (testTextObj) {
-        console.log('[TM TEST] Read', TEST_READ, 'before hideOverlaps - importance:', testTextObj.importance, 'visible:', testTextObj.text.visible);
-      }
-    }
-
     // Hide overlapping texts based on importance
     this.hideOverlaps();
-
-    if (testInData) {
-      const testTextObj = this.allTexts.find(t => t.uid === TEST_READ);
-      if (testTextObj) {
-        console.log('[TM TEST] Read', TEST_READ, 'after hideOverlaps - visible:', testTextObj.text.visible);
-      }
-    }
 
     // Hide text objects that are not currently in use
     this.textsList.forEach(textObj => {
@@ -284,11 +254,6 @@ export class TextManager {
         textObj.visible = false;
       }
     });
-
-    if (testInData) {
-      const finalVisible = this.texts[TEST_READ] ? this.texts[TEST_READ].visible : undefined;
-      console.log('[TM TEST] Read', TEST_READ, 'final visible:', finalVisible, 'exists in this.texts?', TEST_READ in this.texts);
-    }
   }
 
   /**
@@ -338,68 +303,6 @@ export class TextManager {
       }
     }
 
-    // Log spatial distribution of ALL labels (visible and hidden)
-    if (allTexts.length > 0) {
-      // Find x-axis bounds of ALL labels
-      let minX = Infinity, maxX = -Infinity;
-      for (let i = 0; i < allTexts.length; i++) {
-        const box = allBoxes[i];
-        minX = Math.min(minX, box[0]);
-        maxX = Math.max(maxX, box[2]);
-      }
-
-      const binCount = 10;
-      const binWidth = (maxX - minX) / binCount;
-      const visibleBins = new Array(binCount).fill(0);
-      const hiddenBins = new Array(binCount).fill(0);
-
-      for (let i = 0; i < allTexts.length; i++) {
-        const box = allBoxes[i];
-        const centerX = (box[0] + box[2]) / 2;
-        const binIdx = Math.floor((centerX - minX) / binWidth);
-        const clampedIdx = Math.max(0, Math.min(binCount - 1, binIdx));
-
-        if (allTexts[i].text.visible) {
-          visibleBins[clampedIdx]++;
-        } else {
-          hiddenBins[clampedIdx]++;
-        }
-      }
-
-      const visibleCount = allTexts.filter(t => t.text.visible).length;
-
-      // Log actual positions of visible labels
-      const visiblePositions = [];
-      for (let i = 0; i < allTexts.length; i++) {
-        if (allTexts[i].text.visible) {
-          const box = allBoxes[i];
-          const text = allTexts[i].text;
-          const textObjIndex = this.textsList.indexOf(text);
-          visiblePositions.push({
-            uid: allTexts[i].uid,
-            textObjIndex: textObjIndex,  // Add index to see if same object is reused
-            x: Math.round((box[0] + box[2]) / 2),
-            y: Math.round((box[1] + box[3]) / 2),
-            pixiVisible: text.visible,
-            alpha: text.alpha,
-            worldVisible: text.worldVisible,
-            renderable: text.renderable,
-            textContent: text.text,
-            fill: text.style.fill,
-            fontSize: text.style.fontSize
-          });
-        }
-      }
-
-      console.log('[TM] Label distribution:',
-        '\n  Visible:', visibleBins, `(${visibleCount} total)`,
-        '\n  Hidden: ', hiddenBins, `(${allTexts.length - visibleCount} total)`,
-        '\n  X range:', Math.round(minX), '-', Math.round(maxX),
-        '\n  Positions:', visiblePositions,
-        '\n  Pool size:', this.textsList.length,
-        '\n  MaxTexts:', this.maxTexts,
-        '\n  Texts in use:', Object.keys(this.texts).length);
-    }
   }
 
   /**

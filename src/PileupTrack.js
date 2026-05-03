@@ -279,9 +279,9 @@ const PileupTrack = (HGC, ...args) => {
         maxTexts: options.maxReadLabels || 200,
         fontSize: options.readLabelFontSize || 10,
         fontFamily: options.readLabelFontFamily || 'Arial',
-        fill: options.readLabelColor !== undefined ? options.readLabelColor : 0x000000,
+        fill: options.readLabelColor !== undefined ? `#${options.readLabelColor.toString(16).padStart(6, '0')}` : '#333333',
         strokeThickness: options.readLabelStrokeThickness !== undefined ? options.readLabelStrokeThickness : 2,
-        stroke: options.readLabelStrokeColor !== undefined ? options.readLabelStrokeColor : 0xffffff,
+        stroke: options.readLabelStrokeColor !== undefined ? `#${options.readLabelStrokeColor.toString(16).padStart(6, '0')}` : '#ffffff',
       });
 
       // Debounced label update for smooth y-zoom/pan
@@ -507,9 +507,9 @@ varying vec4 vColor;
           maxTexts: options.maxReadLabels || 200,
           fontSize: options.readLabelFontSize || 10,
           fontFamily: options.readLabelFontFamily || 'Arial',
-          fill: options.readLabelColor !== undefined ? options.readLabelColor : 0x000000,
+          fill: options.readLabelColor !== undefined ? `#${options.readLabelColor.toString(16).padStart(6, '0')}` : '#333333',
           strokeThickness: options.readLabelStrokeThickness !== undefined ? options.readLabelStrokeThickness : 2,
-          stroke: options.readLabelStrokeColor !== undefined ? options.readLabelStrokeColor : 0xffffff,
+          stroke: options.readLabelStrokeColor !== undefined ? `#${options.readLabelStrokeColor.toString(16).padStart(6, '0')}` : '#ffffff',
         });
       }
 
@@ -808,11 +808,6 @@ varying vec4 vColor;
       // Calculate how many extra reads to fetch to compensate for hidden ones
       const effectiveMaxLabels = maxLabels + hiddenReadIds.length;
 
-      const TEST_READ = '196850524';
-      if (allTrackedIds.includes(TEST_READ)) {
-        console.log('[TEST] Read', TEST_READ, 'IS in priority list, domain:', domain);
-      }
-
       // Calculate visible row ranges for each group based on y-zoom/pan
       const heightScaleK = this.heightScaleK || 1;
       const virtualHeight = this.dimensions[1] / heightScaleK;
@@ -855,13 +850,6 @@ varying vec4 vColor;
           allTrackedIds,  // Pass all tracked IDs for prioritization
           visibleRowRanges  // Pass visible row ranges for filtering
         ).then((reads) => {
-          if (allTrackedIds.includes(TEST_READ)) {
-            const testReadReturned = reads.some(r => String(r.id) === TEST_READ);
-            console.log('[TEST] Read', TEST_READ, 'returned by worker?', testReadReturned, 'total reads:', reads.length);
-          }
-
-          console.log('got reads', maxLabels, reads)
-
           // If no reads returned, clear labels (tiles might not be loaded or region has no reads)
           if (reads.length === 0) {
             this.textManager.clear();
@@ -1704,7 +1692,7 @@ PileupTrack.config = {
     maxReadLabels: 200,
     readLabelFontSize: 10,
     readLabelFontFamily: 'Arial',
-    readLabelColor: 0x000000,
+    readLabelColor: 0x333333,  // Medium grey for better readability
     readLabelStrokeColor: 0xffffff,
     readLabelStrokeThickness: 2,
   },
