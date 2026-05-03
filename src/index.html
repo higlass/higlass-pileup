@@ -166,11 +166,14 @@ const testViewConfig = {
               "highlightReadsBy": [],
               "largeInsertSizeThreshold": 1000,
               "viewAsPairs": false,
-              "showReadLabels": true,
-              "maxReadLabels": 200,
+              "readLabels": {
+    "fields": ["id", "pos", "strand", "mapq"],  // Array of fields to display
+    "separator": "-"  // String to join fields (default: "-")
+  },
+              "maxReadLabels": 50,
               "readLabelFontSize": 10,
-              "readLabelColor": 0,
-              "readLabelStrokeColor": 16777215,
+              "readLabelColor": 0x333333,
+              "readLabelStrokeColor": 0xffffff,
               "readLabelStrokeThickness": 2,
               "readLabelField": "id"
             },
