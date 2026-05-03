@@ -183,6 +183,19 @@ function isIn(as) {
 // trigger a new render instead of continuing to scale the existing mesh.
 const HEIGHT_SCALE_THRESHOLD = 2.0;
 
+/**
+ * FNV-1a hash function to generate stable numeric importance from a string ID
+ * Better distribution than simple hash, even for sequential IDs
+ */
+function hashStringToNumber(str) {
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return hash >>> 0; // Convert to unsigned 32-bit integer
+}
+
 const PileupTrack = (HGC, ...args) => {
   if (!new.target) {
     throw new Error(
@@ -765,15 +778,38 @@ varying vec4 vColor;
 
       // Get the current visible domain
       const domain = this._xScale.domain();
-      const maxLabels = this.options.maxReadLabels || 200;
+      const maxLabels = this.options.maxReadLabels || 5;
 
-      // Get currently visible read IDs to prioritize in worker
-      const visibleReadIds = Object.keys(this.textManager.texts).filter(
-        uid => this.textManager.texts[uid].visible
+      // Clear tracked reads that are outside the visible domain
+      // This prevents out-of-view reads from taking up slots
+      if (this._cachedLabelData) {
+        const readsToRemove = this._cachedLabelData.filter(cached => {
+          return cached.genomicX < domain[0] || cached.genomicX > domain[1];
+        }).map(cached => cached.uid);
+
+        readsToRemove.forEach(uid => {
+          if (this.textManager.texts[uid]) {
+            delete this.textManager.texts[uid];
+          }
+        });
+
+        // Update cached data to only include visible reads
+        this._cachedLabelData = this._cachedLabelData.filter(cached => {
+          return cached.genomicX >= domain[0] && cached.genomicX <= domain[1];
+        });
+      }
+
+      // Separate tracked reads into visible and hidden
+      const allTrackedIds = Object.keys(this.textManager.texts);
+      const hiddenReadIds = allTrackedIds.filter(
+        uid => !this.textManager.texts[uid].visible
       );
 
+      // Calculate how many extra reads to fetch to compensate for hidden ones
+      const effectiveMaxLabels = maxLabels + hiddenReadIds.length;
+
       const TEST_READ = '196850524';
-      if (visibleReadIds.includes(TEST_READ)) {
+      if (allTrackedIds.includes(TEST_READ)) {
         console.log('[TEST] Read', TEST_READ, 'IS in priority list, domain:', domain);
       }
 
@@ -815,14 +851,16 @@ varying vec4 vColor;
         tileFunctions.getReadsForLabeling(
           this.dataFetcher.uid,
           domain,
-          maxLabels,
-          visibleReadIds,  // Pass visible IDs for prioritization
+          effectiveMaxLabels,  // Request extra to compensate for hidden reads
+          allTrackedIds,  // Pass all tracked IDs for prioritization
           visibleRowRanges  // Pass visible row ranges for filtering
         ).then((reads) => {
-          if (visibleReadIds.includes(TEST_READ)) {
+          if (allTrackedIds.includes(TEST_READ)) {
             const testReadReturned = reads.some(r => String(r.id) === TEST_READ);
             console.log('[TEST] Read', TEST_READ, 'returned by worker?', testReadReturned, 'total reads:', reads.length);
           }
+
+          console.log('got reads', maxLabels, reads)
 
           // If no reads returned, clear labels (tiles might not be loaded or region has no reads)
           if (reads.length === 0) {
@@ -883,12 +921,18 @@ varying vec4 vColor;
 
             const labelText = labelParts.join(labelConfig.separator);
 
+            // Calculate stable, global importance based on hash of read ID
+            // This ensures the same read always has the same base importance regardless of zoom
+            // and avoids positional bias
+            const importance = hashStringToNumber(readIdStr);
+
             textData.push({
               uid: readIdStr,
               text: labelText,
               x: xCenter,
               y: yCenter * heightScaleK,
-              anchor: { x: 0.5, y: 0.5 }
+              anchor: { x: 0.5, y: 0.5 },
+              importance: importance
             });
           }
 
@@ -927,9 +971,13 @@ varying vec4 vColor;
         const yPos = transformY(yScaleBand(cached.row), this.valueScaleTransform);
         const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
 
+        // Use stable importance based on hash of read ID
+        const importance = hashStringToNumber(cached.uid);
+
         positionMap[cached.uid] = {
           x: xCenter,
-          y: yCenter * heightScaleK
+          y: yCenter * heightScaleK,
+          importance: importance
         };
       });
 
@@ -1471,7 +1519,13 @@ varying vec4 vColor;
 
       // Update text label positions without scaling (keeps text size constant)
       if (this.textManager && this._normalizeReadLabelsConfig() && this._cachedLabelData) {
+        // Immediately reposition existing labels for smooth updates
         this.updateTextPositions(newXScale);
+
+        // Debounced refetch of labels to get new ones for the current domain
+        if (this._debouncedUpdateReadLabels) {
+          this._debouncedUpdateReadLabels();
+        }
       }
 
       this.mouseOverGraphics.clear();
@@ -1765,7 +1819,7 @@ PileupTrack.config = {
       name: 'Show read labels',
       inlineOptions: {
         yes: {
-          value: { fields: ['id', 'pos', 'strand', 'mapq'], separator: '-' },
+          value: { fields: ['id', 'pos', 'strand', 'mapq'], separator: ' ' },
           name: 'Yes',
         },
         no: {

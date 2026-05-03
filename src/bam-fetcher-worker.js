@@ -1735,15 +1735,17 @@ const getReadAtPosition = (uid, groupKey, rowIndex, genomicPos) => {
  * @returns {Array} Array of read objects with { id, readName, from, to, row, groupKey, mapq, strand }
  */
 /**
- * Fisher-Yates shuffle algorithm for randomizing array order
+ * FNV-1a hash function to generate stable numeric importance from a string ID
+ * Better distribution than simple hash, even for sequential IDs
+ * Must match the implementation in PileupTrack.js
  */
-const shuffle = (array) => {
-  const shuffled = [...array]; // Create a copy to avoid mutating original
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+const hashStringToNumber = (str) => {
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
-  return shuffled;
+  return hash >>> 0; // Convert to unsigned 32-bit integer
 };
 
 const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], visibleRowRanges = {}) => {
@@ -1778,8 +1780,10 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
       const row = rows[rowIndex];
       for (const section of row) {
         for (const segment of section.segments) {
-          // Check if read overlaps the visible domain (x-axis)
-          if (segment.to >= minPos && segment.from <= maxPos) {
+          // Check if read's CENTER is within the visible domain
+          // This ensures we only label reads that are visually centered in the viewport
+          const readCenter = (segment.from + segment.to) / 2;
+          if (readCenter >= minPos && readCenter <= maxPos) {
             const readData = {
               id: segment.id,
               readName: segment.readName,
@@ -1802,7 +1806,7 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
               priorityReads.push(readData);
               prioritySet.delete(String(segment.id)); // Remove to track what's found
             } else {
-              // Collect ALL other reads (we'll shuffle and slice later)
+              // Collect ALL other reads (we'll sort by importance and slice later)
               otherReads.push(readData);
             }
           }
@@ -1816,109 +1820,35 @@ const getReadsForLabeling = (uid, domain, maxReads = 500, priorityReadIds = [], 
       'in result?', priorityReads.some(r => String(r.id) === TEST_READ));
   }
 
-  // Spatial binning: distribute non-priority reads evenly across the domain
-  const domainWidth = maxPos - minPos;
-  const binCount = 10;
-  const binWidth = domainWidth / binCount;
+  // Sort non-priority reads by importance (hash-based) and select the most important
+  const withImportance = otherReads
+    .map(read => ({
+      read,
+      importance: hashStringToNumber(String(read.id)),
+      id: String(read.id),
+      pos: read.from
+    }));
 
-  // Organize non-priority reads into spatial bins
-  const spatialBins = Array.from({ length: binCount }, () => []);
+  const sortedOthers = withImportance
+    .sort((a, b) => b.importance - a.importance)  // Higher importance first
+    .map(item => item.read);
 
-  for (const read of otherReads) {
-    const readCenter = (read.from + read.to) / 2;
-    const binIdx = Math.floor((readCenter - minPos) / binWidth);
-    if (binIdx >= 0 && binIdx < binCount) {
-      spatialBins[binIdx].push(read);
-    }
-  }
-
-  // Calculate how many reads to sample from each bin
-  const remainingSlots = maxReads - priorityReads.length;
-  const totalReadsInBins = otherReads.length;
-  const nonEmptyBins = spatialBins.filter(bin => bin.length > 0);
-
-  const selectedOthers = [];
-
-  // For small counts, use uniform random sampling to ensure even distribution
-  if (remainingSlots <= nonEmptyBins.length * 2) {
-    // Uniform sampling: randomly pick from non-empty bins
-    const nonEmptyBinIndices = [];
-    for (let i = 0; i < binCount; i++) {
-      if (spatialBins[i].length > 0) {
-        nonEmptyBinIndices.push(i);
-      }
-    }
-
-    // Create a shuffled list of bin indices, repeated to ensure we can sample enough
-    const maxRounds = Math.ceil(remainingSlots / nonEmptyBinIndices.length);
-    const shuffledBinSequence = [];
-    for (let round = 0; round < maxRounds; round++) {
-      shuffledBinSequence.push(...shuffle(nonEmptyBinIndices));
-    }
-
-    // Track how many reads we've taken from each bin
-    const binReadCounts = Array(binCount).fill(0);
-
-    for (let slot = 0; slot < remainingSlots && slot < shuffledBinSequence.length; slot++) {
-      const binIndex = shuffledBinSequence[slot];
-      const binReads = spatialBins[binIndex];
-      const readIndex = binReadCounts[binIndex];
-
-      if (readIndex < binReads.length) {
-        const shuffledBin = shuffle(binReads);
-        selectedOthers.push(shuffledBin[readIndex]);
-        binReadCounts[binIndex]++;
-      }
-    }
-  } else {
-    // For larger counts, use proportional allocation
-    for (let i = 0; i < binCount; i++) {
-      const binReads = spatialBins[i];
-      if (binReads.length === 0) continue;
-
-      // Calculate proportional allocation
-      const proportion = binReads.length / totalReadsInBins;
-      let targetCount = Math.round(proportion * remainingSlots);
-
-      // Ensure at least 1 read per non-empty bin if we have slots
-      if (targetCount === 0 && selectedOthers.length < remainingSlots) {
-        targetCount = 1;
-      }
-
-      // Don't exceed available reads in this bin
-      const actualCount = Math.min(targetCount, binReads.length);
-
-      // Randomly sample from this bin
-      const shuffledBin = shuffle(binReads);
-      selectedOthers.push(...shuffledBin.slice(0, actualCount));
-    }
-  }
-
-  // If we haven't filled all slots (due to rounding), randomly add more
-  if (selectedOthers.length < remainingSlots) {
-    const unselectedReads = otherReads.filter(
-      r => !selectedOthers.some(s => s.id === r.id)
-    );
-    const shuffledRemaining = shuffle(unselectedReads);
-    selectedOthers.push(...shuffledRemaining.slice(0, remainingSlots - selectedOthers.length));
-  }
-
+  const selectedOthers = sortedOthers.slice(0, maxReads - priorityReads.length);
   const combined = [...priorityReads, ...selectedOthers];
 
-  // Debug: log spatial distribution
-  const distributionBins = new Array(binCount).fill(0);
-  for (const read of combined) {
-    const readCenter = (read.from + read.to) / 2;
-    const binIdx = Math.floor((readCenter - minPos) / binWidth);
-    if (binIdx >= 0 && binIdx < binCount) {
-      distributionBins[binIdx]++;
-    }
-  }
+  // Debug: analyze spatial distribution of selected reads
+  if (selectedOthers.length > 0) {
+    const positions = selectedOthers.map(r => r.from);
+    const minPos = Math.min(...positions);
+    const maxPos = Math.max(...positions);
+    const avgPos = positions.reduce((sum, p) => sum + p, 0) / positions.length;
 
-  console.log('[WORKER] Label distribution across domain:', distributionBins,
-    'priority:', priorityReads.length,
-    'others:', selectedOthers.length,
-    'total candidates:', otherReads.length);
+    console.log('[WORKER] Selected', selectedOthers.length, 'reads:',
+      '\n  Position range:', minPos, '-', maxPos,
+      '\n  Average position:', Math.round(avgPos),
+      '\n  Domain:', domain,
+      '\n  Sample IDs:', selectedOthers.slice(0, 5).map(r => String(r.id)));
+  }
 
   return combined;
 };
