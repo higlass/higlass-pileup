@@ -1,3 +1,13 @@
+v1.10.0
+
+- Add read label support with configurable fields (id, position, strand, mapq, etc.)
+- Intelligent collision detection keeps higher-importance labels visible
+- Deterministic label selection using hash-based importance
+- Labels maintain stable visibility across zoom/pan operations
+- Text size remains constant during zoom for readability
+- Labels filtered by visible y-domain during vertical zoom/pan
+- New options: `readLabels`, `maxReadLabels`, `readLabelFontSize`, `readLabelColor`, `readLabelStrokeColor`, `readLabelStrokeThickness`
+
 v1.9.3
 
 - Fix coverage display not showing (coverage area was being rendered at < 1 pixel height)
