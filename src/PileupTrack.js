@@ -861,6 +861,8 @@ varying vec4 vColor;
           const textData = [];
           const labelConfig = this._normalizeReadLabelsConfig();
 
+          const labelPosition = this.options.readLabelPosition || 'center';
+
           for (const read of reads) {
             const yScaleBand = this.yScaleBands[read.groupKey];
             if (!yScaleBand) continue;
@@ -868,8 +870,23 @@ varying vec4 vColor;
             // Convert read ID to string for consistency
             const readIdStr = String(read.id);
 
-            // Calculate the center position of the read
-            const xCenter = this._xScale((read.from + read.to) / 2);
+            // Calculate the x position and anchor based on readLabelPosition option
+            let xPos, anchorX;
+            switch (labelPosition) {
+              case 'left':
+                xPos = this._xScale(read.from);
+                anchorX = 0;
+                break;
+              case 'right':
+                xPos = this._xScale(read.to);
+                anchorX = 1;
+                break;
+              case 'center':
+              default:
+                xPos = this._xScale((read.from + read.to) / 2);
+                anchorX = 0.5;
+                break;
+            }
             const yPos = transformY(yScaleBand(read.row), this.valueScaleTransform);
             const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
 
@@ -917,23 +934,25 @@ varying vec4 vColor;
             textData.push({
               uid: readIdStr,
               text: labelText,
-              x: xCenter,
+              x: xPos,
               y: yCenter * heightScaleK,
-              anchor: { x: 0.5, y: 0.5 },
+              anchor: { x: anchorX, y: 0.5 },
               importance: importance
             });
           }
 
           // Cache the original label data for repositioning during zoom
-          this._cachedLabelData = textData.map(td => ({
-            uid: td.uid,
-            genomicX: reads.find(r => String(r.id) === td.uid).from +
-                      (reads.find(r => String(r.id) === td.uid).to -
-                       reads.find(r => String(r.id) === td.uid).from) / 2,
-            rowY: td.y,
-            groupKey: reads.find(r => String(r.id) === td.uid).groupKey,
-            row: reads.find(r => String(r.id) === td.uid).row
-          }));
+          this._cachedLabelData = textData.map(td => {
+            const read = reads.find(r => String(r.id) === td.uid);
+            return {
+              uid: td.uid,
+              genomicFrom: read.from,
+              genomicTo: read.to,
+              rowY: td.y,
+              groupKey: read.groupKey,
+              row: read.row
+            };
+          });
 
           this.textManager.updateTexts(textData);
           this.animate();
@@ -947,6 +966,8 @@ varying vec4 vColor;
       const heightScaleK = this.heightScaleK || 1;
       const positionMap = {};
 
+      const labelPosition = this.options.readLabelPosition || 'center';
+
       this._cachedLabelData.forEach(cached => {
         const text = this.textManager.texts[cached.uid];
         if (!text) return;
@@ -954,8 +975,20 @@ varying vec4 vColor;
         const yScaleBand = this.yScaleBands[cached.groupKey];
         if (!yScaleBand) return;
 
-        // Recalculate positions based on current scale
-        const xCenter = newXScale(cached.genomicX);
+        // Recalculate x position based on readLabelPosition option
+        let xPos;
+        switch (labelPosition) {
+          case 'left':
+            xPos = newXScale(cached.genomicFrom);
+            break;
+          case 'right':
+            xPos = newXScale(cached.genomicTo);
+            break;
+          case 'center':
+          default:
+            xPos = newXScale((cached.genomicFrom + cached.genomicTo) / 2);
+            break;
+        }
         const yPos = transformY(yScaleBand(cached.row), this.valueScaleTransform);
         const yCenter = yPos + (yScaleBand.bandwidth() * this.valueScaleTransform.k) / 2;
 
@@ -963,7 +996,7 @@ varying vec4 vColor;
         const importance = hashStringToNumber(cached.uid);
 
         positionMap[cached.uid] = {
-          x: xCenter,
+          x: xPos,
           y: yCenter * heightScaleK,
           importance: importance
         };
@@ -1657,6 +1690,7 @@ PileupTrack.config = {
     'viewAsPairs',
     'readLabels',
     'maxReadLabels',
+    'readLabelPosition',
     'readLabelFontSize',
     'readLabelFontFamily',
     'readLabelColor',
@@ -1690,6 +1724,7 @@ PileupTrack.config = {
     viewAsPairs: false,
     readLabels: null,
     maxReadLabels: 200,
+    readLabelPosition: 'center',
     readLabelFontSize: 10,
     readLabelFontFamily: 'Arial',
     readLabelColor: 0x333333,  // Medium grey for better readability
@@ -1813,6 +1848,23 @@ PileupTrack.config = {
         no: {
           value: null,
           name: 'No',
+        },
+      },
+    },
+    readLabelPosition: {
+      name: 'Read label position',
+      inlineOptions: {
+        left: {
+          value: 'left',
+          name: 'Left',
+        },
+        center: {
+          value: 'center',
+          name: 'Center',
+        },
+        right: {
+          value: 'right',
+          name: 'Right',
         },
       },
     },
