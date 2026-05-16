@@ -1,3 +1,7 @@
+v1.11.0
+
+- Add `readLabelPosition` option to control where labels are anchored relative to reads (`left`, `center`, `right`)
+
 v1.10.0
 
 - Add read label support with configurable fields (id, position, strand, mapq, etc.)
