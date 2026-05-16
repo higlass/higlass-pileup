@@ -187,6 +187,57 @@ both alignments will be highlighted.
 
 **minMappingQuality** - If this is set (integer), reads with a mapping quality lower than the specified value are not displayed.
 
+### Read labels
+
+Read labels display per-read text annotations directly on the pileup track. Labels are rendered with intelligent collision detection so that only non-overlapping labels are shown; when space is limited, labels with higher importance (determined by a stable hash of the read ID) are kept visible.
+
+**readLabels** - Controls which fields are shown in the label. Set to an object with `fields` and `separator` keys to enable labels, or `null` to disable (default).
+
+Available fields: `id`, `pos`, `strand`, `mapq`, `readName`, or any custom field present on the read object.
+
+```json
+"readLabels": {
+  "fields": ["readName", "mapq"],
+  "separator": " | "
+}
+```
+
+**readLabelPosition** - Where the label text is anchored relative to the read body. One of `"left"`, `"center"` (default), or `"right"`.
+
+- `"left"` — label starts at the left edge of the read
+- `"center"` — label is centred over the read (default)
+- `"right"` — label ends at the right edge of the read
+
+**maxReadLabels** - Maximum number of labels shown at once (default: `200`). Lowering this improves performance in dense regions.
+
+**readLabelFontSize** - Font size in pixels (default: `10`).
+
+**readLabelFontFamily** - Font family (default: `"Arial"`).
+
+**readLabelColor** - Label text color as a hex integer (default: `0x333333`).
+
+**readLabelStrokeColor** - Color of the text outline, which improves legibility over reads (default: `0xffffff`).
+
+**readLabelStrokeThickness** - Thickness of the text outline in pixels (default: `2`).
+
+Full example with all label options:
+
+```json
+"options": {
+  "readLabels": {
+    "fields": ["readName", "pos", "strand", "mapq"],
+    "separator": " "
+  },
+  "readLabelPosition": "left",
+  "maxReadLabels": 100,
+  "readLabelFontSize": 10,
+  "readLabelFontFamily": "Arial",
+  "readLabelColor": 3355443,
+  "readLabelStrokeColor": 16777215,
+  "readLabelStrokeThickness": 2
+}
+```
+
 ## Local tiles
 
 The `higlass-pileup` track supports local tiles. Local tiles can contain either BAM formatted data or they can include raw rendering objects. The following is a snippet that goes in the `track` section of a viewconf:
