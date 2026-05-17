@@ -1119,6 +1119,17 @@ function sectionsToRows(sections, optionsIn, trackOptions) {
     );
   }
 
+  // assignSectionToRow's else branch (pre-assigned rows) never updates _maxFrom/_minTo,
+  // so after processing prevSections those values are still -Infinity/Infinity — causing
+  // the fast path to always fire for new sections and push every read to a new bottom row.
+  // Recompute them from the actual occupied spaces now that prevSections are processed.
+  for (let i = 0; i < occupiedSpaceInRows.length; i++) {
+    if (occupiedSpaceInRows[i]) {
+      occupiedSpaceInRows._maxFrom = Math.max(occupiedSpaceInRows._maxFrom, occupiedSpaceInRows[i].from);
+      occupiedSpaceInRows._minTo = Math.min(occupiedSpaceInRows._minTo, occupiedSpaceInRows[i].to);
+    }
+  }
+
   const prevSectionIds = new Set(prevSections.map((x) => x.id));
   let filteredSections = sections.filter((x) => !prevSectionIds.has(x.id));
 
@@ -1847,3 +1858,6 @@ const tileFunctions = {
 };
 
 expose(tileFunctions);
+
+// Named exports for unit testing (not used by the worker RPC interface).
+export { sectionsToRows, assignSectionToRow };

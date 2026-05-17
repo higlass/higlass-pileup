@@ -1,3 +1,7 @@
+v1.11.1
+
+- Fix pileup layout: reads from a newly loaded tile were always placed on the bottom row instead of filling available space in existing rows
+
 v1.11.0
 
 - Add `readLabelPosition` option to control where labels are anchored relative to reads (`left`, `center`, `right`)
