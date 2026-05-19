@@ -10,3 +10,4 @@ es
 *.DS_cache
 *.DS_Store
 *.bak
+.claude/
