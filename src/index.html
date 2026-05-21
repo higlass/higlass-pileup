@@ -55,7 +55,8 @@
   <div id="demo"></div>
 </body>
 <script crossorigin src="https://unpkg.com/higlass-sequence/dist/higlass-sequence.js"></script>
--<script crossorigin src="https://unpkg.com/higlass@1.13.4/dist/hglib.min.js"></script>
+<script crossorigin src="https://unpkg.com/higlass@1.13.4/dist/hglib.min.js"></script>
+<script src="higlass-pileup.js"></script>
 <script>
 const testViewConfig = {
   "editable": true,
@@ -217,12 +218,69 @@ const testViewConfig = {
     "locksDict": {}
   }
 }
-window.hglib.viewer(
+const hgv = window.hglib.viewer(
   document.getElementById('demo'),
   testViewConfig,
   {
     bounded: true,
   },
 );
+
+// Add click handler to demonstrate getMouse API
+// Listen to the custom event published by the pileup track
+hgv.api.on('app.trackClick', (eventData) => {
+  console.log('\n=== Pileup Track Click Event ===');
+  console.log('Track ID:', eventData.trackId);
+  console.log('View ID:', eventData.viewId);
+
+  const data = eventData.data;
+  console.log('\n=== Click Position ===');
+  console.log('Genomic Position:', data.genomicPosition);
+  console.log('Chromosome Position:', data.chrPosition);
+
+  if (data.read) {
+    console.log('\n=== Read Information ===');
+    console.log('  ID:', data.read.id);
+    console.log('  Position:', data.read.from, '->', data.read.to);
+    console.log('  Length:', data.read.to - data.read.from);
+    console.log('  MAPQ:', data.read.mapq);
+    console.log('  Strand:', data.read.strand);
+    console.log('  Row:', data.read.row);
+    console.log('  Group Key:', data.read.groupKey);
+
+    if (data.read.chrName) {
+      console.log('  Chromosome:', data.read.chrName + ':' + (data.read.from - data.read.chrOffset));
+    }
+
+    if (data.read.extra) {
+      console.log('  Extra fields:', data.read.extra);
+    }
+
+    if (data.read.mate_ids && data.read.mate_ids.length > 0) {
+      console.log('  Mate IDs:', data.read.mate_ids);
+    }
+
+    if (data.read.substitutions && data.read.substitutions.length > 0) {
+      console.log('  All substitutions (', data.read.substitutions.length, '):', data.read.substitutions);
+    }
+
+    if (data.substitution) {
+      console.log('\n=== Nearest Substitution (within 10px of click) ===');
+      console.log('  Type:', data.substitution.type);
+      console.log('  Position (relative to read):', data.substitution.pos);
+      console.log('  Genomic position:', data.read.from + data.substitution.pos);
+      console.log('  Length:', data.substitution.length);
+      if (data.substitution.base) {
+        console.log('  Base change:', data.substitution.base, '->', data.substitution.variant);
+      }
+    } else {
+      console.log('\n(No substitution within 10px of click position)');
+    }
+  } else {
+    console.log('\n(No read at this genomic position)');
+  }
+});
+
+console.log('Pileup track click handler registered! Click on reads to see detailed information in console.');
 </script>
 </html>

@@ -238,6 +238,112 @@ Full example with all label options:
 }
 ```
 
+## Click Handler API
+
+The pileup track provides a `getMouse(trackX, trackY, callback)` method that returns detailed information about what's under the cursor when clicked. This is useful for implementing custom click interactions.
+
+### Usage
+
+```javascript
+// Get a reference to the track
+const track = hgv.getTrackObject(viewId, trackId);
+
+// Listen for clicks on the track
+hgv.on('click', (event) => {
+  if (event.trackId === trackId) {
+    track.getMouse(event.trackX, event.trackY, (result) => {
+      // Handle the result with full read data
+      console.log('Genomic position:', result.genomicPosition);
+      if (result.read) {
+        console.log('Read ID:', result.read.id);
+        // ... process read and substitution data
+      }
+    });
+  }
+});
+```
+
+### Method Signature
+
+```javascript
+getMouse(trackX, trackY, callback)
+```
+
+**Parameters:**
+- `trackX` (number): X coordinate in track space
+- `trackY` (number): Y coordinate in track space  
+- `callback` (function, optional): Callback function that receives the result object with read data
+
+**Returns:** An object with genomic and chromosome position (synchronous). If a callback is provided, it will be called with the complete result including read and substitution data.
+
+### Return Value
+
+The `getMouse` method returns an object immediately with position data, and optionally calls the callback with the full result:
+
+- **`genomicPosition`** (number): The genomic coordinate at the click position
+- **`chrPosition`** (array): The chromosome position as `[chromosomeName, position]`
+- **`read`** (object | null): Full read information if a read is under the cursor, or `null` if none
+- **`substitution`** (object | null): Substitution information if one is under the cursor (within 10px), or `null` if none
+
+Note: Since read data may need to be fetched asynchronously from a worker thread, the callback pattern ensures you always receive the complete data. If the data is cached (e.g., from a recent hover), the callback is called immediately.
+
+### Example
+
+```javascript
+// Using callback pattern (recommended)
+track.getMouse(trackX, trackY, (result) => {
+  console.log('Genomic position:', result.genomicPosition);
+  console.log('Chromosome position:', result.chrPosition);
+  
+  if (result.read) {
+    console.log('Read ID:', result.read.id);
+    console.log('Read position:', result.read.from, '-', result.read.to);
+    console.log('MAPQ:', result.read.mapq);
+    console.log('Strand:', result.read.strand);
+    
+    if (result.substitution) {
+      console.log('Nearest substitution type:', result.substitution.type);
+      console.log('Substitution position:', result.substitution.pos);
+      if (result.substitution.variant) {
+        console.log('Base change:', result.substitution.base, '->', result.substitution.variant);
+      }
+    }
+  }
+});
+
+// Immediate return value (position only, read data populated asynchronously)
+const immediate = track.getMouse(trackX, trackY);
+console.log('Position:', immediate.genomicPosition); // Available immediately
+console.log('Read:', immediate.read); // May be null until async fetch completes
+```
+
+### Read Object Properties
+
+When a read is present, the read object contains:
+
+- `id`: Read identifier
+- `from`: Start genomic position
+- `to`: End genomic position
+- `mapq`: Mapping quality score
+- `strand`: Read strand ('+' or '-')
+- `row`: Visual row the read is displayed on
+- `groupKey`: Group identifier
+- `chrName`: Chromosome name (if available)
+- `chrOffset`: Chromosome offset (if available)
+- `substitutions`: Array of substitution objects
+- `mate_ids`: Array of mate read IDs (for paired-end reads)
+- `extra`: Additional BAM tags and fields
+
+### Substitution Object Properties
+
+When a substitution is present, the substitution object contains:
+
+- `pos`: Position relative to read start
+- `type`: Substitution type ('X' for mismatch, 'D' for deletion, 'I' for insertion, 'S' for soft clip, 'H' for hard clip)
+- `length`: Length of the substitution
+- `base`: Reference base (for mismatches)
+- `variant`: Variant base (for mismatches)
+
 ## Local tiles
 
 The `higlass-pileup` track supports local tiles. Local tiles can contain either BAM formatted data or they can include raw rendering objects. The following is a snippet that goes in the `track` section of a viewconf:

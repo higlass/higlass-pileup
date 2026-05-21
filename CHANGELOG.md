@@ -1,3 +1,16 @@
+v1.12.0
+
+- Add click handler functionality that publishes detailed click event data via `app.trackClick` event
+- Add `getMouse(trackX, trackY, callback)` method that returns click event data including:
+  - Genomic position of the click (immediate return)
+  - Chromosome position (immediate return)
+  - Read information if a read is under the cursor (via callback)
+  - Substitution information if a substitution is under the cursor (via callback)
+  - Reuses hover cache for instant results when available
+- Click events include full read details (ID, position, MAPQ, strand, substitutions, etc.)
+- Add `onClick(trackX, trackY)` method for HiGlass compatibility
+- See README.md for full API documentation and usage examples
+
 v1.11.1
 
 - Fix pileup layout: reads from a newly loaded tile were always placed on the bottom row instead of filling available space in existing rows

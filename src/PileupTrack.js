@@ -302,6 +302,69 @@ const PileupTrack = (HGC, ...args) => {
         );
       }
 
+      // Set up click handling with a separate invisible hit area
+      if (!this._clickHandlerBound) {
+        this._clickHandlerBound = true;
+
+        // Create or reuse a click hit area graphics object
+        if (!this.clickHitArea) {
+          this.clickHitArea = new HGC.libraries.PIXI.Graphics();
+          this.clickHitArea.interactive = true;
+          this.clickHitArea.buttonMode = true;
+          this.clickHitArea.cursor = 'pointer';
+
+          // Add to pMain so it moves with the track
+          if (this.pMain) {
+            // Ensure pMain can have interactive children
+            this.pMain.interactiveChildren = true;
+            this.pMain.addChild(this.clickHitArea);
+          }
+        }
+
+        // Remove any existing click listener
+        if (this._onClickHandler) {
+          this.clickHitArea.off('click', this._onClickHandler);
+          this.clickHitArea.off('mousedown', this._onClickHandler);
+          this.clickHitArea.off('tap', this._onClickHandler);
+        }
+
+        // Add click event listener
+        this._onClickHandler = (event) => {
+          // Get local coordinates relative to the clickHitArea
+          const localPoint = event.data.getLocalPosition(this.clickHitArea);
+          const trackX = localPoint.x;
+          const trackY = localPoint.y;
+
+          // Call getMouse with callback to get click data
+          this.getMouse(trackX, trackY, (result) => {
+            // Publish the click data via pubsub
+            if (this.pubSub) {
+              this.pubSub.publish('app.trackClick', {
+                trackId: this.id,
+                trackUid: this.id,
+                viewId: this.viewId,
+                viewUid: this.viewId,
+                data: result
+              });
+            }
+          });
+        };
+
+        // Try multiple event types
+        this.clickHitArea.on('click', this._onClickHandler);
+        this.clickHitArea.on('mousedown', this._onClickHandler);
+        this.clickHitArea.on('tap', this._onClickHandler);
+      }
+
+      // Update the click hit area size to match track dimensions
+      if (this.clickHitArea && this.dimensions) {
+        this.clickHitArea.clear();
+        // Draw an invisible rectangle covering the track area
+        this.clickHitArea.beginFill(0x000000, 0.0); // Fully transparent
+        this.clickHitArea.drawRect(0, 0, this.dimensions[0], this.dimensions[1]);
+        this.clickHitArea.endFill();
+      }
+
       this.setUpShaderAndTextures();
     }
 
@@ -591,6 +654,14 @@ varying vec4 vColor;
         }
       }
 
+      // Update click hit area size when track is resized
+      if (this.clickHitArea && this.dimensions) {
+        this.clickHitArea.clear();
+        this.clickHitArea.beginFill(0x000000, 0.0);
+        this.clickHitArea.drawRect(0, 0, this.dimensions[0], this.dimensions[1]);
+        this.clickHitArea.endFill();
+      }
+
       this.prevOptions = Object.assign({}, options);
     }
 
@@ -712,6 +783,20 @@ varying vec4 vColor;
             if (this.textManager && this.textManager.textGraphics) {
               this.pMain.removeChild(this.textManager.textGraphics);
               this.pMain.addChild(this.textManager.textGraphics);
+            }
+
+            // Ensure click hit area is on top to receive click events
+            if (this.clickHitArea) {
+              this.pMain.removeChild(this.clickHitArea);
+              this.pMain.addChild(this.clickHitArea);
+
+              // Update hit area size now that we have proper dimensions
+              if (this.dimensions && (this.dimensions[0] > 1 || this.dimensions[1] > 1)) {
+                this.clickHitArea.clear();
+                this.clickHitArea.beginFill(0x000000, 0.0);
+                this.clickHitArea.drawRect(0, 0, this.dimensions[0], this.dimensions[1]);
+                this.clickHitArea.endFill();
+              }
             }
 
             this.yScaleBands = {};
@@ -1047,16 +1132,128 @@ varying vec4 vColor;
       this.trackNotFoundText.visible = true;
     }
 
+    getMouse(trackX, trackYIn, callback) {
+      /**
+       * Returns click event data for the current mouse position.
+       *
+       * Returns an object with:
+       * - genomicPosition: The genomic position of the click (number)
+       * - chrPosition: The chromosome position (array: [chr, pos])
+       * - read: Full read information if a read is under the cursor (object or null)
+       * - substitution: Substitution information if one is under the cursor (object or null)
+       *
+       * @param {number} trackX - X coordinate in track space
+       * @param {number} trackYIn - Y coordinate in track space
+       * @param {function} callback - Optional callback function that receives the result with read data
+       * @returns {object} Result object with genomicPosition and chrPosition immediately,
+       *                   read and substitution data populated asynchronously
+       */
+      if (Number.isNaN(trackX)) {
+        return null;
+      }
+
+      const genomicPosition = this._xScale.invert(trackX);
+      const chrPosition = posToChrPos(genomicPosition, this.tilesetInfo.chromsizes);
+
+      // Transform trackY to match the coordinate space used by yScaleBands
+      // (same logic as getMouseOverHtml)
+      const heightScaleK = this.heightScaleK || 1;
+      const trackY = invY(trackYIn / heightScaleK, this.valueScaleTransform);
+
+      const result = {
+        genomicPosition,
+        chrPosition,
+        read: null,
+        substitution: null
+      };
+
+      // Check if we're hovering over a read (same logic as getMouseOverHtml)
+      if (this.yScaleBands) {
+        for (const key of Object.keys(this.yScaleBands)) {
+          const yScaleBand = this.yScaleBands[key];
+          const [start, end] = yScaleBand.range();
+
+          if (start <= trackY && trackY <= end) {
+            const eachBand = yScaleBand.step();
+            const index = Math.floor((trackY - start) / eachBand);
+            const rowCount = this.rowsMeta[key] && this.rowsMeta[key].rowCount;
+
+            if (rowCount == null) continue;
+
+            if (index >= 0 && index < rowCount) {
+              // Check if we have a cached read at this position (from hover)
+              const cache = this._hoverReadCache;
+              if (
+                cache &&
+                cache.key === key &&
+                cache.rowIndex === index &&
+                Math.abs(cache.genomicPos - genomicPosition) < 0.5
+              ) {
+                // Use cached data
+                result.read = cache.read;
+                if (cache.read) {
+                  // Find nearest substitution
+                  const MAX_DIST = 10;
+                  const nearestDistance = this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
+                  result.substitution = findNearestSub(genomicPosition, cache.read, nearestDistance);
+                }
+
+                // Call callback immediately with cached data
+                if (callback) {
+                  callback(result);
+                }
+                return result;
+              }
+
+              // No cache hit - fetch the read data from worker
+              this.dataFetcher.getReadAtPosition(key, index, genomicPosition).then(
+                (read) => {
+                  if (read) {
+                    result.read = read;
+                    const MAX_DIST = 10;
+                    const nearestDistance = this._xScale.invert(MAX_DIST) - this._xScale.invert(0);
+                    result.substitution = findNearestSub(genomicPosition, read, nearestDistance);
+                  }
+
+                  // Call callback with fetched data
+                  if (callback) {
+                    callback(result);
+                  }
+                }
+              );
+
+              // Return immediately with what we have (position info only)
+              return result;
+            }
+          }
+        }
+      }
+
+      // Not over a read, call callback immediately if provided
+      if (callback) {
+        callback(result);
+      }
+      return result;
+    }
+
+    onClick(trackX, trackY) {
+      /**
+       * Called by HiGlass when the track is clicked.
+       * Returns click data that will be published in the 'click' event.
+       */
+      return this.getMouse(trackX, trackY);
+    }
+
     contextMenuItems(trackX, trackY) {
       /* Get a list of context menu items to display and the actions
          to take */
       if (Number.isNaN(trackX)) {
         return []
       }
-      
+
       const currPos = Math.floor(this._xScale.invert(trackX));
       const chrPos = posToChrPos(currPos, this.tilesetInfo.chromsizes);
-      
+
 
 
       // This should return items like this:
