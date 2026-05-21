@@ -1,3 +1,7 @@
+v1.12.1
+
+- Re-added previous unmerged commits
+
 v1.12.0
 
 - Add click handler functionality that publishes detailed click event data via `app.trackClick` event
