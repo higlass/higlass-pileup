@@ -359,8 +359,7 @@ const PileupTrack = (HGC, ...args) => {
       // Update the click hit area size to match track dimensions
       if (this.clickHitArea && this.dimensions) {
         this.clickHitArea.clear();
-        // Draw an invisible rectangle covering the track area
-        this.clickHitArea.beginFill(0x000000, 0.0); // Fully transparent
+        this.clickHitArea.beginFill(0x000000, 0.0);
         this.clickHitArea.drawRect(0, 0, this.dimensions[0], this.dimensions[1]);
         this.clickHitArea.endFill();
       }

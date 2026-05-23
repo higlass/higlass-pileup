@@ -1,3 +1,8 @@
+v1.12.2
+
+- Fix click handler event subscription in demo index.html
+- Remove debug console logging
+
 v1.12.1
 
 - Re-added previous unmerged commits
