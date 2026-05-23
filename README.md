@@ -240,25 +240,99 @@ Full example with all label options:
 
 ## Click Handler API
 
-The pileup track provides a `getMouse(trackX, trackY, callback)` method that returns detailed information about what's under the cursor when clicked. This is useful for implementing custom click interactions.
+The pileup track automatically publishes click events with detailed read information. You can subscribe to these events to implement custom click interactions.
 
-### Usage
+### Subscribing to Click Events (Recommended)
+
+The easiest way to handle clicks is to subscribe to the `app.trackClick` event published by the track:
+
+```javascript
+// Get the HiGlass viewer and track reference
+const hgv = hglib.viewer(element, viewConfig);
+
+// Wait for track to initialize, then subscribe to click events
+setTimeout(() => {
+  const track = hgv.getTrackObject(viewId, trackId);
+  
+  if (track && track.pubSub) {
+    track.pubSub.subscribe('app.trackClick', (eventData) => {
+      console.log('Genomic position:', eventData.data.genomicPosition);
+      console.log('Chromosome position:', eventData.data.chrPosition);
+      
+      if (eventData.data.read) {
+        console.log('Read ID:', eventData.data.read.id);
+        console.log('Position:', eventData.data.read.from, '->', eventData.data.read.to);
+        console.log('MAPQ:', eventData.data.read.mapq);
+        console.log('Strand:', eventData.data.read.strand);
+        
+        // Access substitutions
+        if (eventData.data.substitution) {
+          console.log('Substitution type:', eventData.data.substitution.type);
+          console.log('Substitution position:', eventData.data.substitution.pos);
+        }
+        
+        // Access extra BAM fields
+        if (eventData.data.read.extra) {
+          console.log('Extra fields:', eventData.data.read.extra);
+        }
+      }
+    });
+  }
+}, 1000);
+```
+
+### Event Data Structure
+
+The `app.trackClick` event provides an object with the following structure:
+
+```javascript
+{
+  trackId: 'track-id',        // Track identifier
+  trackUid: 'track-id',       // Track unique identifier
+  viewId: 'view-id',          // View identifier
+  viewUid: 'view-id',         // View unique identifier
+  data: {
+    genomicPosition: 123456,  // Genomic coordinate (number)
+    chrPosition: ['chr1', 123456],  // [chromosome name, position]
+    read: {                   // Full read object (null if no read at click position)
+      id: 'read-id',
+      from: 123000,
+      to: 123500,
+      mapq: 60,
+      strand: '+',
+      row: 5,
+      groupKey: 'group-key',
+      chrName: 'chr1',        // If available
+      chrOffset: 0,           // If available
+      substitutions: [...],   // Array of all substitutions in read
+      mate_ids: [...],        // Mate read IDs for paired-end reads
+      extra: {...}            // Additional BAM tags
+    },
+    substitution: {           // Nearest substitution within 10px (null if none)
+      type: 'X',              // 'X'=mismatch, 'D'=deletion, 'I'=insertion, 'S'=soft clip, 'H'=hard clip
+      pos: 45,                // Position relative to read start
+      length: 1,
+      base: 'A',              // Reference base (for mismatches)
+      variant: 'T'            // Variant base (for mismatches)
+    }
+  }
+}
+```
+
+### Using getMouse Directly (Advanced)
+
+You can also call the `getMouse` method directly for more control:
 
 ```javascript
 // Get a reference to the track
 const track = hgv.getTrackObject(viewId, trackId);
 
-// Listen for clicks on the track
-hgv.on('click', (event) => {
-  if (event.trackId === trackId) {
-    track.getMouse(event.trackX, event.trackY, (result) => {
-      // Handle the result with full read data
-      console.log('Genomic position:', result.genomicPosition);
-      if (result.read) {
-        console.log('Read ID:', result.read.id);
-        // ... process read and substitution data
-      }
-    });
+// Call getMouse with track coordinates
+track.getMouse(trackX, trackY, (result) => {
+  console.log('Genomic position:', result.genomicPosition);
+  if (result.read) {
+    console.log('Read ID:', result.read.id);
+    // ... process read and substitution data
   }
 });
 ```

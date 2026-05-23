@@ -2,6 +2,7 @@ v1.12.2
 
 - Fix click handler event subscription in demo index.html
 - Remove debug console logging
+- Update README with event subscription examples and complete event data structure documentation
 
 v1.12.1
 
